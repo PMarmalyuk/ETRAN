@@ -38,8 +38,8 @@ setGeneric("addFactor", function(self, factorId, value){standardGeneric("addFact
 setGeneric("addDataRecord", function(self, dataRecord){standardGeneric("addDataRecord")})
 setGeneric("printDataSampleKeys", function(self){standardGeneric("printDataSampleKeys")})
 
-setGeneric("addRawDataRecord", function(self, filepath, readSettings, useExt, extFun){standardGeneric("addRawDataRecord")})
-setGeneric("addRawDataRecords", function(self, filesFolder, readSettings, useExt, extFun){standardGeneric("addRawDataRecords")})
+setGeneric("addRawDataRecord", function(self, filepath, readSettings, useExt, extFun, extSettings){standardGeneric("addRawDataRecord")})
+setGeneric("addRawDataRecords", function(self, filesFolder, readSettings, useExt, extFun, extSettings){standardGeneric("addRawDataRecords")})
 
 ######################
 #methods_realizations#
@@ -245,7 +245,7 @@ setMethod("addFactorsRecord",  "FactorsData",
           }
 )
 
-createRawDataRec <- function(filePath, readSettings, useExt, extFun)
+createRawDataRec <- function(filePath, readSettings, useExt, extFun, extSettings)
 {
   if (!file.exists(filePath))
   {
@@ -256,8 +256,9 @@ createRawDataRec <- function(filePath, readSettings, useExt, extFun)
     if (useExt)
     {
       # implement data loading using extFun
-      headerLines <- "NA"
-      asIsData <- as.data.frame(NA)
+      extData <- extFun(filePath, readSettings, extSettings)
+      headerLines <- extData[[1]]
+      asIsData <- extData[[2]]
       rawDataRecord <- new(Class = "RawDataRecord",
                            filePath = filePath,
                            headerLines = headerLines,
@@ -285,9 +286,9 @@ createRawDataRec <- function(filePath, readSettings, useExt, extFun)
 
 ## TO DO: prevent creating duplicate records
 setMethod("addRawDataRecord",  "RawDataRecords",                                   
-          function(self, filepath, readSettings, useExt, extFun)
+          function(self, filepath, readSettings, useExt, extFun, extSettings)
           { 
-                newRawDataRec <- createRawDataRec(filePath = filepath, readSettings = readSettings, useExt = useExt, extFun = extFun)
+                newRawDataRec <- createRawDataRec(filePath = filepath, readSettings = readSettings, useExt = useExt, extFun = extFun, extSettings = extSettings)
                 rawDataRecCnt <- length(self@rawDataRecordsList$fileNumbers)
                 if (rawDataRecCnt == 0) 
                 {
@@ -304,7 +305,7 @@ setMethod("addRawDataRecord",  "RawDataRecords",
 
 ## TO DO: prevent creating duplicate records
 setMethod("addRawDataRecords",  "RawDataRecords",                                   
-          function(self, filesFolder, readSettings, useExt, extFun)
+          function(self, filesFolder, readSettings, useExt, extFun, extSettings)
           { 
             if (!file.exists(filesFolder))
             {
@@ -313,7 +314,7 @@ setMethod("addRawDataRecords",  "RawDataRecords",
             filesToRead <- list.files(path = filesFolder, pattern = NULL, all.files = FALSE,
                        full.names = TRUE, recursive = FALSE,
                        ignore.case = FALSE, include.dirs = FALSE, no.. = FALSE)
-            rawDataRecords <- lapply(filesToRead, FUN = createRawDataRec, readSettings = readSettings, useExt = useExt, extFun = extFun)
+            rawDataRecords <- lapply(filesToRead, FUN = createRawDataRec, readSettings = readSettings, useExt = useExt, extFun = extFun, extSettings = extSettings)
             rawDataRecCnt <- length(self@rawDataRecordsList$fileNumbers)
             if (rawDataRecCnt == 0) 
             {

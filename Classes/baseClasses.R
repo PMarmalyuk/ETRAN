@@ -1,5 +1,7 @@
 setClass("Experiment",
          representation(name = "character",
+                        startDate = "Date",
+                        endDate = "Date",
                         description = "character",
                         instruction = "character",
                         experimenters = "character",
