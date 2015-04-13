@@ -22,7 +22,9 @@ setClass("Trial",
 
 
 setClass("Subject",
-         representation(code = "character"
+         representation(code = "character",
+                        fullname = "character",
+                        birthdate = "Date"
          ),
          prototype(
          )
