@@ -2,7 +2,7 @@
 ####################
 #class_declarations#
 ####################
-classesFolder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Classes"
+classesFolder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Classes"
 setwd(classesFolder)
 source("extFunctionsClasses.R")
 source("optionsAndSettingsClasses.R")
@@ -31,9 +31,13 @@ setGeneric("addAOISet", function(self, AOISetObject, orderIndex){standardGeneric
 
 setGeneric("addAOIMultiSet", function(self, AOIMultiSetObject){standardGeneric("addAOIMultiSet")})
 
+setGeneric("addFactor", function(self, factorID, value){standardGeneric("addFactor")})
+setGeneric("updateFactor", function(self, factorID, value){standardGeneric("updateFactor")})
 
-setGeneric("addFactorsRecord", function(self, owner, ownerId, factors){standardGeneric("addFactorsRecord")})
-setGeneric("addFactor", function(self, factorId, value){standardGeneric("addFactor")})
+setGeneric("addFactorsRecord", function(self, owner, ownerID, factors){standardGeneric("addFactorsRecord")})
+setGeneric("replaceFactorsRecord", function(self, owner, ownerID, factors){standardGeneric("replaceFactorsRecord")})
+setGeneric("updateFactorsRecord", function(self, owner, ownerID, factorID, value){standardGeneric("updateFactorsRecord")})
+
 
 setGeneric("addDataRecord", function(self, dataRecord){standardGeneric("addDataRecord")})
 setGeneric("printDataSampleKeys", function(self){standardGeneric("printDataSampleKeys")})
@@ -232,16 +236,81 @@ setMethod("printDataSampleKeys", "DataSample",
           }
 )
 
-## TO DO: Method adds the factor id and value into Factors list
+# Method adds the factor id and value into Factors list
+## Method prevents adding values for factors which have already been set
 setMethod("addFactor",  "Factors",                                   
-          function(self)
+          function(self, factorID, value)
           {                         
+            factorPosition <- which(self@factorsList$ids == factorID)
+            if (factorPosition != 0)
+            {
+              stop(paste("Factor with ID", factorID, "has been set already! Its value is", self@factorsList$values[[factorPosition]]))
+            }
+            self@factorsList$ids <- c(self@factorsList$ids, factorID)
+            self@factorsList$values <- c(self@factorsList$values, value)
+            return(self)
           }
 )
-## TO DO: Method adds the factors object for given owner into Factors Data object
-setMethod("addFactorsRecord",  "FactorsData",                                   
-          function(self)
+
+# Method updates factor's value by factorID if it exists in Factors object
+setMethod("updateFactor",  "Factors",                                   
+          function(self, factorID, value)
           {                         
+            factorPosition <- which(self@factorsList$ids == factorID)
+            if (factorPosition == 0)
+            {
+              stop(paste("Factor with ID", factorID, "not found!"))
+            }
+            self@factorsList$values[[factorPosition]] <- value
+            return(self)
+          }
+)
+
+# Method adds the factors object for given owner into Factors Data object
+## Method prevents adding duplicate records
+setMethod("addFactorsRecord",  "FactorsData",                                   
+          function(self, owner, ownerID, factors)
+          {
+            if (any(self@owners == owner & self@ownersIDs == ownerID))
+            {
+              stop(paste("Factors values record for object", owner, "with ID", ownerID, "already exists! You can add factor value into record or replace a record."))
+            }
+            self@owner == owner
+            self@ownerID = ownerID
+            self@factors = factors
+            return(self)
+          }
+)
+
+# Method replaces a factors record in FactorsData
+## Method checks if a record for specific owner and ownerID exists
+## TO DO: test method, add method's documentation
+setMethod("replaceFactorsRecord",  "FactorsData",                                   
+          function(self, owner, ownerID, factors)
+          {
+            factorRecordPosition <- which(self@owners == owner & self@ownersIDs == ownerID)
+            if (factorRecordPosition == 0)
+            {
+              stop(paste("There is no factors values record for object", owner, "with ID", ownerID, "You can add a new factor record."))
+            }
+            self@factors[[factorRecordPosition]] <- factors
+            return(self)
+          }
+)
+
+# Method updates a value of the specific factor's in existing record
+## Method checks if a record for specific owner and ownerID exists
+## TO DO: test method, add method's documentation
+setMethod("updateFactorsRecord",  "FactorsData",                                   
+          function(self, owner, ownerID, factorID, value)
+          {
+            factorRecordPosition <- which(self@owners == owner & self@ownersIDs == ownerID)
+            if (factorRecordPosition == 0)
+            {
+              stop(paste("There is no factors record for object", owner, "with ID", ownerID, "You can add a new factor record."))
+            }
+            self@factors[[factorRecordPosition]] <- updateFactor(self = self@factors[[factorRecordPosition]], factorID = factorID, value = value)
+            return(self)
           }
 )
 

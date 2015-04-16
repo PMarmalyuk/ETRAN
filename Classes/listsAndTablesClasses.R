@@ -58,8 +58,7 @@ setClass("AvailableFactors",
 )
 
 setClass("Factors",
-         representation(factors = "numeric", #list of factors' ids
-                        values = "list" #list of corresponding factors' values
+         representation(factorsList = "list" # list of ids and values elements
          ),
          prototype(
          )
@@ -67,7 +66,7 @@ setClass("Factors",
 
 setClass("FactorsData",
          representation(owners = "character",
-                        ownersIds = "numeric",
+                        ownersIDs = "numeric",
                         factorsList = "list" #list of Factors
          ),
          prototype(
