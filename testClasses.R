@@ -1,4 +1,4 @@
-classesFolder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Classes"
+classesFolder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Classes"
 setwd(classesFolder)
 source("extFunctionsClasses.R")
 source("optionsAndSettingsClasses.R")
@@ -145,21 +145,16 @@ rawSett <- new(Class = "ReadSettings")
 rawDataRecords <- new(Class = "RawDataRecords")
 folder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\Head-mounted SMI"
 file <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\Head-mounted SMI\\Drozdov Samples.txt"
-t1 <- proc.time()
-recordsAll <- addRawDataRecord(self = rawDataRecords, filepath = file, readSettings = rawSett, useExt = F, extFun = F)
-t2 <- proc.time()
-t2-t1
-newRawDataRec <- createRawDataRec(filePath = file, readSettings = rawSett, useExt = F, extFun = F)
-
-t1 <- proc.time()
+record <- addRawDataRecord(self = rawDataRecords, filepath = file, readSettings = rawSett, useExt = F, extFun = F)
 recordsAll <- addRawDataRecords(self = recordsAll, filesFolder = folder,  readSettings = rawSett, useExt = F, extFun = F)
-t2 <- proc.time()
-t2-t1
 
-headerLine <- recordsAll@rawDataRecordsList$rawDataRecords[[1]]@headerLines[7]
-headerLine <- gsub(" ", "", headerLine, fixed = TRUE)
-headerLine <- gsub("\t", "", headerLine, fixed = TRUE)
-headerLine <- gsub("##", "", headerLine, fixed = TRUE)
+dataF <- new(Class = "AvailableDataFields")
+dataF@availableFields <- list(time = 1, trial = 3, frame = 14, stimname = NA, smptype = 2, 
+                              lporx = 10, lpory = 11, rporx = NA, rpory = NA, 
+                              lpupxsize = 6, lpupysize = 7, rpupxsize = NA, rpupysize = NA,
+                              leftAdditionalFields = list(lrawx = 4, lrawy = 5), rightAdditionalFields = NA)
+hKeys <- new(Class = "HeaderKeys")
+dataRec <- parseDataRecord(self = record@rawDataRecordsList$rawDataRecords[[1]], dataFields = dataF, headerKeys = hKeys)
 
-recordsAll@rawDataRecordsList$fileNumbers
 
+plot(dataRec$eyesDataObjects[[5]]@leftEyeSamples@eyeData, type = "l")

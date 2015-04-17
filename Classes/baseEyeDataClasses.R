@@ -1,12 +1,12 @@
 setClass("TimeSamples",
-         representation(time = "list" # field: "time"
+         representation(time = "numeric" # field: "time"
          ),
          prototype(
          )
 )
 
 setClass("FrameSamples",
-         representation(frame = "list" # field: "frame"
+         representation(frame = "numeric" # field: "frame"
          ),
          prototype(
          )

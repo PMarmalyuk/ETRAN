@@ -14,7 +14,8 @@ setClass("AvailableDataFields",
          prototype(availableFields = list(time = NA, trial = NA, frame = NA, stimname = NA, smptype = NA,
                                           lporx = NA, lpory = NA, rporx = NA, rpory = NA,
                                           lpupxsize = NA, lpupysize = NA, rpupxsize = NA, rpupysize = NA,
-                                          additionalFields = list(lrawx = NA, lrawy = NA))
+                                          leftAdditionalFields = NA,
+                                          rightAdditionalFields = NA)
          )
 )
 
@@ -23,26 +24,22 @@ setClass("DataFieldNames",
          prototype(fieldNames = list(time = "Time", trial = "Trial", frame = "Frame", stimname = "StimulusName", smptype = "SampleType",
                                      lporx = "LPORX", lpory = "LPORY", rporx = "RPORX", rpory = "RPORY",
                                      lpupxsize = "LPupilXSize", lpupysize = "LPupilYSize", rpupxsize = "RPupilXSize", rpupysize = "RPupilYSize",
-                                     additionalFields = list(lrawx = "LRawX", lrawy = "LRawY"))
+                                     leftAdditionalFields = NA,
+                                     rightAdditionalFields = NA)
          )
 )
 
 setClass("HeaderKeys",
-         representation(subjectCode = "character",
-                        sampleRate = "character",
-                        stimDim = "character",
-                        headDist = "character",
-                        otherKeys = "list"),
-         prototype(subjectCode = "Subject",
+         representation(keys = "list"),
+         prototype(keys = list(subjectCode = "Subject",
                    sampleRate = "Sample Rate",
                    stimDim = "Stimulus Dimension",
-                   headDist = "Head Distance")
+                   headDist = "Head Distance"))
 )
 
 setClass("RawDataSettings",
          representation(rawReadSettings = "ReadSettings",
                         availableFields = "AvailableDataFields",
-                        fieldNames = "DataFieldNames",
                         headerKeys = "HeaderKeys",
                         eyeTrackerModel = "character",
                         eyeTrackerType = "character" #"tower", "remote" or "head-mounted"
