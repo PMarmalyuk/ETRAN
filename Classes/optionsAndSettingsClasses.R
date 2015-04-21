@@ -40,9 +40,7 @@ setClass("HeaderKeys",
 setClass("RawDataSettings",
          representation(rawReadSettings = "ReadSettings",
                         availableFields = "AvailableDataFields",
-                        headerKeys = "HeaderKeys",
-                        eyeTrackerModel = "character",
-                        eyeTrackerType = "character" #"tower", "remote" or "head-mounted"
+                        headerKeys = "HeaderKeys"
          ),
          prototype()
 )
