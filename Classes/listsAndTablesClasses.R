@@ -42,16 +42,14 @@ setClass("AOISets",
 )
 
 setClass("TAS",
-         representation(trialID = "numeric",
-                        AOISetID = "numeric",
-                        stimulusID = "numeric"
+         representation(TAS = "data.frame", # df of trialID, AOISetID and stimulusID columns
          ),
          prototype(
          )
 )
 
 setClass("AvailableFactors",
-         representation(availableFactors = "data.frame" #df of factor id, factor name, type, levels
+         representation(availableFactors = "data.frame" #df of factor id, factor name, type, levels and owner
          ),
          prototype(
          )
