@@ -37,10 +37,9 @@ setClass("FilterMarkers",
          representation(filterMarkersData = "character",
                         markerNames = "list"
          ),
-         prototype(markerNames = list(zeroes = "0", 
-                                 outOfBounds = "Out of bounds",
-                                 abnormalSpeed = "Abnormal speed",
-                                 abnormalAcceleration = "Abnormal acceleration")
+         prototype(markerNames = list(ok = "Ok",
+                                      zeroes = "0", 
+                                      outOfBounds = "Out of bounds")
          )
 )
 
@@ -52,8 +51,8 @@ setClass("EventMarkers",
                                       saccade = "Saccade",
                                       glissade = "Glissade",
                                       smoothPursuit = "Smooth pursuit",
-                                      blink = "Blink",
-                                      noise = "Noise")
+                                      gap = "Gap",
+                                      artifact = "Artifact")
          )
 )
 
@@ -85,12 +84,21 @@ setClass("SmoothPursuitsData",
          )
 )
 
-setClass("BlinksData",
-         representation(blinks = "data.frame" # fields: onset, offset, duration, eyePosStart, eyePosEnd, pupSizeStart, pupSizeEnd
+setClass("GapsData",
+         representation(gaps = "data.frame" # fields: startPosition, endPosition, onset, offset, duration, pupSizeStart, pupSizeEnd
          ),
          prototype(
          )
 )
+
+setClass("ArtifcatsData",
+         representation(artifacts = "data.frame" # fields: startPosition, endPosition, onset, offset, duration, peakVelocity, peakAcceleration 
+         ),
+         prototype(
+         )
+)
+
+
 
 setClass("AdditionalEventData",
          representation(eventName = "character", 
@@ -105,7 +113,8 @@ setClass("EventData",
                         saccades = "SaccadesData",
                         glissades = "GlissadesData",
                         smoothPursuits = "SmoothPursuitsData",
-                        blinks = "BlinksData", 
+                        gaps = "GapsData",
+                        artifacts = "ArtifcatsData",
                         additionalEvents = "list" # list of AdditionalEventData objects
          ),
          prototype(

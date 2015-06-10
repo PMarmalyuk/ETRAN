@@ -42,7 +42,7 @@ setClass("AOISets",
 )
 
 setClass("TAS",
-         representation(TAS = "data.frame", # df of trialID, AOISetID and stimulusID columns
+         representation(TAS = "data.frame" # df of trialID, AOISetID and stimulusID columns
          ),
          prototype(
          )

@@ -84,9 +84,34 @@ setClass("DataRecord",
                         subjectID = "numeric",
                         trialID = "numeric",
                         eyesDataObject = "EyesData",
-                        analysisResults = "list", #list of EventData, AOISequence, AOITransMatrix, AOIStatsVector objects
+                        analysisResults = "list", #list of EventData, AOISequence, AOITransMatrix, AOIStatsVector objects for each eye
                         statistics = "list" # list of statistics evaluated for eyesDataObject or an element of analysisResults list
          ),
          prototype(
          )
+)
+
+setClass("Parser",
+         representation(name = "character",
+                        fun = "function",
+                        settings = "list")
+)
+
+setClass("Filter",
+         representation(fun = "function",
+                        name = "character",
+                        settings = "list")
+)
+
+setClass("Smoother",
+         representation(fun = "function",
+                        name = "character",
+                        settings = "list")
+)
+
+
+setClass("EventDetector",
+         representation(fun = "function",
+                        name = "character",
+                        settings = "list")
 )

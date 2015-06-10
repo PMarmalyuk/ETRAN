@@ -45,11 +45,14 @@ setClass("RawDataSettings",
          prototype()
 )
 
+
 setClass("Conditions",
          representation(conditions = "list"),
          prototype(conditions = list(eye = NA, # "left", "right" or "both"
                                      sampleRate = NA, # frequency in Hz
                                      screenDistance = NA,
+                                     screenDim = NA,
+                                     screenSize = NA, # width and height of the screen / field of view
                                      pupilShape = NA, #"circle" or "ellipse"
                                      pupilDataType = NA, #"radius" or "diameter"
                                      timeUnits = NA, # e.g. 1E-3 for milliseconds

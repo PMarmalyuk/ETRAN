@@ -45,7 +45,21 @@ setGeneric("printDataSampleKeys", function(self){standardGeneric("printDataSampl
 setGeneric("addRawDataRecord", function(self, filepath, readSettings, useExt, extFun, extSettings){standardGeneric("addRawDataRecord")})
 setGeneric("addRawDataRecords", function(self, filesFolder, readSettings, useExt, extFun, extSettings){standardGeneric("addRawDataRecords")})
 
-setGeneric("parseDataRecord", function(self, dataFields, headerKeys, sampleKey = "SMP", useExt = F, extFun = NA, extSettings = NA){standardGeneric("parseDataRecord")})
+## Pablo: I suggest the following interface: function(self, dataFields, headerKeys, parser)
+## where parser is an object that contains parsing function and its settings
+setGeneric("parseDataRecord", function(self, parser){standardGeneric("parseDataRecord")})
+
+## data filter
+setGeneric("dataFilter", function(self, filter){standardGeneric("dataFilter")})
+
+## data smoother
+setGeneric("dataSmoother", function(self, smoother){standardGeneric("dataSmoother")})
+
+## event detector
+setGeneric("eventDetector", function(self, detector){standardGeneric("eventDetector")})
+
+## events detection uses particular filter, smoother and detector
+setGeneric("detectEvents", function(self, filter, smoother, detector){standardGeneric("detectEvents")})
 
 ######################
 #methods_realizations#
@@ -302,7 +316,6 @@ setMethod("replaceFactorsRecord",  "FactorsData",
 
 # Method updates a value of the specific factor's in existing record
 ## Method checks if a record for specific owner and ownerID exists
-## TO DO: test method, add method's documentation
 setMethod("updateFactorsRecord",  "FactorsData",                                   
           function(self, owner, ownerID, factorID, value)
           {
@@ -512,19 +525,27 @@ createDataRecordObject <- function(data, dataFields, fieldNames, conditions)
   return(eyeDataObject)
 }
 
-findKeyValue <- function(key, headerLines)
+# Searching for a string with a key specified and extracting everything after a colon considering specified separator
+findKeyValue <- function(key, sep, headerLines)
 {
-  if (grep(pattern = key, x = headerLines) != 0)
+  ## Searching for a string with a UNIQUE key specified (may be problems with common keys' strings)
+  if (any(grepl(pattern = key, x = headerLines)))
   {
-    keyString <- headerLines[]
-    keyPos <- regexpr(pattern = key, keyString)
+    ## If there's any string with a key then we read it
+    stringNum <- grep(pattern = key, x = headerLines)
+    string <- headerLines[stringNum]
+    ## Searching for a colon in a string with a key and a colon
+    keyPos <- regexpr(pattern = paste(key, ":", sep = ""), string)
     keyStart <- keyPos[1]
     keyLen <- attr(keyPos, "match.length")
-    keyRawVal <- substr(x = keyString, start = keyStart+keyLen, stop = nchar(keyString))
-    colonPos <- regexpr(pattern = ":", keyRawVal)[1]
-    keyRawVal <- substr(x = keyRawVal, start = colonPos+1, stop = nchar(keyRawVal))
+    ## Finding a colon
+    colonPos <- regexpr(pattern = ":", string)[1]
+    ## Reading everythin after a colon
+    keyRawVal <- substr(x = string, start = colonPos+1, stop = nchar(string))
+    ## Deleting spaces
     keyRawVal <- gsub(" ", "", keyRawVal)
-    res <- regmatches(keyRawVal, gregexpr("\t", keyRawVal), invert = T)[[1]][-1]
+    ## Parsing key value(s)
+    res <- regmatches(keyRawVal, gregexpr(sep, keyRawVal), invert = T)[[1]][-1]
   } else 
   {
     res <- NA
@@ -532,113 +553,59 @@ findKeyValue <- function(key, headerLines)
   res
 }
 
-setMethod("parseDataRecord",  "RawDataRecord",                                   
-          function(self, dataFields, headerKeys, sampleKey = "SMP", useExt = F, extFun = NA, extSettings = NA)
-          {
-            filePath <- self@filePath
-            if (useExt)
-            {
-              parsedData <- extFun(self, extSettings)
-              subjectCode <- parsedData$subjectCode
-              trialsNums <- parsedData$trialsNums
-              stimDim <- parsedData$stimDim
-              eyesDataObjects <- parsedData$eyesDataObjects
-              res <- list(filePath = filePath, subjectCode = subjectCode, trialsNums = trialsNums, stimDim = stimDim, eyesDataObjects = eyesDataObjects)
-              return(res)
-            }
-            ## Deleting all samples with sample type other than sampleKey
-            if (!is.na(dataFields@availableFields$smptype))
-            {
-              self@data <- self@data[self@data[, dataFields@availableFields$smptype] == sampleKey,]
-            }
-            
-            ## Reading trial number samples
-            trials <- NA
-            if (!is.na(dataFields@availableFields$trial))
-            {
-              trials <- self@data[,dataFields@availableFields$trial]
-              trialsNums <- unique(trials)
-            }
-            ## Reading stimuli name samples as trials indicators
-            if (!is.na(dataFields@availableFields$trial) & !is.na(dataFields@availableFields$stimname))
-            {
-              trials <- self@data[,dataFields@availableFields$stimname]
-              trialsNums <- unique(trials)
-            }
-            ## Splitting data by trials
-            if (!is.na(trials[1]))
-            {
-              trialsData <- split(self@data, f = trials)
-            }
 
-            ## Getting field names using self@data column names
-            fNames <- lapply(dataFields@availableFields[-c(14,15)], FUN = function(x) {if (!is.na(x)) {colnames(self@data)[x]} else {"NA"} })
-            leftAddFNames <- NA
-            rightAddFNames <- NA
-            if (!is.na(dataFields@availableFields[[14]][1]))
-            {
-              leftAddFNames <- lapply(dataFields@availableFields[[14]], FUN = function(x) {if (!is.na(x)) {colnames(self@data)[x]} else {"NA"} })  
-            }
-            if (!is.na(dataFields@availableFields[[15]][1]))
-            {
-              rightAddFNames <- lapply(dataFields@availableFields[[15]], FUN = function(x) {if (!is.na(x)) {colnames(self@data)[x]} else {"NA"} })
-            }
-            fieldNames <- new(Class = "DataFieldNames", 
-                              fieldNames = list(fNames, 
-                                   leftAdditionalFields = leftAddFNames, 
-                                   rightAdditionalFields = rightAddFNames))
-            
-            ## Figuring out conditions
-            ### Recording mode (monocular: left or right,- or binocular)
-            eyeLeft <- F
-            eyeRight <- F
-            if (!is.na(dataFields@availableFields$lporx) & !is.na(dataFields@availableFields$lpory))
-            {
-              eyeLeft <- T
-            }
-            if (!is.na(dataFields@availableFields$rporx) & !is.na(dataFields@availableFields$rpory))
-            {
-              eyeRight <- T
-            }
-            if (!eyeLeft & !eyeRight) {stop("You must specify eye samples disposition in your dataset!")}
-            if (eyeLeft & eyeRight) {eye = "both"}
-            if (eyeLeft & !eyeRight) {eye = "left"}
-            if (!eyeLeft & eyeRight) {eye = "right"}
-            conditions <- new(Class = "Conditions")
-            conditions@conditions$eye <- eye
-            
-            ## Determining pupil shape
-            if (is.na(dataFields@availableFields$lpupxsize) & is.na(dataFields@availableFields$lpupysize) |
-                is.na(dataFields@availableFields$rpupxsize) & is.na(dataFields@availableFields$rpupysize)
-            )
-            {
-              pupilShape <- NA
-            }
-            if (!is.na(dataFields@availableFields$lpupxsize) & is.na(dataFields@availableFields$lpupysize) |
-                !is.na(dataFields@availableFields$rpupxsize) & is.na(dataFields@availableFields$rpupysize)
-            )
-            {
-              pupilShape <- "circle"
-            }            
-            if (!is.na(dataFields@availableFields$lpupxsize) & !is.na(dataFields@availableFields$lpupysize) |
-                !is.na(dataFields@availableFields$rpupxsize) & !is.na(dataFields@availableFields$rpupysize)
-                )
-            {
-              pupilShape <- "ellipse"
-            }
-            conditions@conditions$pupilShape <- pupilShape
-            
-            ## Reading keys from header lines
-            keyValues <- lapply(headerKeys@keys, FUN = findKeyValue, headerLines = self@headerLines)
-            subjectCode <- keyValues$subjectCode
-            stimDim <- keyValues$stimDim
-            conditions@conditions$sampleRate <- keyValues$sampleRate
-            conditions@conditions$screenDistance <- keyValues$headDist
-            
-            ## Creating data records
-            eyesDataObjects <- lapply(trialsData, FUN = createDataRecordObject, dataFields = dataFields, fieldNames = fieldNames, conditions = conditions)
-            #eyesDataObjects <- createDataRecordObject(data = trialsData[[1]], dataFields = dataFields, fieldNames = fieldNames, conditions = conditions)
-            res <- list(filePath = filePath, subjectCode = subjectCode, trialsNums = trialsNums, stimDim = stimDim, eyesDataObjects = eyesDataObjects)
+# method returns a list with EyesData objects and additional info:
+# filePath, subjectCode, trialsNums, stimDim, framesCnt
+setMethod("parseDataRecord",  "RawDataRecord",                                   
+          function(self, parser)
+          {
+            fun <- parser@fun
+            settings <- parser@settings
+            res <- fun(self, settings)
             return(res)
           }
 )
+
+## TO DO: implement a method that adds a specific DataRecord object into a DataSample object 
+
+setMethod("dataFilter", "DataRecord",
+          function(self, filter)
+          {
+            fun <- filter@fun
+            settings <- filter@settings
+            res <- fun(self, settings)
+            return(res)
+          }
+)
+
+setMethod("dataSmoother", "DataRecord",
+          function(self, smoother)
+          {
+            fun <- smoother@fun
+            settings <- smoother@settings
+            res <- fun(self, settings)
+            return(res)
+          }
+)
+
+setMethod("eventDetector", "DataRecord",
+          function(self, detector)
+          {
+            fun <- detector@fun
+            settings <- detector@settings
+            res <- fun(self, settings)
+            return(res)
+          }
+)
+
+setMethod("detectEvents",  "DataRecord",                                   
+          function(self, filter, smoother, detector)
+          {
+            self <- dataFilter(self, filter)
+            self <- dataSmoother(self, smoother)
+            self <- eventDetector(self, detector)
+            return(self)
+          }
+)
+
+
