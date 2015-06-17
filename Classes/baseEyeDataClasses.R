@@ -13,14 +13,14 @@ setClass("FrameSamples",
 )
 
 setClass("TrajectorySamples",
-         representation(eyeData = "data.frame" # fields: "PORX", "PORY"
+         representation(eyeData = "data.frame" # fields: "porx", "pory"
          ),
          prototype(
          )
 )
 
 setClass("PupilSamples",
-         representation(pupilData = "data.frame" # fields: "PUPX", ["PUPY"]
+         representation(pupilData = "data.frame" # fields: "pupx", ["pupy"]
          ),
          prototype(
          )
@@ -34,7 +34,7 @@ setClass("OtherSamples",
 )
 
 setClass("FilterMarkers",
-         representation(filterMarkersData = "character",
+         representation(filterMarkers = "character",
                         markerNames = "list"
          ),
          prototype(markerNames = list(ok = "Ok",
@@ -44,7 +44,8 @@ setClass("FilterMarkers",
 )
 
 setClass("EventMarkers",
-         representation(eventMarkersData = "character",
+         representation(eventMarkers = "character",
+                        eventGroups = "numeric",
                         markerNames = "list"
          ),
          prototype(markerNames = list(fixation = "Fixation", 

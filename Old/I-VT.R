@@ -30,6 +30,8 @@ IVT <- function(t, x, y, filterMarkers, settings)
   gapMarkers <- ifelse(filterMarkers@filterMarkersData != filterMarkers@markerNames$ok, "GAP", "NOT GAP")
   rawEventMarkers <- ifelse(gapMarkers[-length(gapMarkers)] == "GAP", "GAP", ifelse(vel$vels <= VT, "Fixation", "Saccade"))
   # 3. Post-processing stage
+  
+  
   evmarks <- data.frame(firstEv = rawEventMarkers[-length(rawEventMarkers)], secondEv = rawEventMarkers[-1])
   transitions <- apply(evmarks, MARGIN = 1, function(x) {if (x[2] != x[1]) {1} else {0}})
   group <- c(1,cumsum(transitions)+1)
@@ -41,6 +43,9 @@ IVT <- function(t, x, y, filterMarkers, settings)
   artifactGroups <- list()
   eventMarkers <- new(Class = "EventMarkers")
   eventMarkersGroups <- list()
+  group <- 0
+  newGroups <- c()
+  newEvents <- c()
   lastGroup = NA
   for (gr in 1:length(eventGroups))
   {
@@ -54,7 +59,10 @@ IVT <- function(t, x, y, filterMarkers, settings)
       if (fixLen < minFixLen)
       {
         artifactGroups <- append(artifactGroups, eventGroups[gr])
-        eventMarkersGroups <- append(eventMarkersGroups, rep(eventMarkers@markerNames$artifact, nrow(eventGroups[[gr]])))
+        group <- group + 1
+        newGroups <- c(newGroups, rep(group, nrow(eventGroups[[gr]])))
+        newEvents <- c(newEvents, rep(eventMarkers@markerNames$artifact, nrow(eventGroups[[gr]])))
+        #eventMarkersGroups <- append(eventMarkersGroups, rep(eventMarkers@markerNames$artifact, nrow(eventGroups[[gr]])))
       }
       # если фиксация не короткая
       if (fixLen >= minFixLen)
@@ -100,9 +108,11 @@ IVT <- function(t, x, y, filterMarkers, settings)
         if (fixCloseInSpace)
         {
           # то предыдущую саккаду рассматриваем как артефакт записи
+          newEvents[tail(newEvents, nrow(saccadeGroups[[length(saccadeGroups)]]))] <- rep(nrow(eventMarkers@markerNames$artifact, saccadeGroups[[length(saccadeGroups)]]))
           artifactGroups <- append(artifactGroups, saccadeGroups[length(saccadeGroups)])
           eventMarkersGroups[length(eventMarkersGroups)] <- list(rep(eventMarkers@markerNames$artifact, length(eventMarkersGroups[[length(eventMarkersGroups)]])))
           saccadeGroups <- saccadeGroups[-length(saccadeGroups)]
+
           # а текущую фиксацию рассматриваем как продолжение предыдущей
           lastFixation <- list(rbind(lastFixation, eventGroups[[gr]]))
           fixationGroups[length(fixationGroups)] <- lastFixation

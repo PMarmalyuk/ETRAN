@@ -8,6 +8,14 @@ source("optionsAndSettingsClasses.R")
 source("baseEyeDataClasses.R")
 source("baseClasses.R")
 source("listsAndTablesClasses.R")
+functionsFolder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Functions"
+setwd(functionsFolder)
+source("dataLoaders.R")
+source("dataParsers.R")
+source("filters.R")
+source("smoothers.R")
+source("detectors.R")
+source("eventAnalyzers.R")
 
 ##############################
 #generic_methods_declarations#
@@ -48,6 +56,8 @@ setGeneric("addRawDataRecords", function(self, filesFolder, readSettings, useExt
 ## where parser is an object that contains parsing function and its settings as the data filter, smoother and detector
 setGeneric("parseDataRecord", function(self, parser){standardGeneric("parseDataRecord")})
 
+setGeneric("getDataFrame", function(self, eye){standardGeneric("getDataFrame")})
+
 ## data filter
 setGeneric("dataFilter", function(self, filter){standardGeneric("dataFilter")})
 
@@ -59,6 +69,10 @@ setGeneric("eventDetector", function(self, detector){standardGeneric("eventDetec
 
 ## events detection uses particular filter, smoother and detector
 setGeneric("detectEvents", function(self, filter, smoother, detector){standardGeneric("detectEvents")})
+
+## events analysis
+setGeneric("eventAnalyzer", function(self, analyzer){standardGeneric("eventAnalyzer")})
+
 
 
 ## visualisations
@@ -333,45 +347,6 @@ setMethod("updateFactorsRecord",  "FactorsData",
           }
 )
 
-createRawDataRec <- function(filePath, readSettings, useExt, extFun, extSettings)
-{
-  if (!file.exists(filePath))
-  {
-    stop("Datafile not found!")
-  }
-  else
-  {
-    if (useExt)
-    {
-      # implement data loading using extFun
-      extData <- extFun(filePath, readSettings, extSettings)
-      headerLines <- extData[[1]]
-      asIsData <- extData[[2]]
-      rawDataRecord <- new(Class = "RawDataRecord",
-                           filePath = filePath,
-                           headerLines = headerLines,
-                           data = asIsData)
-    }
-    else
-    {
-      settings <- readSettings@readSettings
-      headerLines <- readLines(con = filePath, n = settings$skip, encoding = settings$encoding)
-      asIsData <- read.csv(filePath, sep = settings$sep,   
-                           skip = settings$skip, 
-                           comment.char = settings$comment.char, 
-                           header = settings$header,
-                           blank.lines.skip = T, 
-                           check.names = F,
-                           stringsAsFactors = F)
-      rawDataRecord <- new(Class = "RawDataRecord",
-                           filePath = filePath,
-                           headerLines = headerLines,
-                           data = asIsData)
-    }
-  }
-  rawDataRecord
-}
-
 ## TO DO: prevent creating duplicate records
 setMethod("addRawDataRecord",  "RawDataRecords",                                   
           function(self, filepath, readSettings, useExt, extFun, extSettings)
@@ -390,6 +365,7 @@ setMethod("addRawDataRecord",  "RawDataRecords",
                 return(self)
           }
 )
+
 
 ## TO DO: prevent creating duplicate records
 setMethod("addRawDataRecords",  "RawDataRecords",                                   
@@ -420,142 +396,6 @@ setMethod("addRawDataRecords",  "RawDataRecords",
           }
 )
 
-createDataRecordObject <- function(data, dataFields, fieldNames, conditions)
-{
-  eyeDataObject <- new(Class = "EyesData", fieldNames = fieldNames, conditions = conditions)
-  if (!is.na(dataFields@availableFields$time))
-  {
-    times <- new(Class = "TimeSamples", time = data[,dataFields@availableFields$time])
-    eyeDataObject@time <- times
-  }
-  if (!is.na(dataFields@availableFields$frame))
-  {
-    frames <- new(Class = "FrameSamples", frame = as.numeric(data[,dataFields@availableFields$frame]))
-    eyeDataObject@frame <- frames
-  }
-  if (conditions@conditions$eye == "left")
-  {
-    porx <- data[,dataFields@availableFields$lporx]
-    pory <- data[,dataFields@availableFields$lpory]
-    eyeSamples <- new(Class = "TrajectorySamples", eyeData = data.frame(porx, pory))
-    eyeDataObject@leftEyeSamples <- eyeSamples
-    if (conditions@conditions$pupilShape == "circle")
-    {
-      pupxsize <- data[,dataFields@availableFields$lpupxsize]
-      pupSamples <- new(Class = "PupilSamples", pupilData = data.frame(pupxsize))
-      eyeDataObject@leftPupilSamples <- pupSamples
-    }
-    if (conditions@conditions$pupilShape == "ellipse")
-    {
-      pupxsize <- data[,dataFields@availableFields$lpupxsize]
-      pupysize <- data[,dataFields@availableFields$lpupysize]
-      pupSamples <- new(Class = "PupilSamples", pupilData = data.frame(pupxsize, pupysize))
-      eyeDataObject@leftPupilSamples <- pupSamples
-    }
-  }
-  if (conditions@conditions$eye == "right")
-  {
-    porx <- data[,dataFields@availableFields$rporx]
-    pory <- data[,dataFields@availableFields$rpory]
-    eyeSamples <- new(Class = "TrajectorySamples", eyeData = data.frame(porx, pory))
-    eyeDataObject@rightEyeSamples <- eyeSamples
-    if (conditions@conditions$pupilShape == "circle")
-    {
-      pupxsize <- data[,dataFields@availableFields$rpupxsize]
-      pupSamples <- new(Class = "PupilSamples", pupilData = data.frame(pupxsize))
-      eyeDataObject@rightPupilSamples <- pupSamples
-    }
-    if (conditions@conditions$pupilShape == "ellipse")
-    {
-      pupxsize <- data[,dataFields@availableFields$rpupxsize]
-      pupysize <- data[,dataFields@availableFields$rpupysize]
-      pupSamples <- new(Class = "PupilSamples", pupilData = data.frame(pupxsize, pupysize))
-      eyeDataObject@rightPupilSamples <- pupSamples
-    }
-  }
-  if (conditions@conditions$eye == "both")
-  {
-    lporx <- data[,dataFields@availableFields$lporx]
-    lpory <- data[,dataFields@availableFields$lpory]
-    rporx <- data[,dataFields@availableFields$rporx]
-    rpory <- data[,dataFields@availableFields$rpory]
-    leftEyeSamples <- new(Class = "TrajectorySamples", eyeData = data.frame(lporx, lpory))
-    rightEyeSamples <- new(Class = "TrajectorySamples", eyeData = data.frame(rporx, rpory))
-    eyeDataObject@leftEyeSamples <- leftEyeSamples
-    eyeDataObject@rightEyeSamples <- rightEyeSamples
-    if (conditions@conditions$pupilShape == "circle")
-    {
-      lpupxsize <- data[,dataFields@availableFields$lpupxsize]
-      rpupxsize <- data[,dataFields@availableFields$rpupxsize]
-      leftPupSamples <- new(Class = "PupilSamples", pupilData = data.frame(lpupxsize))
-      rightPupSamples <- new(Class = "PupilSamples", pupilData = data.frame(rpupxsize))
-      eyeDataObject@leftPupilSamples <- leftPupSamples
-      eyeDataObject@rightPupilSamples <- rightPupSamples
-    }
-    if (conditions@conditions$pupilShape == "ellipse")
-    {
-      lpupxsize <- data[,dataFields@availableFields$lpupxsize]
-      rpupxsize <- data[,dataFields@availableFields$rpupxsize]
-      lpupysize <- data[,dataFields@availableFields$lpupysize]
-      rpupysize <- data[,dataFields@availableFields$rpupysize]
-      leftPupSamples <- new(Class = "PupilSamples", pupilData = data.frame(lpupxsize, lpupysize))
-      rightPupSamples <- new(Class = "PupilSamples", pupilData = data.frame(rpupxsize, rpupysize))
-      eyeDataObject@leftPupilSamples <- leftPupSamples
-      eyeDataObject@rightPupilSamples <- rightPupSamples
-    }
-  }
-  if (!is.na(dataFields@availableFields$leftAdditionalFields[1]) & conditions@conditions$eye == "left")
-  {
-    leftAddSmp <- lapply(dataFields@availableFields$leftAdditionalFields, FUN = function(x) {data[,x]})
-    leftAddSmp <- new(Class = "OtherSamples", otherData = as.data.frame(leftAddSmp))
-    eyeDataObject@leftAdditionalSamples <- leftAddSmp
-  }
-  if (!is.na(dataFields@availableFields$rightAdditionalFields[1]) & conditions@conditions$eye == "right")
-  {
-    rightAddSmp <- lapply(dataFields@availableFields$rightAdditionalFields, FUN = function(x) {data[,x]})
-    rightAddSmp <- new(Class = "OtherSamples", otherData = as.data.frame(rightAddSmp))
-    eyeDataObject@rightAdditionalSamples <- rightAddSmp
-  }
-  if (!is.na(dataFields@availableFields$leftAdditionalFields[1]) &
-      !is.na(dataFields@availableFields$rightAdditionalFields[1]) & conditions@conditions$eye == "both")
-  {
-    leftAddSmp <- lapply(dataFields@availableFields$leftAdditionalFields, FUN = function(x) {data[,x]})
-    leftAddSmp <- new(Class = "OtherSamples", otherData = as.data.frame(leftAddSmp))
-    rightAddSmp <- lapply(dataFields@availableFields$rightAdditionalFields, FUN = function(x) {data[,x]})
-    rightAddSmp <- new(Class = "OtherSamples", otherData = as.data.frame(rightAddSmp))
-    eyeDataObject@leftAdditionalSamples = leftAddSmp
-    eyeDataObject@rightAdditionalSamples = rightAddSmp
-  }
-  return(eyeDataObject)
-}
-
-# Searching for a string with a key specified and extracting everything after a colon considering specified separator
-findKeyValue <- function(key, sep, headerLines)
-{
-  ## Searching for a string with a UNIQUE key specified (may be problems with common keys' strings)
-  if (any(grepl(pattern = key, x = headerLines)))
-  {
-    ## If there's any string with a key then we read it
-    stringNum <- grep(pattern = key, x = headerLines)
-    string <- headerLines[stringNum]
-    ## Searching for a colon in a string with a key and a colon
-    keyPos <- regexpr(pattern = paste(key, ":", sep = ""), string)
-    keyStart <- keyPos[1]
-    keyLen <- attr(keyPos, "match.length")
-    ## Finding a colon
-    colonPos <- regexpr(pattern = ":", string)[1]
-    ## Reading everythin after a colon
-    keyRawVal <- substr(x = string, start = colonPos+1, stop = nchar(string))
-    ## Deleting spaces
-    keyRawVal <- gsub(" ", "", keyRawVal)
-    ## Parsing key value(s)
-    res <- regmatches(keyRawVal, gregexpr(sep, keyRawVal), invert = T)[[1]][-1]
-  } else 
-  {
-    res <- NA
-  }
-  res
-}
 
 
 # method returns a list with EyesData objects and additional info:
@@ -568,6 +408,92 @@ setMethod("parseDataRecord",  "RawDataRecord",
             res <- fun(self, settings)
             return(res)
           }
+)
+
+# TO DO: return additional fields also
+setMethod("getDataFrame", "EyesData",
+          function(self, eye)
+          {
+            data <- list()
+            if (eye == "left")
+            {
+             if (self@conditions@conditions$eye == "left" | self@conditions@conditions$eye == "both")
+             {
+               if (length(self@time@time) != 0)
+               {
+                 data <- append(data, list(time = self@time@time))
+               }
+               if (length(self@frame@frame) != 0)
+               {
+                 data <- append(data, list(frame = self@frame@frame))
+               }
+               data <- append(data, list(porx = self@leftEyeSamples@eyeData$porx))
+               data <- append(data, list(pory = self@leftEyeSamples@eyeData$pory))
+               if (length(self@leftPupilSamples@pupilData$pupxsize) != 0)
+               {
+                 data <- append(data, list(pupxsize = self@leftPupilSamples@pupilData$pupxsize))
+               }
+               if (length(self@leftPupilSamples@pupilData$pupysize) != 0)
+               {
+                 data <- append(data, list(pupysize = self@leftPupilSamples@pupilData$pupysize))
+               }
+               if (length(self@leftFilterMarkers@filterMarkers) != 0)
+               {
+                 data <- append(data, list(filterMarkers = self@leftFilterMarkers@filterMarkers))
+               }
+               if (length(self@leftEventMarkers@eventMarkers) != 0)
+               {
+                 data <- append(data, list(eventMarkers = c(self@leftEventMarkers@eventMarkers, "NULL")))
+                 data <- append(data, list(eventGroups = c(self@leftEventMarkers@eventGroups, "0")))
+               }
+               return(as.data.frame(data))
+              }
+              else
+              {
+                warning("Cannot return data due to its absence!")
+                return(NULL)
+              }
+            }
+            if (eye == "right")
+            {
+              if (self@conditions@conditions$eye == "right" | self@conditions@conditions$eye == "both")
+              {
+                if (length(self@time@time) != 0)
+                {
+                  data <- append(data, list(time = self@time@time))
+                }
+                if (length(self@frame@frame) != 0)
+                {
+                  data <- append(data, list(frame = self@frame@frame))
+                }
+                data <- append(data, list(porx = self@rightEyeSamples@eyeData$porx))
+                data <- append(data, list(pory = self@rightEyeSamples@eyeData$pory))
+                if (length(self@rightPupilSamples@pupilData$pupxsize) != 0)
+                {
+                  data <- append(data, list(pupxsize = self@rightPupilSamples@pupilData$pupxsize))
+                }
+                if (length(self@rightPupilSamples@pupilData$pupysize) != 0)
+                {
+                  data <- append(data, list(pupysize = self@rightPupilSamples@pupilData$pupysize))
+                }
+                if (length(self@rightFilterMarkers@filterMarkers) != 0)
+                {
+                  data <- append(data, list(filterMarkers = self@rightFilterMarkers@filterMarkers))
+                }
+                if (length(self@rightEventMarkers@eventMarkers) != 0)
+                {
+                  data <- append(data, list(eventMarkers = c(self@rightEventMarkers@eventMarkers, "NULL")))
+                  data <- append(data, list(eventGroups = c(self@rightEventMarkers@eventGroups, 0)))
+                }
+                return(as.data.frame(data))
+              }
+              else
+              {
+                warning("Cannot return data due to its absence!")
+                return(NULL)
+              }
+            }
+}
 )
 
 ## TO DO: implement a method that adds a specific DataRecord object into a DataSample object 
@@ -592,25 +518,6 @@ setMethod("dataSmoother", "DataRecord",
           }
 )
 
-setMethod("plotXY", "DataRecord",
-          function(self, eye, period, onStimulus, smoother = NA)
-          {
-            
-          }
-)
-
-setMethod("plotXt", "DataRecord",
-          function(self, eye, period, channel, angular)
-          {
-            # channel - 1, 2, 3, 4, 5, 6, 7, ...
-            # angular is possible for 1 and 2 channels (i.e. X(t) or Y(t) plot)
-            # period is period of time in sec from trial's start
-            
-          }
-)
-
-
-
 setMethod("eventDetector", "DataRecord",
           function(self, detector)
           {
@@ -631,4 +538,31 @@ setMethod("detectEvents",  "DataRecord",
           }
 )
 
+setMethod("eventAnalyzer", "DataRecord",
+          function(self, analyzer)
+          {
+            fun <- analyzer@fun
+            settings <- analyzer@settings
+            res <- fun(self, settings)
+            return(res)
+          }
+)
 
+### VISUALIZATIONS ###
+
+setMethod("plotXY", "DataRecord",
+          function(self, eye, period, onStimulus, smoother = NA)
+          {
+            
+          }
+)
+
+setMethod("plotXt", "DataRecord",
+          function(self, eye, period, channel, angular)
+          {
+            # channel - 1, 2, 3, 4, 5, 6, 7, ...
+            # angular is possible for 1 and 2 channels (i.e. X(t) or Y(t) plot)
+            # period is period of time in sec from trial's start
+            
+          }
+)

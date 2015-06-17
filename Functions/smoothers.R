@@ -63,3 +63,34 @@ movAvgFilt <- function(x, settings)
   xsmoothed[(length(x)-(fl%/%2)+1):length(x)] <- x[(length(x)-(fl%/%2)+1):length(x)]
   as.numeric(xsmoothed)
 }
+
+
+
+## CORE SMOOTHER ##
+coreSmoother <- function(DataRecord, settings)
+{
+  type <- settings$type
+  
+  if (type == "Median") {smoother <- medianFilt}
+  if (type == "MovAvg") {smoother <- movAvgFilt}
+  if (type == "SavGol") {smoother <- savGolFilt}
+  
+  if (DataRecord@eyesDataObject@conditions@conditions$eye == "left")
+  {
+    DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx <- smoother(DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx, settings)
+    DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory <- smoother(DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory, settings)
+  }
+  if (DataRecord@eyesDataObject@conditions@conditions$eye == "right")
+  {
+    DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx <- smoother(DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx, settings)
+    DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory <- smoother(DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory, settings)
+  }
+  if (DataRecord@eyesDataObject@conditions@conditions$eye == "both")
+  {
+    DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx <- smoother(DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx, settings)
+    DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory <- smoother(DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory, settings)
+    DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx <- smoother(DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx, settings)
+    DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory <- smoother(DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory, settings)
+  }
+  return(DataRecord)
+}

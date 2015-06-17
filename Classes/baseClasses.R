@@ -91,6 +91,12 @@ setClass("DataRecord",
          )
 )
 
+setClass("Loader",
+         representation(name = "character",
+                        fun = "function",
+                        settings = "list")
+)
+
 setClass("Parser",
          representation(name = "character",
                         fun = "function",
@@ -111,6 +117,12 @@ setClass("Smoother",
 
 
 setClass("EventDetector",
+         representation(fun = "function",
+                        name = "character",
+                        settings = "list")
+)
+
+setClass("EventAnalyzer",
          representation(fun = "function",
                         name = "character",
                         settings = "list")
