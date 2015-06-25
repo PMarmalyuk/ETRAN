@@ -24,16 +24,16 @@ parser <- createParser(name = "Core Parser", fun = coreParser,
 rec <- parseDataRecord(self = recordsAll@rawDataRecordsList$rawDataRecords[[1]], parser = parser)
 dataRec <- new(Class = "DataRecord", expID = 1, subjectID = 1, trialID = 1, eyesDataObject = rec$eyesDataObjects[[1]])
 
-smoother <- createSmoother(name = "Standard", fun = coreSmoother, settings = list(type = "Median", fl = 3))
+smoother <- createSmoother(name = "Standard", fun = coreSmoother, settings = list(subfun = medianFilt, fl = 3))
 rec2 <- dataSmoother(dataRec, smoother)
 t <- rec2@eyesDataObject@time@time
 x <- rec2@eyesDataObject@leftEyeSamples@eyeData$porx
 plot(x~t, type = "l", col = 2)
 
 dataRec <- new(Class = "DataRecord", expID = 1, subjectID = 1, trialID = 1, eyesDataObject = rec$eyesDataObjects[[1]])
-smoother <- createSmoother(name = "Standard", fun = coreSmoother, settings = list(type = "Median", fl = 15))
+smoother <- createSmoother(name = "Standard", fun = coreSmoother, settings = list(subfun = medianFilt, fl = 15))
 filter <- createFilter(name = "Standard", fun = coreFilter, settings = list(interpolate = T))
-detector <- createDetector("Standard", fun = coreDetector, settings = list(algorithm = "I-VT",
+detector <- createDetector("Standard", fun = coreDetector, settings = list(subfun = IVT,
                                                                            postProcess = F,
                                                                            VT = 15,
                                                                            angular = T,
@@ -53,16 +53,108 @@ dataRec@eyesDataObject@leftFilterMarkers <- res@eyesDataObject@leftFilterMarkers
 dataRec@eyesDataObject@rightFilterMarkers <- res@eyesDataObject@rightFilterMarkers
 dataRec@eyesDataObject@leftEventMarkers <- res@eyesDataObject@leftEventMarkers
 dataRec@eyesDataObject@rightEventMarkers <- res@eyesDataObject@rightEventMarkers
-
-period <- 1:1000
-lev <- c(events@eyesDataObject@leftEventMarkers@markerNames$fixation, 
-         events@eyesDataObject@leftEventMarkers@markerNames$saccade, 
-         events@eyesDataObject@leftEventMarkers@markerNames$gap, 
-         events@eyesDataObject@leftEventMarkers@markerNames$artifact)
-t <- (res@eyesDataObject@time@time-events@eyesDataObject@time@time[1])[period]
+par(mfrow = c(1,1))
+period <- 1:10000
+lev <- c(res@eyesDataObject@leftEventMarkers@markerNames$fixation, 
+         res@eyesDataObject@leftEventMarkers@markerNames$saccade, 
+         res@eyesDataObject@leftEventMarkers@markerNames$gap, 
+         res@eyesDataObject@leftEventMarkers@markerNames$artifact)
+t <- (res@eyesDataObject@time@time-res@eyesDataObject@time@time[1])[period]
 x2 <- res@eyesDataObject@leftEyeSamples@eyeData$porx[period]
 y2 <- res@eyesDataObject@leftEyeSamples@eyeData$pory[period]
 ev <- factor(res@eyesDataObject@leftEventMarkers@eventMarkers, levels = lev)[period]
 plot(x2, y2, col = ev)
-plot(x2~t, col = ev)
+plot(x2~t, col = ev, type = "l")
+
+analyzer <- createAnalyzer(name = "Standard", fun = coreAnalyzer, 
+                           settings = list(subfun = IVT, postProcess = F, angular = T, screenDist = 100, screenDim = c(1280, 1024), screenSize = c(33.7, 27)))
+
+res <- eventAnalyzer(self = dataRec, analyzer = analyzer)
+
+estimator <- createEstimator(name = "Standard Estimator", fun = coreEstimator,
+                             settings = list(subfun = trajLengthEstimator,
+                                             applyTo = "EyesData",
+                                             angular = T,
+                                             screenDist = 100,
+                                             screenDim = c(1280, 1024),
+                                             screenSize = c(33.7, 27)))
+res <- estimateParams(self = res, estimator = estimator)
+
+fix <- res@analysisResults$leftEventData@fixations@fixations
+sac <- resEvents@analysisResults$leftEventData$s
+df <- getDataFrame(resEvents@eyesDataObject, eye = "left")
+sac$length[which(is.nan(sac$asymmetry))]
+sac$peakAcceleration[which(is.nan(sac$asymmetry))]
+df[df$eventGroup == sac$eventGroup[which(is.nan(sac$asymmetry))][15],]
+
+plot(fix$positionX[10:20], fix$positionY[10:20], cex = fix$duration[10:20]/(max(fix$duration[10:20])), pch = 16, type = "b")
+
+
+## FACTORS LOADING TESTS ##
+availFactors <- new(Class = "AvailableFactors")
+### FOR EXAMPLE USER HAS ALREADY SPECIFIED SOME FACTORS ###
+age <- new(Class = "Factor", varName = "Age", description = "Age of subject", type = "integer", owner = "Subject")
+numOfChildren <- new(Class = "Factor", varName = "numOfChildren", description = "How many children in family", type = "integer", owner = "Subject")
+height <- new(Class = "Factor", varName = "Height", description = "Height of subject", type = "numeric", owner = "Subject")
+sex <- new(Class = "Factor", varName = "Sex", description = "Sex of subject", type = "factor", levels = c("Male", "Female"), owner = "Subject")
+objectsCount <- new(Class = "Factor", varName = "objectsCount", description = "Number of objects in stimulus", type = "integer", owner = "Stimulus")
+availFactors <- addFactorDefinition(availFactors, height)
+availFactors <- addFactorDefinition(availFactors, age)
+availFactors <- addFactorDefinition(availFactors, sex)
+availFactors <- addFactorDefinition(availFactors, numOfChildren)
+availFactors <- addFactorDefinition(availFactors, objectsCount)
+### AND ALSO SOME FACTORS VALUES HAS BEEN SPECIFIED ###
+factorsData <- new(Class = "FactorsData")
+factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Subject", ownerID = 1, factorID = 1, value = 179, replace = T)
+factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Subject", ownerID = 2, factorID = 1, value = 180, replace = T)
+factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Subject", ownerID = 3, factorID = 1, value = 165, replace = T)
+factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Subject", ownerID = 4, factorID = 1, value = 190, replace = T)
+factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Subject", ownerID = 1, factorID = 3, value = "Male", replace = T)
+factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Subject", ownerID = 2, factorID = 3, value = "Male", replace = T)
+factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Subject", ownerID = 3, factorID = 3, value = "Male", replace = T)
+factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Subject", ownerID = 4, factorID = 3, value = "Male", replace = T)
+factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Subject", ownerID = 15, factorID = 3, value = "Male", replace = T)
+factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Stimulus", ownerID = 1, factorID = 7, value = 10, replace = T)
+
+res <- loadFactorsData(file = "F:\\Èíñòèòóò\\Ïğîåêòû\\EyeTrackingPackage\\Data\\Factors\\Subjects.txt", 
+                       header = T, sep = "\t", dec = ",", encoding = "UTF-8")
+varCnt <- length(res$names)
+### THESE SHOULD BE SPECIFIED BY A USER THROUGH GUI ###
+owners <- rep("Subject", varCnt)
+varNames <- c("Height", "academicLevel", "Sex", "CognitiveStyle1")
+colnames(res$data) <- c("id", varNames)
+descriptions <- c("Height", "academicLevel", "Sex", "CognitiveStyle1")
+types <- c("integer", "ordFactor", "factor", "numeric")
+levels <- list("NA", c("Student", "PostDoc Student", "PhD"), c("Male", "Female"), "NA")
+### FACTORS LOADING ###
+for (i in 1:varCnt)
+{
+  f <- new(Class = "Factor", 
+           varName = varNames[i], 
+           description = descriptions[i], 
+           type = types[i],
+           levels = levels[[i]],
+           owner = owners[i])
+  availFactors <- addFactorDefinition(availFactors, factor = f)
+}
+availFactors #NEW FACTORS LOADED
+
+### ADDING NEW DATA
+obsCnt <- nrow(res$data)
+for (i in 1:obsCnt)
+{
+  ownerID <- res$data$id[i]
+  records <- res$data
+  for (j in 2:ncol(records))
+  {
+    factorName <- colnames(res$data)[j]
+    factorID <- getFactorIDByName(self = availFactors, factorName = factorName)
+    value <- res$data[i,j]
+    factorsData <- addFactorValue(self = factorsData, availableFactors = availFactors, owner = "Subject", 
+                                  ownerID = ownerID, factorID = factorID, value = value, replace = T) 
+  }
+}
+nrow(factorsData@stimuliFactors)
+
+df2 <- asDataFrame(factorsData, owner = "Stimulus", availFactors)
 

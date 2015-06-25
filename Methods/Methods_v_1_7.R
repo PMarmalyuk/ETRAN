@@ -16,6 +16,9 @@ source("filters.R")
 source("smoothers.R")
 source("detectors.R")
 source("eventAnalyzers.R")
+source("estimators.R")
+source("miscFunctions.R")
+source("mainFunctions.R")
 
 ##############################
 #generic_methods_declarations#
@@ -27,9 +30,6 @@ setGeneric("addTrial", function(self, trialObject){standardGeneric("addTrial")})
 setGeneric("getSubjectCodes", function(self){standardGeneric("getSubjectCodes")})
 setGeneric("addSubject", function(self, subjectObject){standardGeneric("addSubject")})
 
-
-setGeneric("addFactorDefinition", function(self, factor){standardGeneric("addFactorDefinition")})
-
 setGeneric("addStimulus", function(self, stimulusObject){standardGeneric("addStimulus")})
 
 setGeneric("addAOI", function(self, AOIObject){standardGeneric("addAOI")})
@@ -38,12 +38,21 @@ setGeneric("addAOISet", function(self, AOISetObject, orderIndex){standardGeneric
 
 setGeneric("addAOISets", function(self, AOISetsObject){standardGeneric("addAOISets")})
 
-setGeneric("addFactor", function(self, factorID, value){standardGeneric("addFactor")})
-setGeneric("updateFactor", function(self, factorID, value){standardGeneric("updateFactor")})
+setGeneric("addFactorDefinition", function(self, factor){standardGeneric("addFactorDefinition")})
+setGeneric("deleteFactorDefinition", function(self, factorID){standardGeneric("deleteFactorDefinition")})
+setGeneric("getFactorIDByName", function(self, factorName){standardGeneric("getFactorIDByName")})
+setGeneric("getNameByFactorID", function(self, factorID){standardGeneric("getNameByFactorID")})
+setGeneric("getTypeByFactorID", function(self, factorID){standardGeneric("getTypeByFactorID")})
+setGeneric("getLevelsByFactorID", function(self, factorID){standardGeneric("getLevelsByFactorID")})
 
-setGeneric("addFactorsRecord", function(self, owner, ownerID, factors){standardGeneric("addFactorsRecord")})
-setGeneric("replaceFactorsRecord", function(self, owner, ownerID, factors){standardGeneric("replaceFactorsRecord")})
-setGeneric("updateFactorsRecord", function(self, owner, ownerID, factorID, value){standardGeneric("updateFactorsRecord")})
+setGeneric("addFactorValue", function(self, availableFactors, owner, ownerID, factorID, value, replace){standardGeneric("addFactorValue")})
+setGeneric("asDataFrame", function(self, owner, availableFactors){standardGeneric("asDataFrame")})
+
+#setGeneric("updateFactor", function(self, factorID, value){standardGeneric("updateFactor")})
+
+#setGeneric("addFactorsRecord", function(self, owner, ownerID, factors){standardGeneric("addFactorsRecord")})
+#setGeneric("replaceFactorsRecord", function(self, owner, ownerID, factors){standardGeneric("replaceFactorsRecord")})
+#setGeneric("updateFactorsRecord", function(self, owner, ownerID, factorID, value){standardGeneric("updateFactorsRecord")})
 
 
 setGeneric("addDataRecord", function(self, dataRecord){standardGeneric("addDataRecord")})
@@ -73,11 +82,15 @@ setGeneric("detectEvents", function(self, filter, smoother, detector){standardGe
 ## events analysis
 setGeneric("eventAnalyzer", function(self, analyzer){standardGeneric("eventAnalyzer")})
 
+## estimation of parameters of EyesData, EventData, etc.
+setGeneric("estimateParams", function(self, estimator){standardGeneric("estimateParams")})
 
+## Cluster analysis of DataRecords
+setGeneric("findClusters", function(self, clusterAnalyzer){standardGeneric("findClusters")})
 
 ## visualisations
-setGeneric("plotXY", function(self, eye, period, onStimulus, smoother){standardGeneric("plotXY")})
-setGeneric("plotXt", function(self, eye, period, channel, angular, smoother){standardGeneric("plotXt")})
+setGeneric("plotXY", function(self, eye, filter, smoother, period, onStimulus){standardGeneric("plotXY")})
+setGeneric("plotXt", function(self, eye,  filter, smoother, period, channel, angular){standardGeneric("plotXt")})
 
 ######################
 #methods_realizations#
@@ -149,34 +162,7 @@ setMethod("addSubject",  "Subjects",
           }
 )
 
-# Method adds a factor definition (object of the class Factor) into the availableFactors data frame
-## Method prevents adding factors with duplicate names
-setMethod("addFactorDefinition",  "AvailableFactors",                                   
-          function(self, factor)
-          {             
-            varName <- factor@varName
-            description <- factor@description
-            type <- factor@type
-            owner <- factor@owner
-            if (length(factor@levels) == 0) {levels = NA} else {levels <- factor@levels}
-            facCnt <- nrow(self@availableFactors)
-            if (facCnt == 0)
-            {
-              self@availableFactors <- data.frame(id = 1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = owner, stringsAsFactors = F)
-              colnames(self@availableFactors) <- c("id", "varName", "description", "type", "levels", "owner")
-              return(self)
-            }
-            if (any(self@availableFactors$varName == varName) & any(self@availableFactors$owner == owner))
-            {
-              warning(paste("A factor with name", varName, "already exists for object class", owner))
-            } else
-            {
-              newFactorDef <- list(id = self@availableFactors[facCnt,1]+1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = owner)
-              self@availableFactors <- rbind(self@availableFactors, newFactorDef)
-            }
-            return(self)
-          }
-)
+
 
 # Method adds a Stimulus object into the Stimuli list with ids and stimuli sublists
 ## TO DO: method should prevent duplicates in Stimuli
@@ -270,82 +256,279 @@ setMethod("printDataSampleKeys", "DataSample",
           }
 )
 
+# Method adds a factor definition (object of the class Factor) into the availableFactors data frame
+## Method prevents adding factors with duplicate names
+setMethod("addFactorDefinition",  "AvailableFactors",                                   
+          function(self, factor)
+          {             
+            varName <- factor@varName
+            description <- factor@description
+            type <- factor@type
+            owner <- factor@owner
+            if (length(factor@levels) == 0) {levels = NA} else {levels <- factor@levels}
+            facCnt <- nrow(self@availableFactors)
+            if (facCnt == 0)
+            {
+              self@availableFactors <- data.frame(id = 1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = owner, stringsAsFactors = F)
+              colnames(self@availableFactors) <- c("id", "varName", "description", "type", "levels", "owner")
+              return(self)
+            }
+            if (any(self@availableFactors$varName == varName) & any(self@availableFactors$owner == owner))
+            {
+              warning(paste("A factor with name", varName, "already exists for object class", owner))
+            } else
+            {
+              newFactorDef <- list(id = self@availableFactors[facCnt,1]+1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = owner)
+              self@availableFactors <- rbind(self@availableFactors, newFactorDef)
+            }
+            return(self)
+          }
+)
+
+setMethod("getFactorIDByName",  "AvailableFactors",                                   
+          function(self, factorName)
+          {           
+            factorRecNum <- which(self@availableFactors$varName == factorName)
+            return(self@availableFactors$id[factorRecNum])
+          }
+)
+
+setMethod("getNameByFactorID",  "AvailableFactors",                                   
+          function(self, factorID)
+          {           
+            factorRecNum <- which(self@availableFactors$id == factorID)
+            return(self@availableFactors$varName[factorRecNum])
+          }
+)
+
+setMethod("getTypeByFactorID",  "AvailableFactors",                                   
+          function(self, factorID)
+          {           
+            factorRecNum <- which(self@availableFactors$id == factorID)
+            return(self@availableFactors$type[factorRecNum])
+          }
+)
+
+setMethod("getLevelsByFactorID",  "AvailableFactors",                                   
+          function(self, factorID)
+          {           
+            factorRecNum <- which(self@availableFactors$id == factorID)
+            return(self@availableFactors$levels[factorRecNum])
+          }
+)
+
+## TO DO: drop factor's values after deletion
+setMethod("deleteFactorDefinition",  "AvailableFactors",                                   
+          function(self, factorID)
+          {             
+            self@availableFactors <- self@availableFactors[-which(self@availableFactors$id == factorID)]
+            return(self)
+          }
+)
+
+# setMethod("updateFactorDefinition",  "AvailableFactors",                                   
+#           function(self, factorID, factor, hasValues)
+#           {             
+#             oldFactorDef <- self@availableFactors[which(self@availableFactors$id == factorID)]
+#             
+#             
+#             
+#             return(self)
+#           }
+# )
+
 # Method adds the factor id and value into Factors list
 ## Method prevents adding values for factors which have already been set
-setMethod("addFactor",  "Factors",                                   
-          function(self, factorID, value)
+setMethod("addFactorValue",  "FactorsData",                                   
+          function(self, availableFactors, owner, ownerID, factorID, value, replace)
           {                         
-            factorPosition <- which(self@factorsList$ids == factorID)
-            if (factorPosition != 0)
+            factorRecordNum <- which(availableFactors@availableFactors$id == factorID)
+            factorType <- availableFactors@availableFactors$type[factorRecordNum]
+            if (factorType %in% c("factor", "ordFactor"))
             {
-              stop(paste("Factor with ID", factorID, "has been set already! Its value is", self@factorsList$values[[factorPosition]]))
+              if (!(value %in% availableFactors@availableFactors$levels[[factorRecordNum]]))
+              {
+                warning("Cannot add a value because it is not a level of the selected factor!")
+                return(self)
+              }
             }
-            self@factorsList$ids <- c(self@factorsList$ids, factorID)
-            self@factorsList$values <- c(self@factorsList$values, value)
-            return(self)
+            if (factorType %in% c("integer", "numeric"))
+            {
+              if (! (is.numeric(value) | is.integer(value)))
+              {
+                warning("Cannot add a value because it is not a number!")
+                return(self)
+              } 
+              else
+              {
+                if (factorType == "integer") {value <- round(value)}
+              }
+            }
+            factorRecord <- data.frame(ownerID = ownerID, factorID = factorID, value = as.character(value), stringsAsFactors = F)
+            if (owner == "Subject")
+            {
+              if (nrow(self@subjectsFactors) == 0)
+              {
+                self@subjectsFactors <- rbind(self@subjectsFactors, factorRecord)
+                return(self)
+              }
+              else
+              {
+                if (any(self@subjectsFactors$factorID == factorID & self@subjectsFactors$ownerID == ownerID))
+                {
+                  if (replace)
+                  {
+                    recNum <- which(self@subjectsFactors$factorID == factorID & self@subjectsFactors$ownerID == ownerID)
+                    if (recNum == 5) {print(factorRecord[1,])}
+                    self@subjectsFactors[recNum,] <- factorRecord[1,]
+                    if (recNum == 5) {print(self@subjectsFactors[recNum,])}
+                    return(self)
+                  }
+                  else
+                  {
+                    warning("The factor value has been specified already!")
+                    return(self)
+                  }
+                }
+                else
+                {
+                  self@subjectsFactors <- rbind(self@subjectsFactors, factorRecord)
+                  return(self)
+                }
+              }
+            }
+            
+            if (owner == "Stimulus")
+            {
+              if (nrow(self@stimuliFactors) == 0)
+              {
+                self@stimuliFactors <- rbind(self@stimuliFactors, factorRecord)
+                return(self)
+              }
+              else
+              {
+                if (any(self@stimuliFactors$factorID == factorID & self@stimuliFactors$ownerID == ownerID))
+                {
+                  if (replace)
+                  {
+                    recNum <- which(self@stimuliFactors$factorID == factorID & self@stimuliFactors$ownerID == ownerID)
+                    self@stimuliFactors[recNum,] <- factorRecord[1,]
+                    return(self)
+                  }
+                  else
+                  {
+                    warning("The factor value has been specified already!")
+                    return(self)
+                  }
+                }
+                else
+                {
+                  self@stimuliFactors <- rbind(self@stimuliFactors, factorRecord)
+                  return(self)
+                }
+              }
+            }
+            
+            if (owner == "Trial")
+            {
+              if (nrow(self@trialsFactors) == 0)
+              {
+                self@trialsFactors <- rbind(self@trialsFactors, factorRecord)
+                return(self)
+              }
+              else
+              {
+                if (any(self@trialsFactors$factorID == factorID & self@trialsFactors$ownerID == ownerID))
+                {
+                  if (replace)
+                  {
+                    recNum <- which(self@trialsFactors$factorID == factorID & self@trialsFactors$ownerID == ownerID)
+                    self@trialsFactors[recNum,] <- factorRecord[1,]
+                    return(self)
+                  }
+                  else
+                  {
+                    warning("The factor value has been specified already!")
+                    return(self)
+                  }
+                }
+                else
+                {
+                  self@trialsFactors <- rbind(self@trialsFactors, factorRecord)
+                  return(self)
+                }
+              }
+            }
           }
 )
 
-# Method updates factor's value by factorID if it exists in Factors object
-setMethod("updateFactor",  "Factors",                                   
-          function(self, factorID, value)
-          {                         
-            factorPosition <- which(self@factorsList$ids == factorID)
-            if (factorPosition == 0)
-            {
-              stop(paste("Factor with ID", factorID, "not found!"))
-            }
-            self@factorsList$values[[factorPosition]] <- value
-            return(self)
-          }
-)
-
-# Method adds the factors object for given owner into Factors Data object
-## Method prevents adding duplicate records
-setMethod("addFactorsRecord",  "FactorsData",                                   
-          function(self, owner, ownerID, factors)
+setMethod("asDataFrame",  "FactorsData",                                   
+          function(self, owner, availableFactors)
           {
-            if (any(self@owners == owner & self@ownersIDs == ownerID))
+            factorsIDs <- unique(availFactors@availableFactors$id[availableFactors@availableFactors$owner == owner])
+            if (length(factorsIDs) == 0) {warning("Factors were not specified for this owner!"); return(NULL)}
+            
+            if (owner == "Subject") {ownersFactors <- factorsData@subjectsFactors}
+            if (owner == "Stimulus") {ownersFactors <- factorsData@stimuliFactors}
+            if (owner == "Trial") {ownersFactors <- factorsData@trialsFactors}
+
+            if (nrow(ownersFactors) == 0) {warning("Factor values are not specified for this owner!"); return(NULL)}
+            
+            ownersIDs <- as.integer(unique(ownersFactors$ownerID))
+            varCnt <- length(factorsIDs)
+            factorNames <- sapply(factorsIDs, function(x) {getNameByFactorID(availableFactors,x)})
+            df <- list()
+            for (ownerID in ownersIDs)
             {
-              stop(paste("Factors values record for object", owner, "with ID", ownerID, "already exists! You can add factor value into record or replace a record."))
+              ownerFactorsIDs <- ownersFactors$factorID[ownersFactors$ownerID == ownerID]
+              varPositions <- sapply(ownerFactorsIDs, function(x) which(factorsIDs == x))
+              values <- ownersFactors$value[which(ownersFactors$ownerID == ownerID)]
+              df <- rbind(df, c(rep(NA, varCnt)))
+              df[nrow(df), varPositions] <- values
             }
-            self@owner == owner
-            self@ownerID = ownerID
-            self@factors = factors
-            return(self)
+            df <- as.data.frame(df)
+            colnames(df) <- factorNames
+            factorTypes <- sapply(factorsIDs, function(x) {getTypeByFactorID(availableFactors,x)})
+            factorLevels <- sapply(factorsIDs, function(x) {getLevelsByFactorID(availableFactors,x)})
+            for (i in 1:length(df))
+            {
+              if (factorTypes[i] == "integer") {df[,i] <- as.integer(df[,i])}
+              if (factorTypes[i] == "numeric") {df[,i] <- as.numeric(df[,i])}
+              if (factorTypes[i] == "factor") {df[,i] <- factor(df[,i], levels = factorLevels[[i]])}
+              if (factorTypes[i] == "ordFactor") {df[,i] <- ordered(df[,i], levels = factorLevels[[i]])}
+            }
+            df <- cbind(ownersIDs, df)
+            return(df)
           }
 )
 
-# Method replaces a factors record in FactorsData
-## Method checks if a record for specific owner and ownerID exists
-## TO DO: test method, add method's documentation
-setMethod("replaceFactorsRecord",  "FactorsData",                                   
-          function(self, owner, ownerID, factors)
-          {
-            factorRecordPosition <- which(self@owners == owner & self@ownersIDs == ownerID)
-            if (factorRecordPosition == 0)
-            {
-              stop(paste("There is no factors values record for object", owner, "with ID", ownerID, "You can add a new factor record."))
-            }
-            self@factors[[factorRecordPosition]] <- factors
-            return(self)
-          }
-)
-
-# Method updates a value of the specific factor's in existing record
-## Method checks if a record for specific owner and ownerID exists
-setMethod("updateFactorsRecord",  "FactorsData",                                   
-          function(self, owner, ownerID, factorID, value)
-          {
-            factorRecordPosition <- which(self@owners == owner & self@ownersIDs == ownerID)
-            if (factorRecordPosition == 0)
-            {
-              stop(paste("There is no factors record for object", owner, "with ID", ownerID, "You can add a new factor record."))
-            }
-            self@factors[[factorRecordPosition]] <- updateFactor(self = self@factors[[factorRecordPosition]], factorID = factorID, value = value)
-            return(self)
-          }
-)
+# # Method adds the factors object for given owner into Factors Data object
+# ## Method prevents adding duplicate records
+# setMethod("addFactorsRecord",  "FactorsData",                                   
+#           function(self, owner, ownerID, factors)
+#           {
+# 
+#           }
+# )
+# 
+# # Method replaces a factors record in FactorsData
+# ## Method checks if a record for specific owner and ownerID exists
+# ## TO DO: test method, add method's documentation
+# setMethod("replaceFactorsRecord",  "FactorsData",                                   
+#           function(self, owner, ownerID, factors)
+#           {
+# 
+#           }
+# )
+# 
+# # Method updates a value of the specific factor's in existing record
+# ## Method checks if a record for specific owner and ownerID exists
+# setMethod("updateFactorsRecord",  "FactorsData",                                   
+#           function(self, owner, ownerID, factorID, value)
+#           {
+# 
+#           }
+# )
 
 ## TO DO: prevent creating duplicate records
 setMethod("addRawDataRecord",  "RawDataRecords",                                   
@@ -444,7 +627,7 @@ setMethod("getDataFrame", "EyesData",
                if (length(self@leftEventMarkers@eventMarkers) != 0)
                {
                  data <- append(data, list(eventMarkers = c(self@leftEventMarkers@eventMarkers, "NULL")))
-                 data <- append(data, list(eventGroups = c(self@leftEventMarkers@eventGroups, "0")))
+                 data <- append(data, list(eventGroups = c(self@leftEventMarkers@eventGroups, 0)))
                }
                return(as.data.frame(data))
               }
@@ -497,7 +680,6 @@ setMethod("getDataFrame", "EyesData",
 )
 
 ## TO DO: implement a method that adds a specific DataRecord object into a DataSample object 
-
 setMethod("dataFilter", "DataRecord",
           function(self, filter)
           {
@@ -548,17 +730,34 @@ setMethod("eventAnalyzer", "DataRecord",
           }
 )
 
+
+### PARAMETERS ESTIMATION ###
+### estimator returns a list with labeled estimated parameters values
+## for trajectory: total duration, center of mass, inner area of samples, ...
+## pupil data: min, max of pupil size and its range, ...
+## filter markers: outlies percentage, ...
+## additional samples - external function
+setMethod("estimateParams", "DataRecord",
+          function(self, estimator)
+          {
+            fun <- estimator@fun
+            settings <- estimator@settings
+            res <- fun(self, settings)
+            return(res)
+          }
+)
+
 ### VISUALIZATIONS ###
 
 setMethod("plotXY", "DataRecord",
-          function(self, eye, period, onStimulus, smoother = NA)
+          function(self, eye, filter, smoother, period, onStimulus)
           {
             
           }
 )
 
 setMethod("plotXt", "DataRecord",
-          function(self, eye, period, channel, angular)
+          function(self, eye, filter, smoother, period, channel, angular)
           {
             # channel - 1, 2, 3, 4, 5, 6, 7, ...
             # angular is possible for 1 and 2 channels (i.e. X(t) or Y(t) plot)

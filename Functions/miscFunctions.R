@@ -1,3 +1,30 @@
+loadFactorsData <- function(file, header, sep, dec, encoding)
+{
+  factorsData <- read.csv(file = file, header = header, sep = sep, dec = dec, encoding = encoding)
+  varNames <- c()
+  varClasses <- c()
+  varLevels <- list()
+  
+  for (i in 2:length(factorsData))
+  {
+    varNames <- c(varNames, colnames(factorsData)[i])
+    varClasses <- c(varClasses, class(factorsData[,i]))
+    if(class(factorsData[,i]) == "factor")
+    {
+      varLevels <- append(varLevels, list(levels(factorsData[,i])))
+    }
+    if(class(factorsData[,i]) == "numeric")
+    {
+      varLevels <- append(varLevels, NA)
+    }
+    if(class(factorsData[,i]) == "integer")
+    {
+      varLevels <- append(varLevels, NA)
+    }
+  }
+  res <- list(data = factorsData, names = varNames, classes = varClasses, levels = varLevels)
+  return(res)
+}
 
 createParser <- function(name, fun, settings)
 {
@@ -21,6 +48,18 @@ createDetector <- function(name, fun, settings)
 {
   detector <- new(Class = "EventDetector", name = name, fun = fun, settings = settings)
   return(detector)
+}
+
+createAnalyzer <- function(name, fun, settings)
+{
+  analyzer <- new(Class = "EventAnalyzer", name = name, fun = fun, settings = settings)
+  return(analyzer)
+}
+
+createEstimator <- function(name, fun, applyTo, settings)
+{
+  estimator <- new(Class = "ParamEstimator", name = name, fun = fun, settings = settings)
+  return(estimator)
 }
 
 # Calculates angular height and width in degrees of the eye position 

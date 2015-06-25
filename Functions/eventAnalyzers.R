@@ -1,11 +1,11 @@
 analyzeFixation <- function(group, data, settings)
 {
+  smpCnt <- nrow(data)
   if (group == 1)
   {
     prevEventGroup <- NA
-  }
-  prevEventGroup <- group - 1
-  if (any(data$eventMarkers == "Gap"))
+  } else prevEventGroup <- group - 1
+  if (any(data$eventMarkers == "Gap")) 
   {
     valCode <- 0
   }
@@ -49,13 +49,11 @@ analyzeFixation <- function(group, data, settings)
   {
     if ("pupysize" %in% colnames(data))
     {
-      # estimate mean and sd of pupil size
       meanPupilSize <- (mean(data$pupxsize, na.rm = T) + mean(data$pupysize, na.rm = T))/2
       sdPupilSize <- (sd(data$pupxsize, na.rm = T) + sd(data$pupysize, na.rm = T))/2
     }
     else
     {
-      # estimate mean and sd of pupil size
       meanPupilSize <- mean(data$pupxsize, na.rm = T)
       sdPupilSize <- sd(data$pupxsize, na.rm = T)
     }
@@ -65,23 +63,23 @@ analyzeFixation <- function(group, data, settings)
     meanPupilSize <- NA
     sdPupilSize <- NA
   }
-  fixParams <- list(eventGroup = group, valCode = valCode, prevEventGroup = prevEventGroup, 
+  fixParams <- data.frame(eventGroup = group, smpCnt = smpCnt, valCode = valCode, prevEventGroup = prevEventGroup, 
                     startPositionX = startPositionX, startPositionY = startPositionY,
                     endPositionX = endPositionX, endPositionY = endPositionY,
                     positionX = positionX, positionY = positionY,
                     dispersionX = dispersionX, dispersionY = dispersionY, radius = radius, 
                     onset = onset, offset = offset, duration = duration,
-                    meanPupilSize = meanPupilSize, sdPupilSize = meanPupilSize)
+                    meanPupilSize = meanPupilSize, sdPupilSize = sdPupilSize)
   return(fixParams)
 }
 
 analyzeSaccade <- function(group, data, settings)
 {
+  smpCnt <- nrow(data)
   if (group == 1)
   {
     prevEventGroup <- NA
-  }
-  prevEventGroup <- group - 1
+  } else prevEventGroup <- group - 1
   if (any(data$eventMarkers == "Gap"))
   {
     valCode <- 0
@@ -93,26 +91,14 @@ analyzeSaccade <- function(group, data, settings)
   
   if (!settings$angular)
   {
-    # startPositionX - начальная горизонтальная позиция взора в пикселях
     startPositionX <- data$porx[1]
-    # startPositionY - начальная вертикальная позиция взора в пикселях
     startPositionY <- data$pory[1]
-    # startPositionX - конечная горизонтальная позиция взора в пикселях
     endPositionX <- tail(data$porx, 1)
-    # startPositionY - конечная вертикальная позиция взора в пикселях
     endPositionY <- tail(data$pory, 1)
-    # amplitudeX - величина смещения позиции взора по X в пикселях
     amplitudeX <- abs(endPositionX - startPositionX)
-    # amplitudeY - величина смещения позиции взора по Y в пикселях
     amplitudeY <- abs(endPositionY - startPositionY)
-    # amplitudeY - величина смещения позиции взора от начальной точки до конечной точки в пикселях
     amplitude <- sqrt(amplitudeX^2 + amplitudeY^2)
-    # length - общая длина пути в пикселях
     length <- sum(sqrt((data$porx[-1]-data$porx[-length(data$porx)])^2 + (data$pory[-1]-data$pory[-length(data$pory)])^2))
-    # curvature - кривизна саккады:
-    # аппроксимация - длина саккады, делённая на её амплитуду
-    ## можно реализовать и более сложный способ:
-    ## см. http://www.citr.auckland.ac.nz/~rklette/Books/MK2004/pdf-LectureNotes/22slides.pdf, page 9 
     curvature <- length/amplitude
     vels <- calcPxVel(t = data$time, x = data$porx, y = data$pory)$vels
   }
@@ -137,34 +123,110 @@ analyzeSaccade <- function(group, data, settings)
                        screenDim = settings$screenDim, 
                        screenSize = settings$screenSize)$vels
   }
-  # onset - время начала саккады
   onset <- data$time[1]
-  # offset - время окончания саккады
   offset <- tail(data$time, 1)
-  # duration - длительность саккады
   duration <- offset - onset
-  # peakVelocity - максимальная скорость
-
   peakVelocity <- max(vels)
-  # peakAcceleration - максимальное ускорение
-  dts1 <- data$porx[-length(data$porx)]-data$porx[-1]
-  dts2 <- dts1[-1] + dts1[-length(dts1)]
+  dts <- data$time[-length(data$time)]-data$time[-1]
+  dts2 <- dts[-1] + dts[-length(dts)]
   dvs <- vels[-1] - vels[-length(vels)]
   accels <- dvs/dts2
-  peakAcceleration <- max(accels)
-  # asymmetry - соотношение продолжительности фаз ускорения и торможения во время саккады
-  asymmetry <- sum(dts[which(accel > 0)])/sum(dts[which(accel < 0)])
-  # orientation - угол, образованный между прямой, соединяющей точки начала и конца саккады, и осью X
+  peakAcceleration <- max(abs(accels))
+  asymmetry <- sum(dts[which(accels > 0)])/sum(dts[which(accels < 0)])
   dx <- tail(data$porx, 1) - data$porx[1]
   dy <- data$pory[1] - tail(data$pory, 1)
   orientXAxis <- atan2(y = dy, x = dx) * (180/pi)
-  sacParams <- data.frame(eventGroup = NA, valCode = NA, prevEventGroup = NA,
-                          startPositionX = NA, startPositionY = NA, 
-                          endPositionX = NA, endPositionY = NA,
-                          onset = NA, offset = NA, duration = NA, 
-                          amplitudeX = NA, amplitudeY = NA, amplitude = NA,
-                          peakVelocity = NA, peakAcceleration = NA, asymmetry = NA, length = NA,
-                          curvature = NA, orientXAxis = NA)
+  sacParams <- data.frame(eventGroup = group, valCode = valCode, smpCnt = smpCnt, prevEventGroup = prevEventGroup,
+                          startPositionX = startPositionX, startPositionY = startPositionY, endPositionX = endPositionX, endPositionY = endPositionY,
+                          onset = onset, offset = offset, duration = duration, 
+                          amplitudeX = amplitudeX, amplitudeY = amplitudeY, amplitude = amplitude,
+                          peakVelocity = peakVelocity, peakAcceleration = peakAcceleration, asymmetry = asymmetry, length = length,
+                          curvature = curvature, orientXAxis = orientXAxis)
+}
+
+analyzeGlissade <- function(group, data, settings)
+{
+  smpCnt <- nrow(data)
+  if (group == 1)
+  {
+    prevEventGroup <- NA
+  } else prevEventGroup <- group - 1
+  
+  if (!settings$angular)
+  {
+    
+  }
+  else
+  {
+    
+  }
+  
+  glisParams <- data.frame(eventGroup = group, smpCnt = smpCnt, prevEventGroup = prevEventGroup)
+  return(glisParams)
+}
+
+analyzeSmoothPursuit <- function(group, data, settings)
+{
+  smpCnt <- nrow(data)
+  if (group == 1)
+  {
+    prevEventGroup <- NA
+  } else prevEventGroup <- group - 1
+  
+  if (!settings$angular)
+  {
+    
+  }
+  else
+  {
+    
+  }
+  
+  smpurParams <- data.frame(eventGroup = group, smpCnt = smpCnt, prevEventGroup = prevEventGroup)
+  return(smpurParams)
+}
+
+analyzeArtifact <- function(group, data, settings)
+{
+  smpCnt <- nrow(data)
+  if (group == 1)
+  {
+    prevEventGroup <- NA
+  } else prevEventGroup <- group - 1
+
+  if (!settings$angular)
+  {
+    
+  }
+  else
+  {
+    
+  }
+ 
+  artParams <- data.frame(eventGroup = group, smpCnt = smpCnt, prevEventGroup = prevEventGroup)
+  return(artParams)
+}
+
+analyzeGap <- function(group, data, settings)
+{
+  # fields: startPosition, endPosition, onset, offset, duration, pupSizeStart, pupSizeEnd
+  smpCnt <- nrow(data)
+  if (group == 1)
+  {
+    prevEventGroup <- NA
+  } else prevEventGroup <- group - 1
+  
+  if (!settings$angular)
+  {
+    
+  }
+  else
+  {
+    
+  }
+  
+  gapParams <- data.frame(eventGroup = group, smpCnt = smpCnt, prevEventGroup = prevEventGroup)
+  return(gapParams)
 }
 
 standardAnalyzer <- function(data, eventMarkerNames, settings)
@@ -172,44 +234,80 @@ standardAnalyzer <- function(data, eventMarkerNames, settings)
   sampleGroups <- split(data, data$eventGroups)
   fixationsParams <- list()
   saccadesParams <- list()
+  glissadesParams <- list()
+  smoothPursuitsParams <- list()
+  gapsParams <- list()
+  artifactsParams <- list()
+  evmn <- eventMarkerNames
   for (gr in 1:length(sampleGroups))
   {
-    if (sampleGroups[[gr]]$eventMarkers[1] == eventMarkerNames$fixation)
+    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$fixation)
     {
-      params <- analyzeFixation(group = names(sampleGroups[gr])[1], data = sampleGroups[[gr]], settings = settings)
-      fixationsParams <- append(fixationsParams, params)
+      params <- analyzeFixation(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
+      fixationsParams <- rbind(fixationsParams, params)
     }
-    if (sampleGroups[[gr]]$eventMarkers[1] == eventMarkerNames$saccade)
+    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$saccade)
     {
-      params <- analyzeSaccade(group = names(sampleGroups[gr])[1], data = sampleGroups[[gr]], settings = settings)
-      saccadesParams <- append(saccadesParams, params)
+      params <- analyzeSaccade(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
+      saccadesParams <- rbind(saccadesParams, params)
+    }
+    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$glissade)
+    {
+      params <- analyzeGlissade(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
+      glissadesParams <- rbind(glissadesParams, params)
+    }
+    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$smoothPursuit)
+    {
+      params <- analyzeSmoothPursuit(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
+      smoothPursuitsParams <- rbind(smoothPursuitsParams, params)
+    }
+    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$gap)
+    {
+      params <- analyzeGap(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
+      gapsParams <- rbind(gapsParams, params)
+    }
+    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$artifact)
+    {
+      params <- analyzeArtifact(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
+      artifactsParams <- rbind(artifactsParams, params)
     }
   }
-  return(f = fixationsParams, s = saccadesParams)
+  fx <- new(Class = "FixationsData", fixations = as.data.frame(fixationsParams, stringsAsFactors = F))
+  sc <- new(Class = "SaccadesData", saccades = as.data.frame(saccadesParams, stringsAsFactors = F))
+  gl <- new(Class = "GlissadesData", glissades = as.data.frame(glissadesParams, stringsAsFactors = F))
+  sp <- new(Class = "SmoothPursuitsData", smoothPursuits = as.data.frame(smoothPursuitsParams, stringsAsFactors = F))
+  gp <- new(Class = "GapsData", gaps = as.data.frame(gapsParams, stringsAsFactors = F))
+  ar <- new(Class = "ArtifcatsData", artifacts = as.data.frame(artifactsParams, stringsAsFactors = F))
+  events <- new(Class = "EventData", 
+                fixations = fx, saccades = sc, 
+                glissades = gl, smoothPursuits = sp, 
+                gaps = gp, artifacts = ar, additionalEvents = list())
+  return(events)
 }
-
-test <- getDataFrame(res@eyesDataObject, eye = "left")
-test$eventGroups
 
 ## CORE ANALYZER ##
 coreAnalyzer <- function(DataRecord, settings)
 {
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "left")
   {
-    data <- getDataFrame(DataRecord, eye = "left")
-    DataRecord@analysisResults$leftEventData <- standardAnalyzer(data, settings)
+    data <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
+    eventMarkerNames <- DataRecord@eyesDataObject@leftEventMarkers@markerNames
+    DataRecord@analysisResults$leftEventData <- standardAnalyzer(data, eventMarkerNames, settings)
   }
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "right")
   {
-    data <- getDataFrame(DataRecord, eye = "right")
-    DataRecord@analysisResults$rightEventData <- standardAnalyzer(data, settings)
+    data <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
+    eventMarkerNames <- DataRecord@eyesDataObject@rightEventMarkers@markerNames
+    DataRecord@analysisResults$rightEventData <- standardAnalyzer(data, eventMarkerNames, settings)
   }
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "both")
   {
-    dataLeft <- getDataFrame(DataRecord, eye = "left")
-    dataRight <- getDataFrame(DataRecord, eye = "right")
-    DataRecord@analysisResults$leftEventData <- analyzer(dataLeft, settings)
-    DataRecord@analysisResults$rightEventData <- analyzer(dataRight, settings)
+    dataLeft <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
+    dataRight <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
+    leftEventMarkerNames <- DataRecord@eyesDataObject@leftEventMarkers@markerNames
+    rightEventMarkerNames <- DataRecord@eyesDataObject@rightEventMarkers@markerNames
+    DataRecord@analysisResults$leftEventData <- analyzer(dataLeft, leftEventMarkerNames, settings)
+    DataRecord@analysisResults$rightEventData <- analyzer(dataRight, rightEventMarkerNames, settings)
   }
   return(DataRecord)
 }

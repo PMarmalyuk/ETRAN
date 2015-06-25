@@ -85,7 +85,7 @@ setClass("DataRecord",
                         trialID = "numeric",
                         eyesDataObject = "EyesData",
                         analysisResults = "list", #list of EventData, AOISequence, AOITransMatrix, AOIStatsVector objects for each eye
-                        statistics = "list" # list of statistics evaluated for eyesDataObject or an element of analysisResults list
+                        statistics = "list" # list of statistics (left and right) evaluated for eyesDataObject or an element of analysisResults list
          ),
          prototype(
          )
@@ -123,6 +123,12 @@ setClass("EventDetector",
 )
 
 setClass("EventAnalyzer",
+         representation(fun = "function",
+                        name = "character",
+                        settings = "list")
+)
+
+setClass("ParamEstimator",
          representation(fun = "function",
                         name = "character",
                         settings = "list")

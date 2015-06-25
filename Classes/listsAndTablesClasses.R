@@ -55,18 +55,11 @@ setClass("AvailableFactors",
          )
 )
 
-setClass("Factors",
-         representation(factorsList = "list" # list of ids and values elements
-         ),
-         prototype(
-         )
-)
-
 setClass("FactorsData",
-         representation(owners = "character",
-                        ownersIDs = "numeric",
-                        factorsList = "list" #list of Factors
-         ),
+         representation(subjectsFactors = "data.frame",
+                        stimuliFactors = "data.frame",
+                        trialsFactors = "data.frame")
+         ,
          prototype(
          )
 )

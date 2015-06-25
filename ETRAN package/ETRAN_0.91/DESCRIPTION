@@ -1,0 +1,13 @@
+Package: ETRAN
+Version: 0.91
+Date: 2015-05-13
+Title: Eye-Tracking Results Analyzer
+Author: Alexander Zhegallo
+Maintainer: Alexander Zhegallo <Alexander.Zherallo@psyexp.ru>
+Depends: R (>= 3.00)
+Description: read monocular and binocular SMI data, detect fixatitions with I-DT & I-VT algorythms, visualize results  ...
+License: GPL (>= 3)
+URL: https://sites.google.com/site/azhegallo/
+BugReports: a.zhegallo@gmail.com
+LazyLoad: no
+Packaged: 2015-06-13 08:10:46 UTC; zhegs

@@ -69,12 +69,8 @@ movAvgFilt <- function(x, settings)
 ## CORE SMOOTHER ##
 coreSmoother <- function(DataRecord, settings)
 {
-  type <- settings$type
-  
-  if (type == "Median") {smoother <- medianFilt}
-  if (type == "MovAvg") {smoother <- movAvgFilt}
-  if (type == "SavGol") {smoother <- savGolFilt}
-  
+  smoother <- settings$subfun
+
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "left")
   {
     DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx <- smoother(DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx, settings)
