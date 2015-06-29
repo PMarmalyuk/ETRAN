@@ -1,9 +1,13 @@
 rawSett <- new(Class = "ReadSettings")
-rawDataRecords <- new(Class = "RawDataRecords")
-folder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\Tower-mounted SMI"
-file <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\Tower-mounted SMI\\Marmalyuk_Yuriev_problem_solving_Budanov_gr3_Psy_1241_Trial001 Samples.txt"
+folder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\TestData"
 records <- new(Class = "RawDataRecords")
-recordsAll <- addRawDataRecords(self = records, filesFolder = folder,  readSettings = rawSett, useExt = F, extFun = F)
+
+
+loader <- createLoader(name = "Standard Loader", fun = createRawDataRec, 
+                       settings = list(rawSettings = rawSett))
+records <- addRawDataRecords(self = records, 
+                            filesFolder = folder,
+                            loader = loader)
 dataF <- new(Class = "AvailableDataFields")
 dataF@availableFields <- list(time = 1, trial = 3, frame = NA, stimname = NA, smptype = 2, 
                               lporx = 10, lpory = 11, rporx = NA, rpory = NA, 
@@ -21,7 +25,7 @@ parser <- createParser(name = "Core Parser", fun = coreParser,
                                        sampleKey = "SMP", 
                                        sep = "\t",
                                        conditions = conditions))
-rec <- parseDataRecord(self = recordsAll@rawDataRecordsList$rawDataRecords[[1]], parser = parser)
+rec <- parseDataRecord(self = records@rawDataRecordsList$rawDataRecords[[1]], parser = parser)
 dataRec <- new(Class = "DataRecord", expID = 1, subjectID = 1, trialID = 1, eyesDataObject = rec$eyesDataObjects[[1]])
 
 smoother <- createSmoother(name = "Standard", fun = coreSmoother, settings = list(subfun = medianFilt, fl = 3))
@@ -66,20 +70,8 @@ ev <- factor(res@eyesDataObject@leftEventMarkers@eventMarkers, levels = lev)[per
 plot(x2, y2, col = ev)
 plot(x2~t, col = ev, type = "l")
 
-analyzer <- createAnalyzer(name = "Standard", fun = coreAnalyzer, 
-                           settings = list(subfun = IVT, postProcess = F, angular = T, screenDist = 100, screenDim = c(1280, 1024), screenSize = c(33.7, 27)))
 
-res <- eventAnalyzer(self = dataRec, analyzer = analyzer)
-
-estimator <- createEstimator(name = "Standard Estimator", fun = coreEstimator,
-                             settings = list(subfun = trajLengthEstimator,
-                                             applyTo = "EyesData",
-                                             angular = T,
-                                             screenDist = 100,
-                                             screenDim = c(1280, 1024),
-                                             screenSize = c(33.7, 27)))
-res <- estimateParams(self = res, estimator = estimator)
-
+# Scanpath try
 fix <- res@analysisResults$leftEventData@fixations@fixations
 sac <- resEvents@analysisResults$leftEventData$s
 df <- getDataFrame(resEvents@eyesDataObject, eye = "left")
@@ -88,6 +80,50 @@ sac$peakAcceleration[which(is.nan(sac$asymmetry))]
 df[df$eventGroup == sac$eventGroup[which(is.nan(sac$asymmetry))][15],]
 
 plot(fix$positionX[10:20], fix$positionY[10:20], cex = fix$duration[10:20]/(max(fix$duration[10:20])), pch = 16, type = "b")
+
+
+# Event analyzers test
+
+f1 <- new(Class = "SubFunction", fun = getValCode, name = "Validity Code", description = "Get validity code of event",
+    applyTo = "EventData", event = list("Fixation", "Saccade"), settings = list())
+f2 <- new(Class = "SubFunction", fun = getOnOffSetDuration, name = "Onset, offset and duration", description = "Get onset, offset and duration of event",
+          applyTo = "EventData", event = list("Fixation", "Saccade"), settings = list())
+f3 <- new(Class = "SubFunction", fun = getStartEndPositionsXY, name = "Start and End PositionsXY", description = "Get start, end positions of event",
+          applyTo = "EventData", event = list("Fixation", "Saccade"), settings = list(angular = F))
+f4 <- new(Class = "SubFunction", fun = getCenterOfMassXY, name = "Center of Mass of Fixation", description = "Get start, end positions of event",
+          applyTo = "EventData", event = list("Fixation"), settings = list(angular = F))
+f5 <- new(Class = "SubFunction", fun = getDispersionXYAndRadius, name = "DispersionXY and radius", description = "Get dispersion(X), dispersion(Y) and radius of fixation",
+          applyTo = "EventData", event = list("Fixation"), settings = list(angular = T, screenDist = 100,
+                                                                     screenDim = c(1280, 1024),
+                                                                     screenSize = c(33.7, 27)))
+f6 <- new(Class = "SubFunction", fun = getPupilMeanAndSD, name = "Pupil mean and sd", description = "Get position(X) and position(Y) of fixation",
+          applyTo = "EventData", event = list("Fixation", "Saccade"), settings = list())
+          
+          
+analyzer <- createAnalyzer(name = "Standard", fun = coreAnalyzer, 
+                           settings = list(subFunctions = list(f1, f2, f3, f4, f5, f6)))
+dataRec <- eventAnalyzer(self = dataRec, analyzer = analyzer)
+
+dataRec@analysisResults$leftEventData@saccades@saccades
+
+
+
+
+# Estimators test
+f7 <- new(Class = "SubFunction", fun = trajDurationEstimator, name = "Duration of a record", description = "Get duration of a record",
+          applyTo = "EyesData", event = list("-"), settings = list())
+f8 <- new(Class = "SubFunction", fun = trajLengthEstimator, name = "Length of a record", description = "Get length of a record",
+          applyTo = "EyesData", event = list("-"), settings = list(angular = T, screenDist = 100,
+                                                                   screenDim = c(1280, 1024),
+                                                                   screenSize = c(33.7, 27)))
+dataRec@statistics$left <- list()
+dataRec@statistics$right <- list()
+estimator <- createEstimator(name = "Standard Estimator", fun = coreEstimator,
+                             settings = list(subFunctions = list(f7, f8)))
+res <- estimateParams(self = dataRec, estimator = estimator)
+res@statistics$left
+dataRec@statistics$left <- res@statistics$left
+dataRec@statistics$right <- res@statistics$right
 
 
 ## FACTORS LOADING TESTS ##

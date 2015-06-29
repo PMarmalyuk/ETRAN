@@ -74,9 +74,14 @@ setClass("RawDataRecords",
 setClass("DataSample",
          representation(keys = "data.frame", # df with expID, subjectID, trialID fields
                         eyesDataObjectsList = "list",
-                        analysisResults = "list",
-                        statistics = "list"
+                        analysisResultsList = "list",
+                        statisticsList = "list"
          ),
          prototype()
          )
+
+setClass("SubFunctions",
+         representation(SubFunctionsList = "list"),
+         prototype()
+)
 

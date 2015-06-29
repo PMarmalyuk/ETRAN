@@ -40,6 +40,7 @@ setGeneric("addAOISets", function(self, AOISetsObject){standardGeneric("addAOISe
 
 setGeneric("addFactorDefinition", function(self, factor){standardGeneric("addFactorDefinition")})
 setGeneric("deleteFactorDefinition", function(self, factorID){standardGeneric("deleteFactorDefinition")})
+setGeneric("updateFactorDefinition", function(self, factorID, factor, FactorsData){standardGeneric("updateFactorDefinition")})
 setGeneric("getFactorIDByName", function(self, factorName){standardGeneric("getFactorIDByName")})
 setGeneric("getNameByFactorID", function(self, factorID){standardGeneric("getNameByFactorID")})
 setGeneric("getTypeByFactorID", function(self, factorID){standardGeneric("getTypeByFactorID")})
@@ -48,23 +49,21 @@ setGeneric("getLevelsByFactorID", function(self, factorID){standardGeneric("getL
 setGeneric("addFactorValue", function(self, availableFactors, owner, ownerID, factorID, value, replace){standardGeneric("addFactorValue")})
 setGeneric("asDataFrame", function(self, owner, availableFactors){standardGeneric("asDataFrame")})
 
-#setGeneric("updateFactor", function(self, factorID, value){standardGeneric("updateFactor")})
-
-#setGeneric("addFactorsRecord", function(self, owner, ownerID, factors){standardGeneric("addFactorsRecord")})
-#setGeneric("replaceFactorsRecord", function(self, owner, ownerID, factors){standardGeneric("replaceFactorsRecord")})
-#setGeneric("updateFactorsRecord", function(self, owner, ownerID, factorID, value){standardGeneric("updateFactorsRecord")})
 
 
 setGeneric("addDataRecord", function(self, dataRecord){standardGeneric("addDataRecord")})
 setGeneric("printDataSampleKeys", function(self){standardGeneric("printDataSampleKeys")})
 
-setGeneric("addRawDataRecord", function(self, filepath, readSettings, useExt, extFun, extSettings){standardGeneric("addRawDataRecord")})
-setGeneric("addRawDataRecords", function(self, filesFolder, readSettings, useExt, extFun, extSettings){standardGeneric("addRawDataRecords")})
 
-## Pablo: I suggest the following interface: function(self, dataFields, headerKeys, parser)
-## where parser is an object that contains parsing function and its settings as the data filter, smoother and detector
+## data loaders
+setGeneric("addRawDataRecord", function(self, filepath, loader){standardGeneric("addRawDataRecord")})
+
+setGeneric("addRawDataRecords", function(self, filesFolder, loader){standardGeneric("addRawDataRecords")})
+
+## data parser
 setGeneric("parseDataRecord", function(self, parser){standardGeneric("parseDataRecord")})
 
+## EyesData extractor from DataRecord object for specified eye
 setGeneric("getDataFrame", function(self, eye){standardGeneric("getDataFrame")})
 
 ## data filter
@@ -234,15 +233,15 @@ setMethod("addDataRecord",  "DataSample",
               if (nrow(self@keys) == 0)
               {
                 self@keys <- data.frame(complexKey)
-                self@eyesDataObjectsList <- append(self@eyesDataObjectsList, dataRecord@eyesDataObject)
-                self@analysisResultsList <- append(self@analysisResultsList, dataRecord@analysisResults)
-                self@statisticsList <- append(self@statisticsList, dataRecord@statistics)
+                self@eyesDataObjectsList <- append(self@eyesDataObjectsList, list(dataRecord@eyesDataObject))
+                self@analysisResultsList <- append(self@analysisResultsList, list(dataRecord@analysisResults))
+                self@statisticsList <- append(self@statisticsList, list(dataRecord@statistics))
                 return(self)
               }
               self@keys <- rbind(self@keys, complexKey)
-              self@eyesDataObjectsList <- append(self@eyesDataObjectsList, dataRecord@eyesDataObject)
-              self@analysisResultsList <- append(self@analysisResultsList, dataRecord@analysisResults)
-              self@statisticsList <- append(self@statisticsList, dataRecord@statistics)
+              self@eyesDataObjectsList <- append(self@eyesDataObjectsList, list(dataRecord@eyesDataObject))
+              self@analysisResultsList <- append(self@analysisResultsList, list(dataRecord@analysisResults))
+              self@statisticsList <- append(self@statisticsList, list(dataRecord@statistics))
               return(self)
             }
           }
@@ -326,16 +325,23 @@ setMethod("deleteFactorDefinition",  "AvailableFactors",
           }
 )
 
-# setMethod("updateFactorDefinition",  "AvailableFactors",                                   
-#           function(self, factorID, factor, hasValues)
-#           {             
-#             oldFactorDef <- self@availableFactors[which(self@availableFactors$id == factorID)]
-#             
-#             
-#             
-#             return(self)
-#           }
-# )
+## TO DO: 
+## Method updates data of a factor defined in AvailableFactors object by factorID
+## varName and description can be updated without any consistensy checking
+## if owner changed then drop ownerID data in FactorsData object
+## type can be changed with corresponding transformations: 
+## e.g. factor levels to factor level numbers if changing type from factor/ordFactor to int/numeric
+## if changing type from int/num to factor then levels and order should be specified
+## levels names can be changed without any checking
+## if a level is deleted then drop corresponding values in FactorsData object
+## if a level is added then nothing to check
+setMethod("updateFactorDefinition",  "AvailableFactors",                                   
+          function(self, factorID, factor, FactorsData)
+          {             
+            oldFactorDef <- self@availableFactors[which(self@availableFactors$id == factorID)]
+            return(self)
+          }
+)
 
 # Method adds the factor id and value into Factors list
 ## Method prevents adding values for factors which have already been set
@@ -502,57 +508,30 @@ setMethod("asDataFrame",  "FactorsData",
           }
 )
 
-# # Method adds the factors object for given owner into Factors Data object
-# ## Method prevents adding duplicate records
-# setMethod("addFactorsRecord",  "FactorsData",                                   
-#           function(self, owner, ownerID, factors)
-#           {
-# 
-#           }
-# )
-# 
-# # Method replaces a factors record in FactorsData
-# ## Method checks if a record for specific owner and ownerID exists
-# ## TO DO: test method, add method's documentation
-# setMethod("replaceFactorsRecord",  "FactorsData",                                   
-#           function(self, owner, ownerID, factors)
-#           {
-# 
-#           }
-# )
-# 
-# # Method updates a value of the specific factor's in existing record
-# ## Method checks if a record for specific owner and ownerID exists
-# setMethod("updateFactorsRecord",  "FactorsData",                                   
-#           function(self, owner, ownerID, factorID, value)
-#           {
-# 
-#           }
-# )
-
 ## TO DO: prevent creating duplicate records
 setMethod("addRawDataRecord",  "RawDataRecords",                                   
-          function(self, filepath, readSettings, useExt, extFun, extSettings)
+          function(self, filepath, loader)
           { 
-                newRawDataRec <- createRawDataRec(filePath = filepath, readSettings = readSettings, useExt = useExt, extFun = extFun, extSettings = extSettings)
-                rawDataRecCnt <- length(self@rawDataRecordsList$fileNumbers)
-                if (rawDataRecCnt == 0) 
-                {
-                  self@rawDataRecordsList$fileNumbers <- 1
-                  self@rawDataRecordsList$rawDataRecords <- list(newRawDataRec)
-                  return(self)
-                }
-                fileNum <- tail(self@rawDataRecordsList$fileNumbers, n = 1) + 1
-                self@rawDataRecordsList$fileNumbers <- c(self@rawDataRecordsList$fileNumbers, fileNum)
-                self@rawDataRecordsList$rawDataRecords <- c(self@rawDataRecordsList$rawDataRecords, newRawDataRec)
-                return(self)
+            fun <- loader@fun
+            settings <- loader@settings
+            rawDataRecCnt <- length(self@rawDataRecordsList$fileNumbers)
+            newRawDataRec <- fun(filepath, settings)
+            if (rawDataRecCnt == 0) 
+            {
+              self@rawDataRecordsList$fileNumbers <- 1
+              self@rawDataRecordsList$rawDataRecords <- list(newRawDataRec)
+              return(self)
+            }
+            fileNum <- tail(self@rawDataRecordsList$fileNumbers, n = 1) + 1
+            self@rawDataRecordsList$fileNumbers <- c(self@rawDataRecordsList$fileNumbers, fileNum)
+            self@rawDataRecordsList$rawDataRecords <- c(self@rawDataRecordsList$rawDataRecords, newRawDataRec)
+            return(self)
           }
 )
 
 
-## TO DO: prevent creating duplicate records
 setMethod("addRawDataRecords",  "RawDataRecords",                                   
-          function(self, filesFolder, readSettings, useExt, extFun, extSettings)
+          function(self, filesFolder, loader)
           { 
             if (!file.exists(filesFolder))
             {
@@ -561,8 +540,10 @@ setMethod("addRawDataRecords",  "RawDataRecords",
             filesToRead <- list.files(path = filesFolder, pattern = NULL, all.files = FALSE,
                        full.names = TRUE, recursive = FALSE,
                        ignore.case = FALSE, include.dirs = FALSE, no.. = FALSE)
-            rawDataRecords <- lapply(filesToRead, FUN = createRawDataRec, readSettings = readSettings, useExt = useExt, extFun = extFun, extSettings = extSettings)
+            fun <- loader@fun
+            settings <- loader@settings
             rawDataRecCnt <- length(self@rawDataRecordsList$fileNumbers)
+            newRawDataRecords <- lapply(filesToRead, FUN = fun, settings = settings)
             if (rawDataRecCnt == 0) 
             {
               firstFileNum <- 1
@@ -571,15 +552,13 @@ setMethod("addRawDataRecords",  "RawDataRecords",
             {
               firstFileNum <- tail(self@rawDataRecordsList$fileNumbers, n = 1) + 1
             }
-            filesCnt <- length(rawDataRecords)
+            filesCnt <- length(newRawDataRecords)
             fileNumbers <- seq(firstFileNum, length.out = filesCnt)
             self@rawDataRecordsList$fileNumbers <- c(self@rawDataRecordsList$fileNumbers, fileNumbers)
-            self@rawDataRecordsList$rawDataRecords <- c(self@rawDataRecordsList$rawDataRecords, rawDataRecords)
+            self@rawDataRecordsList$rawDataRecords <- c(self@rawDataRecordsList$rawDataRecords, newRawDataRecords)
             return(self)
           }
 )
-
-
 
 # method returns a list with EyesData objects and additional info:
 # filePath, subjectCode, trialsNums, stimDim, framesCnt
@@ -746,6 +725,9 @@ setMethod("estimateParams", "DataRecord",
             return(res)
           }
 )
+
+
+
 
 ### VISUALIZATIONS ###
 

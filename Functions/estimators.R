@@ -36,23 +36,24 @@ coreEstimator <- function(DataRecord, settings)
     {
       eyeData <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
       DataRecord@statistics$left <- append(DataRecord@statistics$left, estimator(eyeData, settings))
+      DataRecord@statistics$right <- DataRecord@statistics$right
     }
     if (DataRecord@eyesDataObject@conditions@conditions$eye == "right")
     {
       eyeData <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
-      res <- estimator(eyeData, settings)
+      DataRecord@statistics$left <- DataRecord@statistics$left
+      DataRecord@statistics$right <- append(DataRecord@statistics$right, estimator(eyeData, settings))
     }
     if (DataRecord@eyesDataObject@conditions@conditions$eye == "both")
     {
       leftEyeData <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
       rightEyeData <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
-      resLeft <- estimator(leftEyeData, settings)
-      resRight <- estimator(rightEyeData, settings)
-      res <- resLeft
+      DataRecord@statistics$left <- append(DataRecord@statistics$left, estimator(eyeData, settings))
+      DataRecord@statistics$right <- append(DataRecord@statistics$right, estimator(eyeData, settings))
     }
     return(DataRecord)
   }
-
+  
   if (applyTo == "EventData")
   {
     

@@ -128,6 +128,15 @@ setClass("EventAnalyzer",
                         settings = "list")
 )
 
+setClass("SubFunction",
+         representation(fun = "function",
+                        name = "character",
+                        description = "character",
+                        applyTo = "character",
+                        event = "list",
+                        settings = "list")
+)
+
 setClass("ParamEstimator",
          representation(fun = "function",
                         name = "character",

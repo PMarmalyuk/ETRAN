@@ -26,6 +26,12 @@ loadFactorsData <- function(file, header, sep, dec, encoding)
   return(res)
 }
 
+createLoader <- function(name, fun, settings)
+{
+  loader <- new(Class = "Loader", name = name, fun = fun, settings = settings)
+  return(loader)
+}
+
 createParser <- function(name, fun, settings)
 {
   parser <- new(Class = "Parser", name = name, fun = fun, settings = settings)
@@ -139,3 +145,5 @@ calcAngVel <- function(t, x, y, screenDist, screenDim, screenSize)
   res <- list(dists = angles*(180/pi), dts = dts, vels = angles*(180/pi)/dts)
   res
 }
+
+

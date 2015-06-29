@@ -17,7 +17,7 @@ standardFilter <- function(t, x, y, screenDim, interpolate)
     data <- data.frame(t, x, y, group)
     lastGroup <- group[length(group)]
     gapGroups <- unique(group[which(gapMarkers == "GAP")])
-    if (length(gapGroups) != 1)
+    if (length(gapGroups) != 0)
     {
       data2 <- lapply(gapGroups, FUN = function(x)
       {
@@ -57,11 +57,6 @@ standardFilter <- function(t, x, y, screenDim, interpolate)
       )
       filteredData <- do.call("rbind", data2)
       data[rownames(filteredData),] <- filteredData
-      t <- data$t; x <- data$x; y <- data$y
-    }
-    else
-    {
-      warning("The trajectory consists of one group of samples only!")
       t <- data$t; x <- data$x; y <- data$y
     }
   }

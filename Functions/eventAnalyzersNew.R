@@ -1,4 +1,4 @@
-## FIXATION SAMPLES PARAMS
+## ALL EVENTS PARAMS
 getValCode <- function(data, settings)
 {
   if (any(data$eventMarkers == "Gap")) 
@@ -12,6 +12,7 @@ getValCode <- function(data, settings)
   return(list(valCode = valCode))
 }
 
+## ALL EVENTS PARAMS EXCEPT GAPS AND ARTIFACTS
 getOnOffSetDuration <- function(data, settings)
 {
   onset = data$time[1]
@@ -20,7 +21,7 @@ getOnOffSetDuration <- function(data, settings)
   return(list(onset = onset, offset = offset, duration = duration))
 }
 
-getPositionsXY <- function(data, settings)
+getStartEndPositionsXY <- function(data, settings)
 {
   angular <- settings$angular
   if (angular) 
@@ -34,8 +35,6 @@ getPositionsXY <- function(data, settings)
     endPositionX <- position$xAng[length(position$xAng)]
     startPositionY <- position$yAng[1]
     endPositionY <- position$yAng[length(position$yAng)]
-    positionX <- mean(position$xAng)
-    positionY <- mean(position$yAng)
   }
   else 
   {
@@ -43,12 +42,30 @@ getPositionsXY <- function(data, settings)
     startPositionY <- data$pory[1]
     endPositionX <- tail(data$porx, 1)
     endPositionY <- tail(data$pory, 1)
+  }
+  return(list(startPositionX = startPositionX, startPositionY = startPositionY, 
+              endPositionX = endPositionX, endPositionY = endPositionY))
+}
+
+getCenterOfMassXY <- function(data, settings)
+{
+  angular <- settings$angular
+  if (angular) 
+  {
+    position <- calcAngPos(data$porx, data$pory, 
+                           screenDist = settings$screenDist, 
+                           screenDim = settings$screenDim, 
+                           screenSize = settings$screenSize, 
+                           refPoint = c(settings$screenDim[1]/2, settings$screenDim[2]/2))
+    positionX <- mean(position$xAng)
+    positionY <- mean(position$yAng)
+  }
+  else 
+  {
     positionX <- mean(data$porx)
     positionY <- mean(data$pory)
   }
-  return(list(startPositionX = startPositionX, startPositionY = startPositionY, 
-              endPositionX = endPositionX, endPositionY = endPositionY,
-              positionX = positionX, positionY = positionY))
+  return(list(positionX = positionX, positionY = positionY))
 }
 
 getDispersionXYAndRadius <- function(data, settings)
@@ -61,17 +78,21 @@ getDispersionXYAndRadius <- function(data, settings)
                            screenDim = settings$screenDim, 
                            screenSize = settings$screenSize, 
                            refPoint = c(settings$screenDim[1]/2, settings$screenDim[2]/2))
+    positionX <- mean(position$xAng)
+    positionY <- mean(position$yAng)
     dispersionX <- sd(position$xAng)
     dispersionY <- sd(position$yAng)
     radius <- mean(sqrt((positionX - position$xAng)^2 + (positionY- position$yAng)^2))
   }
   else
   {
+    positionX <- mean(data$porx)
+    positionY <- mean(data$pory)
     dispersionX <- sd(data$porx)
     dispersionY <- sd(data$pory)
     radius <- mean(sqrt((positionX - data$porx)^2 + (positionY - data$pory)^2))
   }
-  return(dispersionX = dispersionX, dispersionY = dispersionY, radius = radius)
+  return(list(dispersionX = dispersionX, dispersionY = dispersionY, radius = radius))
 }
 
 getPupilMeanAndSD <- function(data, settings)
@@ -97,100 +118,8 @@ getPupilMeanAndSD <- function(data, settings)
   return(list(meanPupilSize = meanPupilSize, sdPupilSize = sdPupilSize))
 }
 
-
-
-analyzeFixation <- function(group, data, settings)
-{
-  smpCnt <- nrow(data)
-  if (group == 1)
-  {
-    prevEventGroup <- NA
-  } else prevEventGroup <- group - 1
-  
-#   if (any(data$eventMarkers == "Gap")) 
-#   {
-#     valCode <- 0
-#   }
-#   else
-#   {
-#     valCode <- 1
-#   }
-#   onset = data$time[1]
-#   offset <- tail(data$time, 1)
-#   duration <- offset - onset
-#   if (!settings$angular)
-#   {
-    # startPositionX <- data$porx[1]
-    # startPositionY <- data$pory[1]
-#     endPositionX <- tail(data$porx, 1)
-#     endPositionY <- tail(data$pory, 1)
-#     positionX <- mean(data$porx)
-#     positionY <- mean(data$pory)
-#     dispersionX <- sd(data$porx)
-#     dispersionY <- sd(data$pory)
-    # radius <- mean(sqrt((positionX - data$porx)^2 + (positionY - data$pory)^2))
-#   }
-#   else
-#   {
-#     position <- calcAngPos(data$porx, data$pory, 
-#                            screenDist = settings$screenDist, 
-#                            screenDim = settings$screenDim, 
-#                            screenSize = settings$screenSize, 
-#                            refPoint = c(settings$screenDim[1]/2, settings$screenDim[2]/2))
-#     startPositionX <- position$xAng[1]
-#     startPositionY <- position$yAng[1]
-#     endPositionX <- position$xAng[length(position$xAng)]
-#     endPositionY <- position$yAng[length(position$yAng)]
-#     positionX <- mean(position$xAng)
-#     positionY <- mean(position$yAng)
-#     dispersionX <- sd(position$xAng)
-#     dispersionY <- sd(position$yAng)
-#     radius <- mean(sqrt((positionX - position$xAng)^2 + (positionY- position$yAng)^2))
-  # }
-#   if ("pupxsize" %in% colnames(data))
-#   {
-#     if ("pupysize" %in% colnames(data))
-#     {
-#       meanPupilSize <- (mean(data$pupxsize, na.rm = T) + mean(data$pupysize, na.rm = T))/2
-#       sdPupilSize <- (sd(data$pupxsize, na.rm = T) + sd(data$pupysize, na.rm = T))/2
-#     }
-#     else
-#     {
-#       meanPupilSize <- mean(data$pupxsize, na.rm = T)
-#       sdPupilSize <- sd(data$pupxsize, na.rm = T)
-#     }
-#   }
-#   else
-#   {
-#     meanPupilSize <- NA
-#     sdPupilSize <- NA
-#   }
-#   fixParams <- data.frame(eventGroup = group, smpCnt = smpCnt, valCode = valCode, prevEventGroup = prevEventGroup, 
-#                     startPositionX = startPositionX, startPositionY = startPositionY,
-#                     endPositionX = endPositionX, endPositionY = endPositionY,
-#                     positionX = positionX, positionY = positionY,
-#                     dispersionX = dispersionX, dispersionY = dispersionY, radius = radius, 
-#                     onset = onset, offset = offset, duration = duration,
-#                     meanPupilSize = meanPupilSize, sdPupilSize = sdPupilSize)
-  return(fixParams)
-}
-
 analyzeSaccade <- function(group, data, settings)
 {
-  smpCnt <- nrow(data)
-  if (group == 1)
-  {
-    prevEventGroup <- NA
-  } else prevEventGroup <- group - 1
-  if (any(data$eventMarkers == "Gap"))
-  {
-    valCode <- 0
-  }
-  else
-  {
-    valCode <- 1
-  }
-  
   if (!settings$angular)
   {
     startPositionX <- data$porx[1]
@@ -225,9 +154,9 @@ analyzeSaccade <- function(group, data, settings)
                        screenDim = settings$screenDim, 
                        screenSize = settings$screenSize)$vels
   }
-#   onset <- data$time[1]
-#   offset <- tail(data$time, 1)
-#   duration <- offset - onset
+  onset <- data$time[1]
+  offset <- tail(data$time, 1)
+  duration <- offset - onset
   peakVelocity <- max(vels)
   dts <- data$time[-length(data$time)]-data$time[-1]
   dts2 <- dts[-1] + dts[-length(dts)]
@@ -246,93 +175,10 @@ analyzeSaccade <- function(group, data, settings)
                           curvature = curvature, orientXAxis = orientXAxis)
 }
 
-analyzeGlissade <- function(group, data, settings)
-{
-  smpCnt <- nrow(data)
-  if (group == 1)
-  {
-    prevEventGroup <- NA
-  } else prevEventGroup <- group - 1
-  
-  if (!settings$angular)
-  {
-    
-  }
-  else
-  {
-    
-  }
-  
-  glisParams <- data.frame(eventGroup = group, smpCnt = smpCnt, prevEventGroup = prevEventGroup)
-  return(glisParams)
-}
-
-analyzeSmoothPursuit <- function(group, data, settings)
-{
-  smpCnt <- nrow(data)
-  if (group == 1)
-  {
-    prevEventGroup <- NA
-  } else prevEventGroup <- group - 1
-  
-  if (!settings$angular)
-  {
-    
-  }
-  else
-  {
-    
-  }
-  
-  smpurParams <- data.frame(eventGroup = group, smpCnt = smpCnt, prevEventGroup = prevEventGroup)
-  return(smpurParams)
-}
-
-analyzeArtifact <- function(group, data, settings)
-{
-  smpCnt <- nrow(data)
-  if (group == 1)
-  {
-    prevEventGroup <- NA
-  } else prevEventGroup <- group - 1
-
-  if (!settings$angular)
-  {
-    
-  }
-  else
-  {
-    
-  }
- 
-  artParams <- data.frame(eventGroup = group, smpCnt = smpCnt, prevEventGroup = prevEventGroup)
-  return(artParams)
-}
-
-analyzeGap <- function(group, data, settings)
-{
-  # fields: startPosition, endPosition, onset, offset, duration, pupSizeStart, pupSizeEnd
-  smpCnt <- nrow(data)
-  if (group == 1)
-  {
-    prevEventGroup <- NA
-  } else prevEventGroup <- group - 1
-  
-  if (!settings$angular)
-  {
-    
-  }
-  else
-  {
-    
-  }
-  
-  gapParams <- data.frame(eventGroup = group, smpCnt = smpCnt, prevEventGroup = prevEventGroup)
-  return(gapParams)
-}
 
 standardAnalyzer <- function(data, eventMarkerNames, settings)
 {
+  data <- data[-which(data$eventGroups == 0),]
   sampleGroups <- split(data, data$eventGroups)
   fixationsParams <- list()
   saccadesParams <- list()
@@ -340,38 +186,50 @@ standardAnalyzer <- function(data, eventMarkerNames, settings)
   smoothPursuitsParams <- list()
   gapsParams <- list()
   artifactsParams <- list()
+  subFunctions <- settings$subFunctions
   evmn <- eventMarkerNames
   for (gr in 1:length(sampleGroups))
   {
-    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$fixation)
+    group <- as.numeric(names(sampleGroups[gr])[1])
+    if (group == 1)
     {
-      params <- analyzeFixation(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
-      fixationsParams <- rbind(fixationsParams, params)
+      prevEventGroup <- NA
+    } else prevEventGroup <- group - 1
+    ev <- sampleGroups[[gr]]$eventMarkers[1]
+    res <- lapply(subFunctions, FUN = function(x) 
+    {
+      fun <- x@fun
+      settings <- x@settings
+      event <- x@event
+      if (! (ev %in% event)) {return(list(par = NULL))}
+      else {return(fun(data = sampleGroups[[gr]], settings = settings))}
+    })
+    res2 <- unlist(res, recursive = F)
+    res2 <- append(list(group = group, prevEventGroup = prevEventGroup), res2)
+    res2 <- data.frame(res2[sapply(res2, FUN = function(x) {ifelse(is.null(x),F,T)})])
+    if (ev == evmn$fixation)
+    {
+      if (length(res2) != 0) fixationsParams <- rbind(fixationsParams, res2)
     }
-    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$saccade)
+    if (ev == evmn$saccade)
     {
-      params <- analyzeSaccade(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
-      saccadesParams <- rbind(saccadesParams, params)
+      if (length(res2) != 0) saccadesParams <- rbind(saccadesParams, res2)
     }
-    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$glissade)
+    if (ev == evmn$glissade)
     {
-      params <- analyzeGlissade(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
-      glissadesParams <- rbind(glissadesParams, params)
+      if (length(res2) != 0) glissadesParams <- rbind(glissadesParams, res2)
     }
-    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$smoothPursuit)
+    if (ev == evmn$smoothPursuit)
     {
-      params <- analyzeSmoothPursuit(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
-      smoothPursuitsParams <- rbind(smoothPursuitsParams, params)
+      if (length(res2) != 0) smoothPursuitsParams <- rbind(smoothPursuitsParams, res2)
     }
-    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$gap)
+    if (ev == evmn$gap)
     {
-      params <- analyzeGap(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
-      gapsParams <- rbind(gapsParams, params)
+      if (length(res2) != 0) gapsParams <- rbind(gapsParams, res2)
     }
-    if (sampleGroups[[gr]]$eventMarkers[1] == evmn$artifact)
+    if (ev == evmn$artifact)
     {
-      params <- analyzeArtifact(group = as.numeric(names(sampleGroups[gr])[1]), data = sampleGroups[[gr]], settings = settings)
-      artifactsParams <- rbind(artifactsParams, params)
+      if (length(res2) != 0) artifactsParams <- rbind(artifactsParams, res2)
     }
   }
   fx <- new(Class = "FixationsData", fixations = as.data.frame(fixationsParams, stringsAsFactors = F))
