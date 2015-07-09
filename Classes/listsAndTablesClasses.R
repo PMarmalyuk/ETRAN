@@ -65,7 +65,7 @@ setClass("FactorsData",
 )
 
 setClass("RawDataRecords",
-         representation(rawDataRecordsList = "list" # list of fileNumbers and rawDataRecords
+         representation(rawDataRecordsList = "list" # list of rawDataRecords
          ),
          prototype(
          )
@@ -83,5 +83,14 @@ setClass("DataSample",
 setClass("SubFunctions",
          representation(SubFunctionsList = "list"),
          prototype()
+)
+
+setClass("Loaders",
+         representation(loadersList = "list") # list of $ids and $loaders
+         )
+
+setClass("Parsers",
+         representation(parsersList = "list"),
+         prototype(parsersList = list(ids = list(1), parsers = list(new(Class = "Parser"))))
 )
 

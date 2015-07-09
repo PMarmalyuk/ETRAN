@@ -1,0 +1,50 @@
+﻿взаимодействие интерфейса и серверной части
+http://shiny.rstudio.com/articles/reactivity-overview.html
+
+навигация
+http://shiny.rstudio.com/reference/shiny/latest/navbarPage.html
+
+layout
+http://shiny.rstudio.com/articles/layout-guide.html
+
+принудительный Select
+http://shiny.rstudio.com/reference/shiny/latest/updateTabsetPanel.html
+
+динамическое создание элементов интерфейса
+http://shiny.rstudio.com/articles/dynamic-ui.html
+
+предварительная загрузка данных
+http://shiny.rstudio.com/tutorial/lesson6/
+
+dashboard
+http://rstudio.github.io/shinydashboard/index.html
+
+данные Таблицы
+http://shiny.rstudio.com/articles/datatables.html - shiny
+http://rstudio.github.io/DT/ - фильтрация, поиск
+http://www.htmlwidgets.org/showcase_datatables.html
+https://jcheng.shinyapps.io/superzip/
+
+рисование графа
+http://www.htmlwidgets.org/showcase_diagrammer.html
+
+траектории взора???
+http://rstudio.github.io/leaflet/
+
+много графиков
+http://rstudio.github.io/dygraphs/gallery-series-options.html
+
+3D нереальные хрени
+http://christophergandrud.github.io/networkD3/
+
+рисование точек
+http://shiny.rstudio.com/gallery/dynamic-clustering.html
+
+Круги разной заливки
+http://ggvis.rstudio.com/properties-scales.html
+http://ggvis.rstudio.com/ggvis-basics.html
+
+plyr для работы с большими массивами данных
+http://www.inside-r.org/packages/cran/plyr/docs/mutate
+
+ Shiny.onInputChange('rows', table.row(this).data()[0] );

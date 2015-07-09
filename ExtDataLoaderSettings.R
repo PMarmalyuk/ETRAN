@@ -1,0 +1,1 @@
+list(encoding = "UTF-8", sep = "\t", dec = ",", skip = 20, comment.char = "#", header = TRUE)

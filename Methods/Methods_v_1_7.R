@@ -2,28 +2,34 @@
 ####################
 #class_declarations#
 ####################
-classesFolder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Classes"
-setwd(classesFolder)
-source("optionsAndSettingsClasses.R")
-source("baseEyeDataClasses.R")
-source("baseClasses.R")
-source("listsAndTablesClasses.R")
-functionsFolder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Functions"
-setwd(functionsFolder)
-source("dataLoaders.R")
-source("dataParsers.R")
-source("filters.R")
-source("smoothers.R")
-source("detectors.R")
-source("eventAnalyzers.R")
-source("estimators.R")
-source("miscFunctions.R")
-source("mainFunctions.R")
+# classesFolder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Classes"
+# setwd(classesFolder)
+# source("optionsAndSettingsClasses.R")
+# source("baseEyeDataClasses.R")
+# source("baseClasses.R")
+# source("listsAndTablesClasses.R")
+# functionsFolder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Functions"
+# setwd(functionsFolder)
+# source("dataLoaders.R")
+# source("dataParsers.R")
+# source("filters.R")
+# source("smoothers.R")
+# source("detectors.R")
+# source("eventAnalyzers.R")
+# source("estimators.R")
+# source("miscFunctions.R")
+# source("mainFunctions.R")
 
 ##############################
 #generic_methods_declarations#
 ##############################
 setGeneric("addExperiment", function(self, expObject){standardGeneric("addExperiment")})
+setGeneric("updateExperimentById", function(self, id, expObject){standardGeneric("updateExperimentById")})
+setGeneric("delExperimentsById", function(self, ids){standardGeneric("delExperimentsById")})
+setGeneric("getConditionsById", function(self, id){standardGeneric("getConditionsById")})
+setGeneric("getExperimentsNames", function(self){standardGeneric("getExperimentsNames")})
+setGeneric("getExperimentIdByName", function(self, name){standardGeneric("getExperimentIdByName")})
+
 
 setGeneric("addTrial", function(self, trialObject){standardGeneric("addTrial")})
 
@@ -56,9 +62,11 @@ setGeneric("printDataSampleKeys", function(self){standardGeneric("printDataSampl
 
 
 ## data loaders
+
+setGeneric("addLoader", function(self, loaderObject){standardGeneric("addLoader")})
 setGeneric("addRawDataRecord", function(self, filepath, loader){standardGeneric("addRawDataRecord")})
 
-setGeneric("addRawDataRecords", function(self, filesFolder, loader){standardGeneric("addRawDataRecords")})
+setGeneric("addRawDataRecords", function(self, filesList, loader){standardGeneric("addRawDataRecords")})
 
 ## data parser
 setGeneric("parseDataRecord", function(self, parser){standardGeneric("parseDataRecord")})
@@ -110,10 +118,89 @@ setMethod("addExperiment",  "Experiments",
             }
             id <- self@expList$ids[[expCnt]] + 1
             self@expList$ids <- c(self@expList$ids, id)
-            self@expList$experiments <- c(self@expList$experiments, expObject)
+            self@expList$experiments <- append(self@expList$experiments, list(expObject))
             return(self)
           }
 )
+
+
+setMethod("getExperimentsNames",  "Experiments",                                   
+          function(self)
+          {                         
+            expNames <- sapply(self@expList$experiments, FUN = function(x) {x@name})
+            return(expNames)
+          }
+)
+
+setMethod("getExperimentIdByName",  "Experiments",                                   
+          function(self, name)
+          {                         
+            expNames <- getExperimentsNames(self)
+            id <- self@expList$ids[[which(expNames == name)]]
+            return(id)
+          }
+)
+
+setMethod("asDataFrame",  "Experiments",                                   
+          function(self)
+          {
+            if (length(self@expList$ids) == 0)
+            {
+              df <- data.frame(ids = NA, names = NA, expDates = NA, 
+                               descriptions = NA, experimenters = NA, stringsAsFactors = F)[-1,]
+              colnames(df) <- c("Id", "Name", "Date", "Description", "Experimenters")
+              return(df)
+            }
+            ids <- self@expList$ids
+            names <- sapply(self@expList$experiments, FUN = function(x) {x@name})
+            expDates <- sapply(self@expList$experiments, FUN = function(x) {x@expDate})
+            descriptions <- sapply(self@expList$experiments, FUN = function(x) {x@description})
+            experimenters <- sapply(self@expList$experiments, FUN = function(x) {x@experimenters})
+            df <- data.frame(ids, names, expDates, descriptions, experimenters, stringsAsFactors = F)
+            colnames(df) <- c("Id", "Name", "Date", "Description", "Experimenters")
+            return(df)
+          }
+)
+
+setMethod("getConditionsById",  "Experiments",                                   
+          function(self, id)
+          {
+            if (length(self@expList$experiments) != 0)
+            {
+              expObj <- self@expList$experiments[[which(self@expList$ids == id)]]
+              cond <- expObj@conditions
+            }
+            else
+            {
+              cond <- new(Class = "Conditions")
+            }
+            return(cond)
+          }
+)
+
+setMethod("updateExperimentById",  "Experiments",                                   
+          function(self, id, expObject)
+          {
+            self@expList$experiments[[which(self@expList$ids == id)]] <- expObject
+            return(self)
+          }
+)
+setMethod("delExperimentsById",  "Experiments",                                   
+          function(self, ids)
+          {
+            for (i in ids)
+            {
+              expToDel <- which(self@expList$ids == i)
+              if (expToDel != 0)
+              {
+                self@expList$ids <- self@expList$ids[-expToDel]
+                self@expList$experiments <- self@expList$experiments[-expToDel]
+              }
+            }
+            return(self)
+          }
+)
+          
 
 # Method adds a trial object into Trials list with ids and trials sublists
 ## Method doesn't increment ids because trials ids are obtained from datafiles
@@ -508,55 +595,84 @@ setMethod("asDataFrame",  "FactorsData",
           }
 )
 
+setMethod("addLoader",  "Loaders",                                   
+          function(self, loaderObject)
+          {                         
+            loadersCnt <- length(self@loadersList$ids)
+            if (loadersCnt == 0) 
+            {
+              self@loadersList$ids <- 1
+              self@loadersList$loaders <- list(loaderObject)
+              return(self)
+            }
+            id <- self@loadersList$ids[[loadersCnt]] + 1
+            self@loadersList$ids <- c(self@loadersList$ids, id)
+            self@loadersList$loaders <- append(self@loadersList$loaders, list(loaderObject))
+            return(self)
+          }
+)
+
+setMethod("asDataFrame",  "Loaders",                                   
+          function(self)
+          {
+            if (length(self@loadersList$ids) == 0)
+            {
+              df <- data.frame(id = NA, name = NA, stringsAsFactors = F)[-1,]
+              names(df) <- c("Id", "Name")
+              return(df)
+            }
+            id <- self@loadersList$ids
+            name <- sapply(self@loadersList$loaders, FUN = function(x) {x@name})
+            df <- data.frame(id, name, stringsAsFactors = F)
+            names(df) <- c("Id", "Name")
+            return(df)
+          }
+)
+
 ## TO DO: prevent creating duplicate records
 setMethod("addRawDataRecord",  "RawDataRecords",                                   
           function(self, filepath, loader)
           { 
             fun <- loader@fun
             settings <- loader@settings
-            rawDataRecCnt <- length(self@rawDataRecordsList$fileNumbers)
+            rawDataRecCnt <- length(self@rawDataRecordsList)
             newRawDataRec <- fun(filepath, settings)
             if (rawDataRecCnt == 0) 
             {
               self@rawDataRecordsList$fileNumbers <- 1
-              self@rawDataRecordsList$rawDataRecords <- list(newRawDataRec)
+              self@rawDataRecordsList <- list(newRawDataRec)
               return(self)
             }
-            fileNum <- tail(self@rawDataRecordsList$fileNumbers, n = 1) + 1
-            self@rawDataRecordsList$fileNumbers <- c(self@rawDataRecordsList$fileNumbers, fileNum)
-            self@rawDataRecordsList$rawDataRecords <- c(self@rawDataRecordsList$rawDataRecords, newRawDataRec)
+            self@rawDataRecordsList <- append(self@rawDataRecordsList, list(newRawDataRec))
             return(self)
           }
 )
 
 
 setMethod("addRawDataRecords",  "RawDataRecords",                                   
-          function(self, filesFolder, loader)
+          function(self, filesList, loader)
           { 
-            if (!file.exists(filesFolder))
-            {
-              stop("Data folder not found!")
-            }
-            filesToRead <- list.files(path = filesFolder, pattern = NULL, all.files = FALSE,
-                       full.names = TRUE, recursive = FALSE,
-                       ignore.case = FALSE, include.dirs = FALSE, no.. = FALSE)
             fun <- loader@fun
             settings <- loader@settings
-            rawDataRecCnt <- length(self@rawDataRecordsList$fileNumbers)
-            newRawDataRecords <- lapply(filesToRead, FUN = fun, settings = settings)
-            if (rawDataRecCnt == 0) 
-            {
-              firstFileNum <- 1
-            }
-            else
-            {
-              firstFileNum <- tail(self@rawDataRecordsList$fileNumbers, n = 1) + 1
-            }
-            filesCnt <- length(newRawDataRecords)
-            fileNumbers <- seq(firstFileNum, length.out = filesCnt)
-            self@rawDataRecordsList$fileNumbers <- c(self@rawDataRecordsList$fileNumbers, fileNumbers)
-            self@rawDataRecordsList$rawDataRecords <- c(self@rawDataRecordsList$rawDataRecords, newRawDataRecords)
+            newRawDataRecords <- lapply(filesList, FUN = fun, settings = settings)
+            self@rawDataRecordsList <- append(self@rawDataRecordsList, newRawDataRecords)
             return(self)
+          }
+)
+
+setMethod("asDataFrame",  "RawDataRecords",                                   
+          function(self)
+          {
+            if (length(self@rawDataRecordsList) == 0)
+            {
+              df <- data.frame(FileNames = character(), stringsAsFactors = F)
+              names(df) <- c("FileNames")
+              return(df)
+            }
+            fileNames <- sapply(self@rawDataRecordsList, FUN = function(x) {x@filePath})
+            df <- data.frame(FileNames = fileNames, stringsAsFactors = F)
+            names(df) <- c("FileNames")
+            return(as.data.frame(df))
           }
 )
 

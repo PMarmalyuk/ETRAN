@@ -26,7 +26,7 @@ findKeyValue <- function(key, sep, headerLines)
   res
 }
 
-createDataRecordObject <- function(data, dataFields, fieldNames, conditions)
+createEyesDataObject <- function(data, dataFields, fieldNames, conditions)
 {
   eyeDataObject <- new(Class = "EyesData", fieldNames = fieldNames, conditions = conditions)
   
@@ -135,7 +135,7 @@ createDataRecordObject <- function(data, dataFields, fieldNames, conditions)
   {
     if (!is.na(conditions@conditions$timeUnits))
     {
-      t <- data[,dataFields@availableFields$time]*conditions@conditions$timeUnits
+      t <- data[,dataFields@availableFields$time]
     }
     else
     {
@@ -191,7 +191,7 @@ coreParser <- function(RawDataRecord, settings)
     trialsNums <- unique(trials)
   }
   ## Reading stimuli name samples as trials indicators
-  if (!is.na(dataFields@availableFields$trial) & !is.na(dataFields@availableFields$stimname))
+  if (is.na(dataFields@availableFields$trial) & !is.na(dataFields@availableFields$stimname))
   {
     trials <- self@data[,dataFields@availableFields$stimname]
     trialsNums <- unique(trials)
@@ -200,6 +200,10 @@ coreParser <- function(RawDataRecord, settings)
   if (!is.na(trials[1]))
   {
     trialsData <- split(self@data, f = trials)
+  }
+  else
+  {
+    trialsData <- self@data
   }
   
   ## Getting field names using self@data column names
@@ -231,7 +235,7 @@ coreParser <- function(RawDataRecord, settings)
   {
     eyeRight <- T
   }
-  if (!eyeLeft & !eyeRight) {stop("You must specify eye samples disposition in your dataset!")}
+  if (!eyeLeft & !eyeRight) {warning("You must specify eye samples disposition in your dataset!"); return(NULL)}
   if (eyeLeft & eyeRight) {eye = "both"}
   if (eyeLeft & !eyeRight) {eye = "left"}
   if (!eyeLeft & eyeRight) {eye = "right"}
@@ -259,12 +263,15 @@ coreParser <- function(RawDataRecord, settings)
   conditions@conditions$pupilShape <- pupilShape
   
   ## Reading keys from header lines
-  keyValues <- lapply(headerKeys@keys, FUN = findKeyValue, headerLines = self@headerLines, sep = sep)
-  subjectCode <- keyValues$subjectCode
-  stimDim <- as.numeric(keyValues$stimDim)
-  conditions@conditions$sampleRate <- as.numeric(keyValues$sampleRate)
-  conditions@conditions$screenDistance <- as.numeric(keyValues$headDist)
-  
+  if (length(self@headerLines) != 0)
+  {
+    keyValues <- lapply(headerKeys@keys, FUN = findKeyValue, headerLines = self@headerLines, sep = sep)
+    subjectCode <- keyValues$subjectCode
+    stimDim <- as.numeric(keyValues$stimDim)
+    conditions@conditions$sampleRate <- as.numeric(keyValues$sampleRate)
+    conditions@conditions$screenDistance <- as.numeric(keyValues$headDist)
+  }
+
   ## Deterimining frames count
   framesCnt <- NA
   if (!is.na(dataFields@availableFields$frame))
@@ -275,7 +282,7 @@ coreParser <- function(RawDataRecord, settings)
   }
   
   ## Creating list of data to be disassembled in application layer
-  eyesDataObjects <- lapply(trialsData, FUN = createDataRecordObject, dataFields = dataFields, fieldNames = fieldNames, conditions = conditions)
+  eyesDataObjects <- lapply(trialsData, FUN = createEyesDataObject, dataFields = dataFields, fieldNames = fieldNames, conditions = conditions)
   res <- list(filePath = filePath, subjectCode = subjectCode, trialsNums = trialsNums, stimDim = stimDim, framesCnt = framesCnt, eyesDataObjects = eyesDataObjects)
   return(res)
 }

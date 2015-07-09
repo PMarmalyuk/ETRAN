@@ -5,8 +5,7 @@ setClass("ReadSettings",
                                        dec = ",",
                                        skip = 20,
                                        comment.char = "#",
-                                       header = T,
-                                       splitBy = "Trial") # "Trial" or "Stimname"
+                                       header = T)
          )
 )
 
@@ -55,8 +54,6 @@ setClass("Conditions",
                                      screenDim = NA,
                                      screenSize = NA, # width and height of the screen / field of view
                                      pupilShape = NA, #"circle" or "ellipse"
-                                     pupilDataType = NA, #"radius" or "diameter"
                                      timeUnits = NA, # e.g. 1E-3 for milliseconds
-                                     distanceUnits = NA, # e.g. 1E-2 for millimeters
                                      pupilSizeUnits = NA)) #"px", "mm", cm", etc
 )
