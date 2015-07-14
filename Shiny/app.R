@@ -1,11 +1,3 @@
-install.packages('devtools')
-install.packages('DT')
-devtools::install_github('rstudio/shinyapps')
-shinyapps::setAccountInfo(name='etranapp', token='7784AA9A3DC66FE09494FF6BA2566892', secret='emn813/XINLA0eF5HU3vkH1ZEWxw4o2ZUzIXPvjW')
-library(shinyapps)
-shinyapps::deployApp('F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Shiny')
-
-
 if (!require("shiny")) install.packages("shiny")
 if (!require("shinydashboard")) install.packages("shinydashboard")
 if (!require("devtools")) install.packages('devtools')
@@ -19,4 +11,5 @@ library(DT)
 library(htmlwidgets)
 library(D3TableFilter)
 # options(shiny.maxRequestSize = 1000*1024^2)
-runApp("F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Shiny")
+runApp("D:\\Work\\GitHub\\EyeTrackingProject\\Shiny")
+
