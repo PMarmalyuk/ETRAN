@@ -10,6 +10,8 @@ shinyServer(function(input, output, session) {
   ## Creating session objects
   source('Initialize.R')
   
+
+  
   ## Creating reactive values
   vals <- reactiveValues(expList = new(Class = "Experiments"),
                          rawDataFilesList = data.frame(fileNames = NA, colnames = c("FileNames"))[-1,],
@@ -507,6 +509,11 @@ shinyServer(function(input, output, session) {
   ### External loaders table
   output$extLoadersList <- DT::renderDataTable(server = FALSE, {
       datatable(asDataFrame(vals$extLoaders), selection = "single")
+  })
+
+  output$dataRecordsSelectionTable <- DT::renderDataTable(server = FALSE, {
+    Codes <- c("Pablo", "Grinch", "Borislav")
+    datatable(data.frame(Code = Codes, stringsAsFactors = F), selection = "single")
   })
   
   output$selectedLoaderFunFile <- renderText({

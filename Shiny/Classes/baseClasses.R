@@ -22,7 +22,8 @@ setClass("Trial",
 
 
 setClass("Subject",
-         representation(code = "character",
+         representation(id = "numeric",
+                        code = "character",
                         fullname = "character",
                         birthdate = "Date"
          ),
@@ -48,9 +49,7 @@ setClass("Stimulus",
                         path = "character",
                         type = "character", # "Scene", "Image", "Video", "Web page", etc.
                         dim = "integer",
-                        dimOnPresentation = "integer",
-                        duration = "numeric", 
-                        durationUnits = "numeric", # e.g. 1E0 for seconds
+                        duration = "numeric", # Duration in ms
                         framesCount = "numeric"
          ),
          prototype(
