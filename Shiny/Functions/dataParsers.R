@@ -29,7 +29,6 @@ findKeyValue <- function(key, sep, headerLines)
 createEyesDataObject <- function(data, dataFields, fieldNames, conditions)
 {
   eyeDataObject <- new(Class = "EyesData", fieldNames = fieldNames, conditions = conditions)
-  
   if (!is.na(dataFields@availableFields$frame))
   {
     frames <- new(Class = "FrameSamples", frame = as.numeric(data[,dataFields@availableFields$frame]))
@@ -142,6 +141,7 @@ createEyesDataObject <- function(data, dataFields, fieldNames, conditions)
       warning("Time unit is not specified! It is important to take it into account for correct velocity estimation!")
       t <- data[,dataFields@availableFields$time]
     }
+    t <- t-min(t[t>=0])
     times <- new(Class = "TimeSamples", time = t)
     eyeDataObject@time <- times
   }
@@ -151,15 +151,15 @@ createEyesDataObject <- function(data, dataFields, fieldNames, conditions)
     if (!is.na(conditions@conditions$sampleRate))
     {
       dt <- 1/conditions@conditions$sampleRate
-      t <- seq(from = dt, to = dt*smpCnt, by = dt)
+      t <- seq(from = 0, to = dt*(smpCnt-1), by = dt)
       times <- new(Class = "TimeSamples", time = t)
       eyeDataObject@conditions@conditions$timeUnits <- 1
       eyeDataObject@time <- times
     }
     else
     {
-      warning("Sample rate is not specified! Many functions will not work!")
-      return(NULL)
+      warning("Sample rate is not specified! Using sample numbers instead!")
+      eyeDataObject@time <- 0:(smpCnt-1)
     }
   }
   return(eyeDataObject)
@@ -174,12 +174,9 @@ coreParser <- function(RawDataRecord, settings)
   filePath <- self@filePath
   dataFields <- settings$dataFields
   sampleKey <- settings$sampleKey
-  
-  # NOT USED FOR NOW:
   headerKeys <- settings$headerKeys
   sep <- settings$sep
-  # 
-  
+
   ## Deleting all samples with sample type other than sampleKey
   if (!is.na(dataFields@availableFields$smptype))
   {

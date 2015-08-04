@@ -35,7 +35,6 @@ IVT <- function(t, x, y, filterMarkers, settings)
     gapMarkers <- ifelse(filterMarkers@filterMarkers != filterMarkers@markerNames$ok, "Gap", "Not gap")
     rawEventMarkers <- ifelse(gapMarkers[-length(gapMarkers)] == "Gap", "Gap", ifelse(vel$vels <= VT, evm@markerNames$fixation, evm@markerNames$saccade))
     evm@eventMarkers <- rawEventMarkers
-    
     evmarks <- data.frame(firstEv = rawEventMarkers[-length(rawEventMarkers)], secondEv = rawEventMarkers[-1])
     transitions <- apply(evmarks, MARGIN = 1, function(x) {if (x[2] != x[1]) {1} else {0}})
     group <- c(1,cumsum(transitions)+1)

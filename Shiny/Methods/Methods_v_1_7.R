@@ -26,15 +26,25 @@
 setGeneric("addExperiment", function(self, expObject){standardGeneric("addExperiment")})
 setGeneric("updateExperimentById", function(self, id, expObject){standardGeneric("updateExperimentById")})
 setGeneric("delExperimentsById", function(self, ids){standardGeneric("delExperimentsById")})
-setGeneric("getConditionsById", function(self, id){standardGeneric("getConditionsById")})
+# setGeneric("getConditionsById", function(self, id){standardGeneric("getConditionsById")})
 setGeneric("getExperimentsNames", function(self){standardGeneric("getExperimentsNames")})
 setGeneric("getExperimentIdByName", function(self, name){standardGeneric("getExperimentIdByName")})
-
+setGeneric("getExperimentNameById", function(self, id){standardGeneric("getExperimentNameById")})
 
 setGeneric("addTrial", function(self, trialObject){standardGeneric("addTrial")})
+setGeneric("updateTrialById", function(self, id, trialObject){standardGeneric("updateTrialById")})
+setGeneric("delTrialsById", function(self, ids){standardGeneric("delTrialsById")})
+setGeneric("getTrialsNames", function(self, expID){standardGeneric("getTrialsNames")})
+setGeneric("getTrialIdByName", function(self, expID, name){standardGeneric("getTrialIdByName")})
+setGeneric("getTrialNameById", function(self, expID, trialID){standardGeneric("getTrialNameById")})
 
+setGeneric("addSubject", function(self, subjObject){standardGeneric("addSubject")})
+setGeneric("updateSubjectById", function(self, id, subjObject){standardGeneric("updateSubjectById")})
+setGeneric("delSubjectsById", function(self, ids){standardGeneric("delSubjectsById")})
 setGeneric("getSubjectCodes", function(self){standardGeneric("getSubjectCodes")})
-setGeneric("addSubject", function(self, subjectObject){standardGeneric("addSubject")})
+setGeneric("getSubjectIdByCode", function(self, code){standardGeneric("getSubjectIdByCode")})
+setGeneric("getSubjectCodeById", function(self, id){standardGeneric("getSubjectCodeById")})
+
 
 setGeneric("addStimulus", function(self, stimulusObject){standardGeneric("addStimulus")})
 
@@ -58,8 +68,8 @@ setGeneric("asDataFrame", function(self, owner, availableFactors){standardGeneri
 
 
 setGeneric("addDataRecord", function(self, dataRecord){standardGeneric("addDataRecord")})
-setGeneric("printDataSampleKeys", function(self){standardGeneric("printDataSampleKeys")})
-
+setGeneric("updateDataRecord", function(self, id, dataRecord, updateFlag){standardGeneric("updateDataRecord")})
+setGeneric("filterDataSample", function(self, expIDs, subjectIDs, trialFilters, factorFilters){standardGeneric("filterDataSample")})
 
 ## data loaders
 
@@ -92,12 +102,15 @@ setGeneric("eventAnalyzer", function(self, analyzer){standardGeneric("eventAnaly
 ## estimation of parameters of EyesData, EventData, etc.
 setGeneric("estimateParams", function(self, estimator){standardGeneric("estimateParams")})
 
+## sub functions
+setGeneric("addSubFunction", function(self, subFunction){standardGeneric("addSubFunction")})
+
 ## Cluster analysis of DataRecords
 setGeneric("findClusters", function(self, clusterAnalyzer){standardGeneric("findClusters")})
 
 ## visualisations
 setGeneric("plotXY", function(self, eye, filter, smoother, period, onStimulus){standardGeneric("plotXY")})
-setGeneric("plotXt", function(self, eye,  filter, smoother, period, channel, angular){standardGeneric("plotXt")})
+setGeneric("plotXt", function(self, eye, type, filter, smoother, period, markerType, angular, pointsColor){standardGeneric("plotXt")})
 
 ######################
 #methods_realizations#
@@ -136,8 +149,19 @@ setMethod("getExperimentIdByName",  "Experiments",
           function(self, name)
           {                         
             expNames <- getExperimentsNames(self)
-            id <- self@expList$ids[[which(expNames == name)]]
-            return(id)
+            if (any(expNames == name))
+            {
+              id <- self@expList$ids[[which(expNames == name)]]
+              return(id)
+            }
+            else return(NULL)
+          }
+)
+
+setMethod("getExperimentNameById", "Experiments",
+          function(self, id)
+          {
+            self@expList$experiments[[which(self@expList$ids == id)]]@name
           }
 )
 
@@ -146,9 +170,8 @@ setMethod("asDataFrame",  "Experiments",
           {
             if (length(self@expList$ids) == 0)
             {
-              df <- data.frame(ids = NA, names = NA, expDates = NA, 
-                               descriptions = NA, experimenters = NA, stringsAsFactors = F)[-1,]
-              colnames(df) <- c("Id", "Name", "Date", "Description", "Experimenters")
+              df <- data.frame(Id = numeric(), Name = character(), Date = character(), 
+                               Description = character(), Experimenters = character())
               return(df)
             }
             ids <- self@expList$ids
@@ -156,25 +179,8 @@ setMethod("asDataFrame",  "Experiments",
             expDates <- sapply(self@expList$experiments, FUN = function(x) {x@expDate})
             descriptions <- sapply(self@expList$experiments, FUN = function(x) {x@description})
             experimenters <- sapply(self@expList$experiments, FUN = function(x) {x@experimenters})
-            df <- data.frame(ids, names, expDates, descriptions, experimenters, stringsAsFactors = F)
-            colnames(df) <- c("Id", "Name", "Date", "Description", "Experimenters")
+            df <- data.frame(Id = ids, Name = names, Date = expDates, Description = descriptions, Experimenters = experimenters, stringsAsFactors = F)
             return(df)
-          }
-)
-
-setMethod("getConditionsById",  "Experiments",                                   
-          function(self, id)
-          {
-            if (length(self@expList$experiments) != 0)
-            {
-              expObj <- self@expList$experiments[[which(self@expList$ids == id)]]
-              cond <- expObj@conditions
-            }
-            else
-            {
-              cond <- new(Class = "Conditions")
-            }
-            return(cond)
           }
 )
 
@@ -185,6 +191,7 @@ setMethod("updateExperimentById",  "Experiments",
             return(self)
           }
 )
+
 setMethod("delExperimentsById",  "Experiments",                                   
           function(self, ids)
           {
@@ -203,16 +210,155 @@ setMethod("delExperimentsById",  "Experiments",
           
 
 # Method adds a trial object into Trials list with ids and trials sublists
-## Method doesn't increment ids because trials ids are obtained from datafiles
-## (?) TO DO: method should check for duplicate trials
 setMethod("addTrial",  "Trials",                                   
           function(self, trialObject)
-          {                         
-            id <- trialObject@id
-            expID <- trialObject@expID
+          {    
+            trialsCnt <- length(self@trialsList$ids)
+            if (trialsCnt == 0) 
+            {
+              self@trialsList$ids <- 1
+              self@trialsList$trials <- list(trialObject)
+              return(self)
+            }
+            id <- self@trialsList$ids[[trialsCnt]] + 1
             self@trialsList$ids <- c(self@trialsList$ids, id)
-            self@trialsList$expIDs <- c(self@trialsList$expIDs, expID)
-            self@trialsList$trials <- c(self@trialsList$trials, trialObject)
+            self@trialsList$trials <- append(self@trialsList$trials, list(trialObject))
+            return(self)
+          }
+)
+
+setMethod("updateTrialById",  "Trials",                                   
+          function(self, id, trialObject)
+          {
+            self@trialsList$trials[[which(self@trialsList$ids == id)]] <- trialObject
+            return(self)
+          }
+)
+
+setMethod("delTrialsById",  "Trials",                                   
+          function(self, ids)
+          {
+            for (i in ids)
+            {
+              trialToDel <- which(self@trialsList$ids == i)
+              if (trialToDel != 0)
+              {
+                self@trialsList$ids <- self@trialsList$ids[-trialToDel]
+                self@trialsList$trials <- self@trialsList$trials[-trialToDel]
+              }
+            }
+            return(self)
+          }
+)
+
+setMethod("getTrialsNames", "Trials",
+          function(self, expID)
+          {
+            expIDs <- sapply(self@trialsList$trials, FUN = function(x) {x@expID})
+            if (any(expIDs == expID)) 
+            {
+              names <- sapply(self@trialsList$trials[which(expIDs == expID)], FUN = function(x) {x@name})
+              return(names)
+            }
+            else
+            {
+              return(NULL)
+            }
+          }
+)
+
+
+setMethod("getTrialIdByName", "Trials",
+          function(self, expID, name)
+          {
+            if (length(self@trialsList) == 0) return(NULL)
+            names <- sapply(self@trialsList$trials, FUN = function(x) {x@name})
+            expIDs <- sapply(self@trialsList$trials, FUN = function(x) {x@expID})
+            if (any(names == name & expIDs == expID))
+            {
+              id <- self@trialsList$ids[which(names == name & expIDs == expID)]
+              return(id)
+            }
+            else
+            {
+              return(NULL)
+            }
+          }
+)
+
+setMethod("getTrialNameById", "Trials",
+          function(self, expID, trialID)
+          {
+            expIDs <- sapply(self@trialsList$trials, FUN = function(x) {x@expID})
+            if (any(expIDs == expID & self@trialsList$ids == trialID))
+            {
+              self@trialsList$trials[[which(expIDs == expID & self@trialsList$ids == trialID)]]@name
+            }
+            else return(NULL)
+          }
+)
+
+
+setMethod("asDataFrame",  "Trials",                                   
+          function(self)
+          {
+            if (length(self@trialsList$ids) == 0)
+            {
+              df <- data.frame(Id = numeric(), ExpID = numeric(), Name = character(), Description = character())
+              return(df)
+            }
+            ids <- self@trialsList$ids
+            expIds <- sapply(self@trialsList$trials, FUN = function(x) {x@expID})
+            names <- sapply(self@trialsList$trials, FUN = function(x) {x@name})
+            descriptions <- sapply(self@trialsList$trials, FUN = function(x) {x@description})
+            df <- data.frame(Id = ids, ExpID = expIds, Name = names, Description = descriptions, stringsAsFactors = F)
+            return(df)
+          }
+)
+
+# Method adds a subject object into the Subjects list with ids and subjects sublists
+## Method prevents duplicating subject codes
+setMethod("addSubject",  "Subjects",                                   
+          function(self, subjObject)
+          {                         
+            subjCnt <- length(self@subjectsList$ids)
+            if (subjCnt == 0) 
+            {
+              self@subjectsList$ids <- 1
+              self@subjectsList$subjects <- list(subjObject)
+              return(self)
+            }
+            if (subjObject@code %in% getSubjectCodes(self))
+            {
+              stop(paste("The subject with code", subjObject@code, "already exists!"))
+            }
+            id <- tail(self@subjectsList$ids, n = 1) + 1
+            self@subjectsList$ids <- c(self@subjectsList$ids, id)
+            self@subjectsList$subjects <- c(self@subjectsList$subjects, subjObject)
+            return(self)
+          }
+)
+
+setMethod("updateSubjectById",  "Subjects",                                   
+          function(self, id, subjObject)
+          {
+            self@subjectsList$subjects[[which(self@subjectsList$ids == id)]] <- subjObject
+            return(self)
+          }
+)
+
+setMethod("delSubjectsById",  "Subjects",                                   
+          function(self, ids)
+          {
+            for (i in ids)
+            {
+              subjToDel <- which(self@subjectsList$ids == i)
+              if (subjToDel != 0)
+              {
+                self@subjectsList$ids <- self@subjectsList$ids[-subjToDel]
+                self@subjectsList$subjects <- self@subjectsList$subjects[-subjToDel]
+              }
+            }
             return(self)
           }
 )
@@ -225,30 +371,41 @@ setMethod("getSubjectCodes", "Subjects",
           }
 )
 
-# Method adds a subject object into the Subjects list with ids and subjects sublists
-## Method prevents duplicating subject codes
-setMethod("addSubject",  "Subjects",                                   
-          function(self, subjectObject)
-          {                         
-            subjCnt <- length(self@subjectsList$ids)
-            if (subjCnt == 0) 
+setMethod("getSubjectIdByCode", "Subjects",
+          function(self, code)
+          {
+            codes <- sapply(self@subjectsList$subjects, function(x) {return(x@code)})
+            if (length(which(codes == code)) != 0)
             {
-              self@subjectsList$ids <- 1
-              self@subjectsList$subjects <- list(subjectObject)
-              return(self)
+              return(self@subjectsList$ids[[which(codes == code)]])
             }
-            if (subjectObject@code %in% getSubjectCodes(self))
-            {
-              stop(paste("The subject with code", subjectObject@code, "already exists!"))
-            }
-            id <- tail(self@subjectsList$ids, n = 1) + 1
-            self@subjectsList$ids <- c(self@subjectsList$ids, id)
-            self@subjectsList$subjects <- c(self@subjectsList$subjects, subjectObject)
-            return(self)
+            else {return(NULL)}
           }
 )
 
+setMethod("getSubjectCodeById", "Subjects",
+          function(self, id)
+          {
+            self@subjectsList$subjects[[which(self@subjectsList$ids == id)]]@code
+          }
+)
 
+setMethod("asDataFrame",  "Subjects",                                   
+          function(self)
+          {
+            if (length(self@subjectsList$ids) == 0)
+            {
+              df <- data.frame(Id = numeric(), Code = character(), Fullname = character(), Birthdate = character())
+              return(df)
+            }
+            ids <- self@subjectsList$ids
+            codes <- sapply(self@subjectsList$subjects, FUN = function(x) {x@code})
+            fullnames <- sapply(self@subjectsList$subjects, FUN = function(x) {x@fullname})
+            birthdates <- sapply(self@subjectsList$subjects, FUN = function(x) {x@birthdate})
+            df <- data.frame(Id = ids, Code = codes, Fullname = fullnames, Birthdate = birthdates, stringsAsFactors = F)
+            return(df)
+          }
+)
 
 # Method adds a Stimulus object into the Stimuli list with ids and stimuli sublists
 ## TO DO: method should prevent duplicates in Stimuli
@@ -306,19 +463,54 @@ setMethod("addAOISet",  "AOISets",
 setMethod("addDataRecord",  "DataSample",                                   
           function(self, dataRecord)
           {                         
+            expID <- ifelse(length(dataRecord@expID) == 0, as.numeric(NA), dataRecord@expID)
+            subjectID <- ifelse(length(dataRecord@subjectID) == 0, as.numeric(NA), dataRecord@subjectID)
+            trialID <- ifelse(length(dataRecord@trialID) == 0, as.numeric(NA), dataRecord@trialID)
+            complexKey <- list(expID = expID, subjectID = subjectID, trialID = trialID)
+            recCnt <- length(self@ids)
+            if (recCnt == 0)
+            {
+              self@keys <- data.frame(complexKey)
+              self@ids <- 1
+              self@DataRecordsList <- append(self@DataRecordsList, list(dataRecord))
+              return(self)
+            }
+            id <- tail(self@ids, n = 1) + 1
+            self@ids <- c(self@ids, id)
+            self@keys <- rbind(self@keys, complexKey)
+            self@DataRecordsList <- append(self@DataRecordsList, list(dataRecord))
+            return(self)
+          }
+)
+
+# Method adds a dataRecord object into the DataSample object
+setMethod("updateDataRecord",  "DataSample",                                   
+          function(self, id, dataRecord)
+          {                         
+            recNum <- which(self@ids == id)
             expID <- dataRecord@expID
             subjectID <- dataRecord@subjectID
             trialID <- dataRecord@trialID
             complexKey <- list(expID = expID, subjectID = subjectID, trialID = trialID)
-            if (nrow(self@keys) == 0)
-            {
-              self@keys <- data.frame(complexKey)
-              self@DataRecordsList <- append(self@DataRecordsList, list(dataRecord))
-              return(self)
-            }
-            self@keys <- rbind(self@keys, complexKey)
-            self@DataRecordsList <- append(self@DataRecordsList, list(dataRecord))
+            self@keys[recNum,] <- complexKey
+            self@DataRecordsList[[recNum]] <- dataRecord
             return(self)
+          }
+)
+
+setMethod("filterDataSample", "DataSample",
+          function(self, expIDs, subjectIDs, trialFilters, factorFilters)
+          {
+            expFilter <- function(DataSample, expIDs)
+            {
+              recIds <- DataSample@ids[which(DataSample@keys$expID %in% expIDs)]
+              return(recIds)
+            }
+            if (!is.na(expIDs))
+            {
+              ids1 <- expFilter(self, expIDs)
+            }
+            return(ids1)
           }
 )
 
@@ -452,9 +644,7 @@ setMethod("addFactorValue",  "FactorsData",
                   if (replace)
                   {
                     recNum <- which(self@subjectsFactors$factorID == factorID & self@subjectsFactors$ownerID == ownerID)
-                    if (recNum == 5) {print(factorRecord[1,])}
                     self@subjectsFactors[recNum,] <- factorRecord[1,]
-                    if (recNum == 5) {print(self@subjectsFactors[recNum,])}
                     return(self)
                   }
                   else
@@ -682,9 +872,28 @@ setMethod("asDataFrame",  "RawDataRecords",
             }
             ids <- self@rawDataRecordsList$ids
             fileNames <- sapply(self@rawDataRecordsList$rawDataRecords, FUN = function(x) {x@filePath})
-            df <- data.frame(Id = ids, Filename = fileNames, stringsAsFactors = F)
+            df <- data.frame(Id = ids, Filename = fileNames, stringsAsFactors = F, row.names = ids)
             names(df) <- c("Id", "Filename")
             return(as.data.frame(df,  stringsAsFactors = F))
+          }
+)
+
+setMethod("asDataFrame",  "DataSample",                                   
+          function(self)
+          {
+            if (length(self@DataRecordsList) == 0)
+            {
+              df <- data.frame(numeric(),numeric(),numeric(),numeric())
+              names(df) <- c("Id", "ExpID", "TrialID", "SubjectID")
+              return(df)
+            }
+            ids <- self@ids
+            expIds <- self@keys$expID
+            trialIds <- self@keys$trialID
+            subjectIds <- self@keys$subjectID
+            df <- data.frame(ids, expIds, trialIds, subjectIds, row.names = ids)
+            names(df) <- c("Id", "ExpID", "TrialID", "SubjectID")
+            return(df)
           }
 )
 
@@ -793,6 +1002,7 @@ setMethod("dataFilter", "DataRecord",
             fun <- filter@fun
             settings <- filter@settings
             res <- fun(self, settings)
+            print("Filter was ok")
             return(res)
           }
 )
@@ -803,6 +1013,7 @@ setMethod("dataSmoother", "DataRecord",
             fun <- smoother@fun
             settings <- smoother@settings
             res <- fun(self, settings)
+            print("Smoothing was ok")
             return(res)
           }
 )
@@ -813,6 +1024,7 @@ setMethod("eventDetector", "DataRecord",
             fun <- detector@fun
             settings <- detector@settings
             res <- fun(self, settings)
+            print("Detection was ok")
             return(res)
           }
 )
@@ -854,8 +1066,52 @@ setMethod("estimateParams", "DataRecord",
           }
 )
 
+setMethod("addSubFunction", "SubFunctions",
+          function(self, subFunction)
+          {
+            subFunctionsCnt <- length(self@subFunctionsList)
+            if (subFunctionsCnt == 0)
+            {
+              self@subFunctionsList$ids <- 1
+              self@subFunctionsList$subFunctions <- list(subFunction)
+              return(self)
+            }
+            id <- tail(self@subFunctionsList$ids, n = 1) + 1
+            self@subFunctionsList$ids <- c(self@subFunctionsList$ids, id)
+            self@subFunctionsList$subFunctions <- append(self@subFunctionsList$subFunctions, list(subFunction))
+            return(self)
+          }
+)
 
+setClass("SubFunction",
+         representation(fun = "function",
+                        name = "character",
+                        description = "character",
+                        applyTo = "character",
+                        event = "character",
+                        settings = "list"
+         )
+)
 
+setMethod("asDataFrame", "SubFunctions",
+          function(self)
+          {
+            if (length(self@subFunctionsList$ids) == 0)
+            {
+              df <- data.frame(Id = numeric(), Name = character(), Description = character(), 
+                               applyTo = character(), event = character())
+              return(df)
+            }
+            ids <- self@subFunctionsList$ids
+            names <- sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@name})
+            descriptions <- sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@description})
+            applyTos <- sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@applyTo})
+            events <- paste(sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@event}))
+            df <- data.frame(Id = ids, Name = names, Description = descriptions, 
+                             ApplyTo = applyTos, Event = events, stringsAsFactors = F)
+            return(df)
+          }
+)
 
 ### VISUALIZATIONS ###
 
@@ -867,11 +1123,83 @@ setMethod("plotXY", "DataRecord",
 )
 
 setMethod("plotXt", "DataRecord",
-          function(self, eye, filter, smoother, period, channel, angular)
+          function(self, eye, type, filter, smoother, period, markerType, angular, pointsColor)
           {
             # channel - 1, 2, 3, 4, 5, 6, 7, ...
             # angular is possible for 1 and 2 channels (i.e. X(t) or Y(t) plot)
             # period is period of time in sec from trial's start
+            eyesData <- self@eyesDataObject
+            conditions <- eyesData@conditions@conditions
+            self <- dataFilter(self, filter)
+            self <- dataSmoother(self, smoother)
+            screenDim <- conditions$screenDim
+            screenSize <- conditions$screenSize
+            screenDist <- conditions$screenDistance
+
+            if (conditions$eye == "both")
+            {
+              dataLeft <- getDataFrame(eyesData, "left")
+              dataRight <- getDataFrame(eyesData, "right")
+              pointsToShowLeft <- which(dataLeft$time >= period[1] & dataLeft$time <= period[2])
+              pointsToShowRight <- which(dataRight$time >= period[1] & dataRight$time <= period[2])
+            }
+            else
+            {
+              data <- getDataFrame(eyesData, conditions$eye)
+              pointsToShow <- which(data$time >= period[1] & data$time <= period[2])
+              markers <- switch(markerType,
+                                "No markers" = pointsColor,
+                                "Filter markers" = as.factor(data$filterMarkers),
+                                "Event markers" = as.factor(data$eventMarkers))
+              t <- data$time[pointsToShow]
+              x <- data$porx[pointsToShow]
+              y <- data$pory[pointsToShow]
+              pupx <- data$pupxsize[pointsToShow]
+              pupy <- data$pupysize[pointsToShow]
+              
+              if (type == "POR")
+              {
+                quote(plot(x~t, col = markers))
+                if (angular)
+                {
+                  angPos <- calcAngPos(x, y, screenDist, screenDim, screenSize)
+                  x <- angPos$xAng
+                  y <- angPos$yAng
+                }
+                plot(x~t, col = markers)
+                points(y~t, col = markers)
+              }
+              if (type == "Pupil")
+              {
+                if (conditions$pupilShape == "circle")
+                {
+                  plot(pupx~t, col = markers)
+                } else
+                if (conditions$pupilShape == "ellipse")
+                {
+                  plot(pupx~t, col = markers)
+                  points(pupy~t, col = markers)
+                }
+              }
+              if (type == "Speed")
+              {
+                if (angular)
+                {
+                  vel <- calcAngVel(t, x, y, screenDist, screenDim, screenSize)$vels
+                }
+                else
+                {
+                  vel <- calcPxVel(t, x, y)$vels
+                }
+                plot(vel~t, col = markers)
+              }
+              if (type == "Acceleration")
+              {
+                
+              }
+            }
+
+            
             
           }
 )

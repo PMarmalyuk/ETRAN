@@ -8,26 +8,20 @@ tabItem(tabName = "rawDataImport",
                                    conditionalPanel(condition = "!input.useExtLoader",
                                                     fluidPage(
                                                       fluidRow(
-                                                        column(3,
                                                                selectInput("sep", "Separator:",
                                                                            c("Tab" = "\t",
                                                                              "Comma" = ",",
                                                                              "Semicolon" = ";")),
                                                                selectInput("dec", "Decimal point:",
                                                                            c("Point" = ".",
-                                                                             "Comma" = ","))
-                                                        ),
-                                                        column(3,
+                                                                             "Comma" = ",")),
                                                                selectInput("encoding", "Encoding:",
                                                                            c("UTF-8" = "utf8",
                                                                              "CP1251" = "cp1251",
                                                                              "ASCII" = "ascii")),
-                                                               checkboxInput('header', "Header", value = T)
-                                                        ),
-                                                        column(3,
+                                                               checkboxInput('header', "Header", value = T),
                                                                numericInput('skip', "Lines to skip", value = 20, min = 0, step = 1),
                                                                textInput('commchar', "Comment Char", value = "#")
-                                                        )
                                                       )
                                                     )),
                                    conditionalPanel(
@@ -62,6 +56,22 @@ tabItem(tabName = "rawDataImport",
                                                 box(
                                                   title = "Core Parser Settings", status = "primary", solidHeader = TRUE,
                                                   collapsible = T, width = 12,
+                                                  box(title = "Configure Conditions", status = "primary", solidHeader = TRUE,
+                                                    collapsible = T, collapsed = T, width = 12,
+                                                    selectInput(inputId = 'expEye', label = "Recording Mode", choices = c("Left Eye", "Right Eye", "Binocular"), multiple = F, selected = 1),
+                                                    numericInput(inputId = 'expSampleRate', label = "Sample Rate (Hz)", value = NA, min = 0, step = 1),
+                                                    selectInput(inputId = 'expTimeUnits', label = "Time Unit", choices = c("microseconds", "milliseconds", "seconds"), multiple = F, selected = 1),
+                                                    checkboxInput('pupilDataExist', label = "Pupil Data Exist?"),
+                                                    conditionalPanel(condition = "input.pupilDataExist",
+                                                                     selectInput(inputId = 'expPupSizeUnits', label = "Pupil Size Unit", choices = c("px", "mm", "cm"), multiple = F, selected = 1),
+                                                                     selectInput(inputId = 'expPupShape', label = "Pupil Shape", choices = c("circle", "ellipse"), multiple = F, selected = 1)
+                                                    ),
+                                                    numericInput('expScreenDist', "Screen Distance (cm)", value = NA, min = 1, step = 1),
+                                                    numericInput('expScreenSizeX', "Screen Size X (cm)", value = NA, min = 1, step = 1),
+                                                    numericInput('expScreenSizeY', "Screen Size Y (cm)", value = NA, min = 1, step = 1),
+                                                    numericInput('expScreenDimX', "Screen Dimension X (px)", value = NA, min = 1, step = 1),
+                                                    numericInput('expScreenDimY', "Screen Dimension Y (px)", value = NA, min = 1, step = 1)
+                                                  ),
                                                   box(title = "Configure Data Fields", status = "primary", solidHeader = TRUE,
                                                       collapsible = T, collapsed = T, width = 12,
                                                       fluidPage(
@@ -100,14 +110,6 @@ tabItem(tabName = "rawDataImport",
                                                       textInput("keyString", "Specify Key String:", value = NULL),
                                                       actionButton("addKey", "Add Key"),
                                                       d3tfOutput('headerKeys', height = "auto")
-                                                  ),
-                                                  box(title = "Additional Settings", status = "primary", solidHeader = TRUE,
-                                                      collapsible = T, collapsed = T, width = 12,
-                                                      textInput("sampleKey", "Specify Correct Sample Flag:", value = "SMP"),
-                                                      selectInput("sepForParser", "Separator:",
-                                                                  c("Tab" = "\t",
-                                                                    "Comma" = ",",
-                                                                    "Semicolon" = ";"))
                                                   )
                                                 )),
                                conditionalPanel(condition = "input.useExtParser",
@@ -139,17 +141,49 @@ tabItem(tabName = "rawDataImport",
                                    )
                                  )
                                )
-                             ),
+                             )
+                    ),
+                    tabPanel(id = "assosiateRecords", title = "Set Associations",
                              fluidRow(
                                box(title = "Parsed Data Records", status = "primary", solidHeader = TRUE,
                                    collapsible = T, width = 12,
                                    DT::dataTableOutput('tempDataRecordsList'),
-                                   style = "overflow-x: scroll;"
+                                   style = "overflow-x: scroll;",
+                                   fluidRow(
+                                     column(2,
+                                            actionButton("acceptAllAssociations", label = "Accept All", class = "btn btn-large btn-block")
+                                            ),
+                                     column(5,
+                                            fluidRow(
+                                              column(6,
+                                                     textInput("selectedCode", label = "Subject Code"),
+                                                     checkboxInput('affectAllRecordsCode', label = "Affect all records with this subject code", value = T),
+                                                     actionButton("addSelectedSubject", label = "Add Selected", class = "btn btn-large btn-block")
+                                                     ),
+                                              column(6,
+                                                     textInput("selectedTrial", label = "Trial Name"),
+                                                     checkboxInput('affectAllRecordsTrial', label = "Affect all records with this trial name", value = T),
+                                                     actionButton("addSelectedTrial", label = "Add Selected", class = "btn btn-large btn-block")
+                                              )
+                                            )
+                                     ),
+                                     column(5,
+                                            fluidRow(
+                                              column(6,
+                                                     selectizeInput("availableSubjects", label = "Choose Subject", multiple = F, choices = NULL, width = '100%'),
+                                                     checkboxInput('affectAllRecordsCode2', label = "Affect all records with this subject code", value = T),
+                                                     actionButton("changeSelectedSubject", label = "Change Code", class = "btn btn-large btn-block")
+                                                     ),
+                                              column(6,
+                                                     selectizeInput("availableTrials", label = "Choose Trial", multiple = F, choices = NULL, width = '100%'),
+                                                     checkboxInput('affectAllRecordsTrial2', label = "Affect all records with this trial name", value = T),
+                                                     actionButton("changeSelectedTrial", label = "Change Name", class = "btn btn-large btn-block")
+                                                     )
+                                            )
+                                     )
+                                   )
                                )
                              )
-                    ),
-                    tabPanel(id = "assosiateRecords", title = "Set Associations",
-                             h2("Yo")
                     )
         )
 )

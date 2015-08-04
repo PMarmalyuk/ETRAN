@@ -6,7 +6,7 @@ fluidPage(
         conditionalPanel(condition = "input.filterForDetector == 'Core Filter'",
                          numericInput('filterScrDimX', label = "Max X Coordinate", value = 1280, min = 0),
                          numericInput('filterScrDimY', label = "Max Y Coordinate", value = 1024, min = 0),
-                         actionButton('useExpConditions1', "Use Values Specified in Experiment Conditions"),
+                         actionButton('useExpConditions1', "Use Values Specified in Record's Conditions"),
                          checkboxInput('interpolate', label = "Interolate Gaps?")
         ),
         conditionalPanel(condition = "input.filterForDetector == 'External Filter'",
@@ -40,7 +40,7 @@ fluidPage(
         conditionalPanel(condition = "!input.useExtDetector",
                          selectInput('detector', label = "Choose Detection Algorithm:", choices = c("IVT", "IDT", "Adaptive IDT")),
                          conditionalPanel(condition = "input.detector == 'IVT'",
-                                          numericInput('vt', label = "Velocity Threshold (px/angles per second)", value = 30, min = 0, step = 1)
+                                          numericInput('vt', label = "Velocity Threshold (px/angles per second)", value = NA, min = 0, step = 1)
                          ),
                          conditionalPanel(condition = "input.detector == 'IDT'",
                                           numericInput('dt', label = "Dispersion Threshold (px/angles)", value = 12345, min = 0, step = 1)
@@ -48,13 +48,13 @@ fluidPage(
                          conditionalPanel(condition = "input.detector == 'Adaptive IDT'",
                                           numericInput('adadt', label = "Dispersion Threshold (px/angles)", value = 12345, min = 0, step = 1)
                          ),
-                         checkboxInput('angular', label = "Use Angular Velocities?"),
+                         checkboxInput('angular', label = "Angular"),
                          conditionalPanel(condition = "input.angular",
                                           fluidRow(
                                             column(12,
-                                                   box(title = "Settings For Angular Velocity Estimation", status = "primary", solidHeader = TRUE,
+                                                   box(title = "Additional Settings", status = "primary", solidHeader = TRUE,
                                                        collapsible = T, width = 12,
-                                                       actionButton('useExpConditions2', "Use Values Specified in Experiment Conditions"),
+                                                       actionButton('useExpConditions2', "Use Values Specified in Record's Conditions"),
                                                        numericInput('detectorScreenDist', "Screen Distance (cm)", value = 70, min = 1, step = 1),
                                                        numericInput('detectorScreenSizeX', "Screen Size X (cm)", value = 33.7, min = 1, step = 1),
                                                        numericInput('detectorScreenSizeY', "Screen Size Y (cm)", value = 27, min = 1, step = 1),

@@ -24,13 +24,14 @@ getOnOffSetDuration <- function(data, settings)
 getStartEndPositionsXY <- function(data, settings)
 {
   angular <- settings$angular
+  
   if (angular) 
   {
     position <- calcAngPos(data$porx, data$pory, 
-                           screenDist = settings$screenDist, 
-                           screenDim = settings$screenDim, 
-                           screenSize = settings$screenSize, 
-                           refPoint = c(settings$screenDim[1]/2, settings$screenDim[2]/2))
+                           screenDist = settings$conditions$screenDistance, 
+                           screenDim = settings$conditions$screenDim, 
+                           screenSize = settings$conditions$screenSize, 
+                           refPoint = c(settings$conditions$screenDim[1]/2, settings$conditions$screenDim[2]/2))
     startPositionX <- position$xAng[1]
     endPositionX <- position$xAng[length(position$xAng)]
     startPositionY <- position$yAng[1]
@@ -53,10 +54,10 @@ getCenterOfMassXY <- function(data, settings)
   if (angular) 
   {
     position <- calcAngPos(data$porx, data$pory, 
-                           screenDist = settings$screenDist, 
-                           screenDim = settings$screenDim, 
-                           screenSize = settings$screenSize, 
-                           refPoint = c(settings$screenDim[1]/2, settings$screenDim[2]/2))
+                           screenDist = settings$conditions$screenDistance, 
+                           screenDim = settings$conditions$screenDim, 
+                           screenSize = settings$conditions$screenSize, 
+                           refPoint = c(settings$conditions$screenDim[1]/2, settings$conditions$screenDim[2]/2))
     positionX <- mean(position$xAng)
     positionY <- mean(position$yAng)
   }
@@ -74,10 +75,10 @@ getDispersionXYAndRadius <- function(data, settings)
   if (angular) 
   {
     position <- calcAngPos(data$porx, data$pory, 
-                           screenDist = settings$screenDist, 
-                           screenDim = settings$screenDim, 
-                           screenSize = settings$screenSize, 
-                           refPoint = c(settings$screenDim[1]/2, settings$screenDim[2]/2))
+                           screenDist = settings$conditions$screenDistance, 
+                           screenDim = settings$conditions$screenDim, 
+                           screenSize = settings$conditions$screenSize, 
+                           refPoint = c(settings$conditions$screenDim[1]/2, settings$conditions$screenDim[2]/2))
     positionX <- mean(position$xAng)
     positionY <- mean(position$yAng)
     dispersionX <- sd(position$xAng)
@@ -176,7 +177,7 @@ analyzeSaccade <- function(group, data, settings)
 }
 
 
-standardAnalyzer <- function(data, eventMarkerNames, settings)
+standardAnalyzer <- function(data, eventMarkerNames, settings, conditions)
 {
   data <- data[-which(data$eventGroups == 0),]
   sampleGroups <- split(data, data$eventGroups)
@@ -199,7 +200,7 @@ standardAnalyzer <- function(data, eventMarkerNames, settings)
     res <- lapply(subFunctions, FUN = function(x) 
     {
       fun <- x@fun
-      settings <- x@settings
+      settings <- append(x@settings, conditions)
       event <- x@event
       if (! (ev %in% event)) {return(list(par = NULL))}
       else {return(fun(data = sampleGroups[[gr]], settings = settings))}
@@ -248,26 +249,27 @@ standardAnalyzer <- function(data, eventMarkerNames, settings)
 ## CORE ANALYZER ##
 coreAnalyzer <- function(DataRecord, settings)
 {
-  if (DataRecord@eyesDataObject@conditions@conditions$eye == "left")
+  conditions <- DataRecord@eyesDataObject@conditions@conditions
+  if (conditions$eye == "left")
   {
     data <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
     eventMarkerNames <- DataRecord@eyesDataObject@leftEventMarkers@markerNames
-    DataRecord@analysisResults$leftEventData <- standardAnalyzer(data, eventMarkerNames, settings)
+    DataRecord@analysisResults$leftEventData <- standardAnalyzer(data, eventMarkerNames, settings, conditions)
   }
-  if (DataRecord@eyesDataObject@conditions@conditions$eye == "right")
+  if (conditions$eye == "right")
   {
     data <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
     eventMarkerNames <- DataRecord@eyesDataObject@rightEventMarkers@markerNames
-    DataRecord@analysisResults$rightEventData <- standardAnalyzer(data, eventMarkerNames, settings)
+    DataRecord@analysisResults$rightEventData <- standardAnalyzer(data, eventMarkerNames, settings, conditions)
   }
-  if (DataRecord@eyesDataObject@conditions@conditions$eye == "both")
+  if (conditions$eye == "both")
   {
     dataLeft <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
     dataRight <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
     leftEventMarkerNames <- DataRecord@eyesDataObject@leftEventMarkers@markerNames
     rightEventMarkerNames <- DataRecord@eyesDataObject@rightEventMarkers@markerNames
-    DataRecord@analysisResults$leftEventData <- analyzer(dataLeft, leftEventMarkerNames, settings)
-    DataRecord@analysisResults$rightEventData <- analyzer(dataRight, rightEventMarkerNames, settings)
+    DataRecord@analysisResults$leftEventData <- standardAnalyzer(dataLeft, leftEventMarkerNames, settings, conditions)
+    DataRecord@analysisResults$rightEventData <- standardAnalyzer(dataRight, rightEventMarkerNames, settings, conditions)
   }
   return(DataRecord)
 }

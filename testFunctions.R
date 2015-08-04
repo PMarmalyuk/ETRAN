@@ -83,7 +83,6 @@ plot(fix$positionX[10:20], fix$positionY[10:20], cex = fix$duration[10:20]/(max(
 
 
 # Event analyzers test
-
 f1 <- new(Class = "SubFunction", fun = getValCode, name = "Validity Code", description = "Get validity code of event",
     applyTo = "EventData", event = list("Fixation", "Saccade"), settings = list())
 f2 <- new(Class = "SubFunction", fun = getOnOffSetDuration, name = "Onset, offset and duration", description = "Get onset, offset and duration of event",
@@ -193,4 +192,5 @@ for (i in 1:obsCnt)
 nrow(factorsData@stimuliFactors)
 
 df2 <- asDataFrame(factorsData, owner = "Stimulus", availFactors)
+
 

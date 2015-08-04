@@ -72,14 +72,16 @@ setClass("RawDataRecords",
 )
 
 setClass("DataSample",
-         representation(keys = "data.frame", # df with expID, subjectID, trialID fields
+         representation(keys = "data.frame", # df with expID, subjectID, trialID
+                        ids = "numeric", 
                         DataRecordsList = "list"
          ),
          prototype()
          )
 
+
 setClass("SubFunctions",
-         representation(SubFunctionsList = "list"),
+         representation(subFunctionsList = "list"),
          prototype()
 )
 

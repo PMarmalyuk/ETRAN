@@ -2,19 +2,16 @@ setClass("Experiment",
          representation(name = "character",
                         expDate = "character",
                         description = "character",
-                        experimenters = "character",
-                        conditions = "Conditions"
+                        experimenters = "character"
          ),
          prototype(
          )
 )
 
 setClass("Trial",
-         representation(id = "numeric", 
-                        expID = "numeric",
+         representation(expID = "numeric",
                         name = "character",
-                        description = "character",
-                        conditions = "Conditions"
+                        description = "character"
          ),
          prototype(
          )
@@ -22,10 +19,9 @@ setClass("Trial",
 
 
 setClass("Subject",
-         representation(id = "numeric",
-                        code = "character",
+         representation(code = "character",
                         fullname = "character",
-                        birthdate = "Date"
+                        birthdate = "character"
          ),
          prototype(
          )
@@ -69,6 +65,7 @@ setClass("AOI",
 
 setClass("RawDataRecord",
          representation(filePath = "character",
+                        sep = "character",
                         headerLines = "character",
                         data = "data.frame"
          ),
@@ -130,8 +127,9 @@ setClass("SubFunction",
                         name = "character",
                         description = "character",
                         applyTo = "character",
-                        event = "list",
-                        settings = "list")
+                        event = "character",
+                        settings = "list"
+                        )
 )
 
 setClass("ParamEstimator",

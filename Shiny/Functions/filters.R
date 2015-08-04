@@ -1,7 +1,7 @@
 noFilter <- function(t,x,y, settings)
 {
   markers <- new(Class = "FilterMarkers")
-  markers@filterMarkers <- rep(markers@markerNames$ok, nrow(t))
+  markers@filterMarkers <- rep(markers@markerNames$ok, length(t))
   res <- list(t = t, x = x, y = y, filterMarkers = markers)
   return(res)
 }
