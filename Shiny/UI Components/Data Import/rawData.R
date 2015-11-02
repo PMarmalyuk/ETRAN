@@ -2,48 +2,19 @@ tabItem(tabName = "rawDataImport",
         tabsetPanel(selected = 1, id = "importTabSetPanel", type = "tabs", position = "left",
                     tabPanel(id = "rawRecords", title = "Load Datafiles",
                              fluidRow(
-                               box(title = "Data Files", status = "primary", solidHeader = TRUE,
+                               box(title = "Files Selection", status = "primary", solidHeader = TRUE,
                                    collapsible = F, width = 12,
-                                   checkboxInput('useExtLoader', "Use External Loader"),
-                                   conditionalPanel(condition = "!input.useExtLoader",
-                                                    fluidPage(
-                                                      fluidRow(
-                                                               selectInput("sep", "Separator:",
-                                                                           c("Tab" = "\t",
-                                                                             "Comma" = ",",
-                                                                             "Semicolon" = ";")),
-                                                               selectInput("dec", "Decimal point:",
-                                                                           c("Point" = ".",
-                                                                             "Comma" = ",")),
-                                                               selectInput("encoding", "Encoding:",
-                                                                           c("UTF-8" = "utf8",
-                                                                             "CP1251" = "cp1251",
-                                                                             "ASCII" = "ascii")),
-                                                               checkboxInput('header', "Header", value = T),
-                                                               numericInput('skip', "Lines to skip", value = 20, min = 0, step = 1),
-                                                               textInput('commchar', "Comment Char", value = "#")
-                                                      )
-                                                    )),
-                                   conditionalPanel(
-                                     condition = "input.useExtLoader",
-                                     selectizeInput(
-                                       'extLoader', label = NULL, choices = NULL,
-                                       options = list(
-                                         placeholder = 'Please choose external loader',
-                                         onInitialize = I('function() { this.setValue(""); }')
-                                       )
-                                     )
-                                   ),
                                    fluidRow(
                                      column(6, actionButton("loadFilesFromDir", "Directory...", class = "btn btn-large btn-block")),
-                                     column(6, actionButton("deleteSelectedRawRec", "Delete Selected", class = "btn btn-large btn-block"))
+                                     column(6, actionButton("deleteSelectedFiles", "Delete Selected", class = "btn btn-large btn-block"))
                                    ),
                                    fluidRow(
                                      column(6, actionButton("loadSeparateFilesFromDir", "Files...", class = "btn btn-large btn-block")),
-                                     column(6, actionButton("clearRawRecList", "Clear List", class = "btn btn-large btn-block"))
+                                     column(6, actionButton("clearFilesList", "Clear Table", class = "btn btn-large btn-block"))
                                    ),
                                    br(),
-                                   DT::dataTableOutput('rawDataRecordsList'),
+                                   # DT::dataTableOutput('rawDataRecordsList'),
+                                   DT::dataTableOutput('filesList'),
                                    style = "overflow-x: scroll;"
                                    
                                )
@@ -51,28 +22,45 @@ tabItem(tabName = "rawDataImport",
                     ),
                     tabPanel(id = "parseFiles", title = "Parse files",
                              fluidRow(
-                               fluidPage(checkboxInput('useExtParser', "Use External Parser")),
-                               conditionalPanel(condition = "!input.useExtParser",
+                               checkboxInput('useExtLoader', "Use External Data Loader"),
+                               conditionalPanel(condition = "!input.useExtLoader",
                                                 box(
-                                                  title = "Core Parser Settings", status = "primary", solidHeader = TRUE,
+                                                  title = "Data Loader Settings", status = "primary", solidHeader = TRUE,
                                                   collapsible = T, width = 12,
-                                                  box(title = "Configure Conditions", status = "primary", solidHeader = TRUE,
-                                                    collapsible = T, collapsed = T, width = 12,
-                                                    selectInput(inputId = 'expEye', label = "Recording Mode", choices = c("Left Eye", "Right Eye", "Binocular"), multiple = F, selected = 1),
-                                                    numericInput(inputId = 'expSampleRate', label = "Sample Rate (Hz)", value = NA, min = 0, step = 1),
-                                                    selectInput(inputId = 'expTimeUnits', label = "Time Unit", choices = c("microseconds", "milliseconds", "seconds"), multiple = F, selected = 1),
-                                                    checkboxInput('pupilDataExist', label = "Pupil Data Exist?"),
-                                                    conditionalPanel(condition = "input.pupilDataExist",
-                                                                     selectInput(inputId = 'expPupSizeUnits', label = "Pupil Size Unit", choices = c("px", "mm", "cm"), multiple = F, selected = 1),
-                                                                     selectInput(inputId = 'expPupShape', label = "Pupil Shape", choices = c("circle", "ellipse"), multiple = F, selected = 1)
-                                                    ),
-                                                    numericInput('expScreenDist', "Screen Distance (cm)", value = NA, min = 1, step = 1),
-                                                    numericInput('expScreenSizeX', "Screen Size X (cm)", value = NA, min = 1, step = 1),
-                                                    numericInput('expScreenSizeY', "Screen Size Y (cm)", value = NA, min = 1, step = 1),
-                                                    numericInput('expScreenDimX', "Screen Dimension X (px)", value = NA, min = 1, step = 1),
-                                                    numericInput('expScreenDimY', "Screen Dimension Y (px)", value = NA, min = 1, step = 1)
+                                                  box(title = "File Reading Settings", status = "primary", solidHeader = TRUE,
+                                                      collapsible = T, collapsed = T, width = 12,
+                                                      selectInput("sep", "Separator:",
+                                                                  c("Tab" = "\t",
+                                                                    "Comma" = ",",
+                                                                    "Semicolon" = ";")),
+                                                      selectInput("dec", "Decimal point:",
+                                                                  c("Point" = ".",
+                                                                    "Comma" = ",")),
+                                                      selectInput("encoding", "Encoding:",
+                                                                  c("UTF-8" = "utf8",
+                                                                    "CP1251" = "cp1251",
+                                                                    "ASCII" = "ascii")),
+                                                      checkboxInput('header', "Header", value = T),
+                                                      numericInput('skip', "Lines to skip", value = 20, min = 0, step = 1),
+                                                      textInput('commchar', "Comment Char", value = "#")
                                                   ),
-                                                  box(title = "Configure Data Fields", status = "primary", solidHeader = TRUE,
+                                                  box(title = "Experimental Conditions", status = "primary", solidHeader = TRUE,
+                                                      collapsible = T, collapsed = T, width = 12,
+                                                      selectInput(inputId = 'expEye', label = "Recording Mode", choices = c("Left Eye", "Right Eye", "Binocular"), multiple = F, selected = 1),
+                                                      numericInput(inputId = 'expSampleRate', label = "Sample Rate (Hz)", value = 500, min = 0, step = 1),
+                                                      selectInput(inputId = 'expTimeUnits', label = "Time Unit", choices = c("microseconds", "milliseconds", "seconds"), multiple = F, selected = 1),
+                                                      checkboxInput('pupilDataExist', label = "Pupil Data Exist?"),
+                                                      conditionalPanel(condition = "input.pupilDataExist",
+                                                                       selectInput(inputId = 'expPupSizeUnits', label = "Pupil Size Unit", choices = c("px", "mm", "cm"), multiple = F, selected = 1),
+                                                                       selectInput(inputId = 'expPupShape', label = "Pupil Shape", choices = c("circle", "ellipse"), multiple = F, selected = 1)
+                                                      ),
+                                                      numericInput('expScreenDist', "Screen Distance (cm)", value = 50, min = 1, step = 1),
+                                                      numericInput('expScreenSizeX', "Screen Size X (cm)", value = 30, min = 1, step = 1),
+                                                      numericInput('expScreenSizeY', "Screen Size Y (cm)", value = 20, min = 1, step = 1),
+                                                      numericInput('expScreenResX', "Screen Resolution X (px)", value = 1280, min = 1, step = 1),
+                                                      numericInput('expScreenResY', "Screen Resolution Y (px)", value = 1024, min = 1, step = 1)
+                                                  ),
+                                                  box(title = "Data Fields Positions", status = "primary", solidHeader = TRUE,
                                                       collapsible = T, collapsed = T, width = 12,
                                                       fluidPage(
                                                         actionButton("saveAvDataFields", "Save Data Fields", class = "btn btn-large btn-block"),
@@ -104,7 +92,7 @@ tabItem(tabName = "rawDataImport",
                                                         )
                                                       )
                                                   ),
-                                                  box(title = "Configure Header Keys", status = "primary", solidHeader = TRUE,
+                                                  box(title = "Header Keys", status = "primary", solidHeader = TRUE,
                                                       collapsible = T, collapsed = T, width = 12,
                                                       textInput("keyName", "Specify Key Name:", value = NULL),
                                                       textInput("keyString", "Specify Key String:", value = NULL),
@@ -112,17 +100,18 @@ tabItem(tabName = "rawDataImport",
                                                       d3tfOutput('headerKeys', height = "auto")
                                                   )
                                                 )),
-                               conditionalPanel(condition = "input.useExtParser",
-                                                box(title = "External Parser", status = "primary", solidHeader = TRUE,
-                                                    collapsible = T, width = 12,
-                                                    selectInput('extParser', "Choose External Parser:",
-                                                                choices = NULL)
+                               conditionalPanel(condition = "input.useExtLoader",
+                                                selectizeInput('extLoader', label = NULL, choices = NULL,
+                                                               options = list(
+                                                                 placeholder = 'Please choose external loader',
+                                                                 onInitialize = I('function() { this.setValue(""); }')
+                                                                 )
+                                                               )
                                                 )
-                               )
                              ),
                              fluidRow(
                                box(
-                                 title = "Parse Raw Data Records", status = "primary", solidHeader = TRUE,
+                                 title = "Load Data", status = "primary", solidHeader = TRUE,
                                  collapsible = T, width = 12,
                                  fluidRow(
                                    column(6,
@@ -136,8 +125,9 @@ tabItem(tabName = "rawDataImport",
                                    ),
                                    column(6,
                                           conditionalPanel(condition = "input.expNameForParser != ''",
-                                                           actionButton("parseFiles", "Parse Raw Data Records..."))
-                                          
+                                                           actionButton("parseFiles", "Load Data")),
+                                          conditionalPanel(condition = "input.expNameForParser == ''",
+                                                           h2("You must select an experiment to load data in!"))
                                    )
                                  )
                                )

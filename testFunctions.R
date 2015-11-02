@@ -1,12 +1,29 @@
+setwd("F:/Институт/Проекты/EyeTrackingPackage/Git/EyeTrackingProject/Shiny")
+source("Functions\\miscFunctions.R", local = T)
+source("Functions\\dataLoaders.R", local = T)
+source("Classes\\optionsAndSettingsClasses.R", local = T)
+source("Classes\\baseEyeDataClasses.R", local = T)
+source("Classes\\baseClasses.R", local = T)
+source("Classes\\listsAndTablesClasses.R", local = T)
+source("Functions\\dataParsers.R", local = T)
+source("Functions\\filters.R", local = T)
+source("Functions\\smoothers.R", local = T)
+source("Functions\\detectors.R", local = T)
+source("Functions\\eventAnalyzersNew.R", local = T)
+source("Functions\\estimatorsNew.R", local = T)
+source("Methods\\Methods_v_1_7.R", local = T)
+
+source('Functions\\DataRecordSubFunctions.R', local = T)
+source('Functions\\EventGroupSubFunctions.R', local = T)
+source('CoreSubFunctionsInit.R', local = T)
+library(data.table)
 rawSett <- new(Class = "ReadSettings")
-folder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\TestData"
+folder <- "F:/Институт/Проекты/EyeTrackingPackage/Data/TestData"
 records <- new(Class = "RawDataRecords")
-
-
 loader <- createLoader(name = "Standard Loader", fun = createRawDataRec, 
                        settings = list(rawSettings = rawSett))
-records <- addRawDataRecords(self = records, 
-                            filesFolder = folder,
+rawRecords <- addRawDataRecords(self = records, 
+                            filesList = dir(path = folder, all.files = F, full.names = T, recursive = F),
                             loader = loader)
 dataF <- new(Class = "AvailableDataFields")
 dataF@availableFields <- list(time = 1, trial = 3, frame = NA, stimname = NA, smptype = 2, 
@@ -16,7 +33,7 @@ dataF@availableFields <- list(time = 1, trial = 3, frame = NA, stimname = NA, sm
 hKeys <- new(Class = "HeaderKeys")
 conditions <- new(Class = "Conditions")
 conditions@conditions$screenDistance <- 80
-conditions@conditions$screenDim <- c(1280, 1024)
+conditions@conditions$screenResolution <- c(1280, 1024)
 conditions@conditions$screenSize <- c(33.7, 27)
 conditions@conditions$timeUnits <- 1E-6
 parser <- createParser(name = "Core Parser", fun = coreParser, 
@@ -25,24 +42,23 @@ parser <- createParser(name = "Core Parser", fun = coreParser,
                                        sampleKey = "SMP", 
                                        sep = "\t",
                                        conditions = conditions))
-rec <- parseDataRecord(self = records@rawDataRecordsList$rawDataRecords[[1]], parser = parser)
+rec <- parseDataRecord(self = rawRecords@rawDataRecordsList$rawDataRecords[[1]], parser = parser)
 dataRec <- new(Class = "DataRecord", expID = 1, subjectID = 1, trialID = 1, eyesDataObject = rec$eyesDataObjects[[1]])
 
-smoother <- createSmoother(name = "Standard", fun = coreSmoother, settings = list(subfun = medianFilt, fl = 3))
-rec2 <- dataSmoother(dataRec, smoother)
-t <- rec2@eyesDataObject@time@time
-x <- rec2@eyesDataObject@leftEyeSamples@eyeData$porx
-plot(x~t, type = "l", col = 2)
-
-dataRec <- new(Class = "DataRecord", expID = 1, subjectID = 1, trialID = 1, eyesDataObject = rec$eyesDataObjects[[1]])
-smoother <- createSmoother(name = "Standard", fun = coreSmoother, settings = list(subfun = medianFilt, fl = 15))
-filter <- createFilter(name = "Standard", fun = coreFilter, settings = list(interpolate = T))
+# Event Detection test
+smoother <- createSmoother("Standard", fun = coreSmoother, settings = list(subfun = medianFilt, fl = 33))
+filter <- createFilter(name = "Standard", fun = coreFilter, settings = list(subfun = standardFilter, 
+                                                                            screenResolution = conditions@conditions$screenResolution, 
+                                                                            interpolate = F))
 detector <- createDetector("Standard", fun = coreDetector, settings = list(subfun = IVT,
                                                                            postProcess = F,
                                                                            VT = 15,
+                                                                           velType = "finDiff",
+                                                                           sampleRate = 500,
+                                                                           fl = 33,
                                                                            angular = T,
-                                                                           screenDist = 100,
-                                                                           screenDim = c(1280, 1024),
+                                                                           screenDistance = 100,
+                                                                           screenResolution = c(1280, 1024),
                                                                            screenSize = c(33.7, 27),
                                                                            MaxTBetFix = 0.075,
                                                                            MaxDistBetFix = 0.5,
@@ -52,24 +68,33 @@ detector <- createDetector("Standard", fun = coreDetector, settings = list(subfu
                                                                            maxAccel = 1000000,
                                                                            classifyGaps = F))
 res <- detectEvents(dataRec, filter, smoother, detector)
-
 dataRec@eyesDataObject@leftFilterMarkers <- res@eyesDataObject@leftFilterMarkers
 dataRec@eyesDataObject@rightFilterMarkers <- res@eyesDataObject@rightFilterMarkers
 dataRec@eyesDataObject@leftEventMarkers <- res@eyesDataObject@leftEventMarkers
 dataRec@eyesDataObject@rightEventMarkers <- res@eyesDataObject@rightEventMarkers
-par(mfrow = c(1,1))
-period <- 1:10000
-lev <- c(res@eyesDataObject@leftEventMarkers@markerNames$fixation, 
-         res@eyesDataObject@leftEventMarkers@markerNames$saccade, 
-         res@eyesDataObject@leftEventMarkers@markerNames$gap, 
-         res@eyesDataObject@leftEventMarkers@markerNames$artifact)
-t <- (res@eyesDataObject@time@time-res@eyesDataObject@time@time[1])[period]
-x2 <- res@eyesDataObject@leftEyeSamples@eyeData$porx[period]
-y2 <- res@eyesDataObject@leftEyeSamples@eyeData$pory[period]
-ev <- factor(res@eyesDataObject@leftEventMarkers@eventMarkers, levels = lev)[period]
-plot(x2, y2, col = ev)
-plot(x2~t, col = ev, type = "l")
 
+# Event Analysis test
+subFuns <- getSubfunctions(self = subFunctions, operation = "Event Analysis")
+sfToApply <- subFuns@subFunctionsList$subFunctions
+analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer, 
+                           settings = list(subFunctions = sfToApply))
+source("Functions\\eventAnalyzersNew.R", local = T)
+Rprof("test.out")
+dataRec <- eventAnalyzer(dataRec, analyzer)
+Rprof(NULL)
+summaryRprof("test.out")
+
+str(asDataFrame(dataRec@analysisResults$leftEventData, owner = "Fixation"))
+
+# Estimators test
+dataRec@statistics$left <- list()
+dataRec@statistics$right <- list()
+source('Functions\\DataRecordSubFunctions.R', local = T)
+source('CoreSubFunctionsInit.R', local = T)
+source("Functions\\estimatorsNew.R", local = T)
+estimator <- createEstimator(name = "Standard", fun = coreEstimator,
+                             settings = list(subFunctions = subFunctions@subFunctionsList$subFunctions))
+dataRec <- estimateParams(self = dataRec, estimator = estimator)
 
 # Scanpath try
 fix <- res@analysisResults$leftEventData@fixations@fixations
@@ -78,52 +103,7 @@ df <- getDataFrame(resEvents@eyesDataObject, eye = "left")
 sac$length[which(is.nan(sac$asymmetry))]
 sac$peakAcceleration[which(is.nan(sac$asymmetry))]
 df[df$eventGroup == sac$eventGroup[which(is.nan(sac$asymmetry))][15],]
-
 plot(fix$positionX[10:20], fix$positionY[10:20], cex = fix$duration[10:20]/(max(fix$duration[10:20])), pch = 16, type = "b")
-
-
-# Event analyzers test
-f1 <- new(Class = "SubFunction", fun = getValCode, name = "Validity Code", description = "Get validity code of event",
-    applyTo = "EventData", event = list("Fixation", "Saccade"), settings = list())
-f2 <- new(Class = "SubFunction", fun = getOnOffSetDuration, name = "Onset, offset and duration", description = "Get onset, offset and duration of event",
-          applyTo = "EventData", event = list("Fixation", "Saccade"), settings = list())
-f3 <- new(Class = "SubFunction", fun = getStartEndPositionsXY, name = "Start and End PositionsXY", description = "Get start, end positions of event",
-          applyTo = "EventData", event = list("Fixation", "Saccade"), settings = list(angular = F))
-f4 <- new(Class = "SubFunction", fun = getCenterOfMassXY, name = "Center of Mass of Fixation", description = "Get start, end positions of event",
-          applyTo = "EventData", event = list("Fixation"), settings = list(angular = F))
-f5 <- new(Class = "SubFunction", fun = getDispersionXYAndRadius, name = "DispersionXY and radius", description = "Get dispersion(X), dispersion(Y) and radius of fixation",
-          applyTo = "EventData", event = list("Fixation"), settings = list(angular = T, screenDist = 100,
-                                                                     screenDim = c(1280, 1024),
-                                                                     screenSize = c(33.7, 27)))
-f6 <- new(Class = "SubFunction", fun = getPupilMeanAndSD, name = "Pupil mean and sd", description = "Get position(X) and position(Y) of fixation",
-          applyTo = "EventData", event = list("Fixation", "Saccade"), settings = list())
-          
-          
-analyzer <- createAnalyzer(name = "Standard", fun = coreAnalyzer, 
-                           settings = list(subFunctions = list(f1, f2, f3, f4, f5, f6)))
-dataRec <- eventAnalyzer(self = dataRec, analyzer = analyzer)
-
-dataRec@analysisResults$leftEventData@saccades@saccades
-
-
-
-
-# Estimators test
-f7 <- new(Class = "SubFunction", fun = trajDurationEstimator, name = "Duration of a record", description = "Get duration of a record",
-          applyTo = "EyesData", event = list("-"), settings = list())
-f8 <- new(Class = "SubFunction", fun = trajLengthEstimator, name = "Length of a record", description = "Get length of a record",
-          applyTo = "EyesData", event = list("-"), settings = list(angular = T, screenDist = 100,
-                                                                   screenDim = c(1280, 1024),
-                                                                   screenSize = c(33.7, 27)))
-dataRec@statistics$left <- list()
-dataRec@statistics$right <- list()
-estimator <- createEstimator(name = "Standard Estimator", fun = coreEstimator,
-                             settings = list(subFunctions = list(f7, f8)))
-res <- estimateParams(self = dataRec, estimator = estimator)
-res@statistics$left
-dataRec@statistics$left <- res@statistics$left
-dataRec@statistics$right <- res@statistics$right
-
 
 ## FACTORS LOADING TESTS ##
 availFactors <- new(Class = "AvailableFactors")

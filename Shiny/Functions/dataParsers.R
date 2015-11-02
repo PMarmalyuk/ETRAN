@@ -176,7 +176,7 @@ coreParser <- function(RawDataRecord, settings)
   sampleKey <- settings$sampleKey
   headerKeys <- settings$headerKeys
   sep <- settings$sep
-
+  
   ## Deleting all samples with sample type other than sampleKey
   if (!is.na(dataFields@availableFields$smptype))
   {
@@ -243,29 +243,29 @@ coreParser <- function(RawDataRecord, settings)
     if (!eyeLeft & eyeRight) {eye = "right"}
     conditions@conditions$eye <- eye
   }
-
+  
   ## Determining pupil shape
   if (is.na(conditions@conditions$pupilShape))
   {
-  if (is.na(dataFields@availableFields$lpupxsize) & is.na(dataFields@availableFields$lpupysize) |
-      is.na(dataFields@availableFields$rpupxsize) & is.na(dataFields@availableFields$rpupysize)
-  )
-  {
-    pupilShape <- NA
-  }
-  if (!is.na(dataFields@availableFields$lpupxsize) & is.na(dataFields@availableFields$lpupysize) |
-      !is.na(dataFields@availableFields$rpupxsize) & is.na(dataFields@availableFields$rpupysize)
-  )
-  {
-    pupilShape <- "circle"
-  }            
-  if (!is.na(dataFields@availableFields$lpupxsize) & !is.na(dataFields@availableFields$lpupysize) |
-      !is.na(dataFields@availableFields$rpupxsize) & !is.na(dataFields@availableFields$rpupysize)
-  )
-  {
-    pupilShape <- "ellipse"
-  }
-  conditions@conditions$pupilShape <- pupilShape
+    if (is.na(dataFields@availableFields$lpupxsize) & is.na(dataFields@availableFields$lpupysize) |
+        is.na(dataFields@availableFields$rpupxsize) & is.na(dataFields@availableFields$rpupysize)
+    )
+    {
+      pupilShape <- NA
+    }
+    if (!is.na(dataFields@availableFields$lpupxsize) & is.na(dataFields@availableFields$lpupysize) |
+        !is.na(dataFields@availableFields$rpupxsize) & is.na(dataFields@availableFields$rpupysize)
+    )
+    {
+      pupilShape <- "circle"
+    }            
+    if (!is.na(dataFields@availableFields$lpupxsize) & !is.na(dataFields@availableFields$lpupysize) |
+        !is.na(dataFields@availableFields$rpupxsize) & !is.na(dataFields@availableFields$rpupysize)
+    )
+    {
+      pupilShape <- "ellipse"
+    }
+    conditions@conditions$pupilShape <- pupilShape
   }
   
   subjectCode <- NA  
@@ -274,20 +274,20 @@ coreParser <- function(RawDataRecord, settings)
   {
     keyValues <- lapply(headerKeys@keys, FUN = findKeyValue, headerLines = self@headerLines, sep = sep)
     subjectCode <- keyValues$subjectCode
-#     stimDim <- as.numeric(keyValues$stimDim)
-#     conditions@conditions$sampleRate <- as.numeric(keyValues$sampleRate)
-#     conditions@conditions$screenDistance <- as.numeric(keyValues$headDist)
+    #     stimDim <- as.numeric(keyValues$stimDim)
+    #     conditions@conditions$sampleRate <- as.numeric(keyValues$sampleRate)
+    #     conditions@conditions$screenDistance <- as.numeric(keyValues$headDist)
   }
-
+  
   ## Deterimining frames count
-#   framesCnt <- NA
-#   if (!is.na(dataFields@availableFields$frame))
-#   {
-#     frameColumn <- self@data[,dataFields@availableFields$frame]
-#     samplesNum <- length(frameColumn)
-#     framesCnt <- frameColumn[samplesNum] 
-#   }
-
+  #   framesCnt <- NA
+  #   if (!is.na(dataFields@availableFields$frame))
+  #   {
+  #     frameColumn <- self@data[,dataFields@availableFields$frame]
+  #     samplesNum <- length(frameColumn)
+  #     framesCnt <- frameColumn[samplesNum] 
+  #   }
+  
   ## Creating list of data to be disassembled in application layer
   eyesDataObjects <- lapply(trialsData, FUN = createEyesDataObject, dataFields = dataFields, fieldNames = fieldNames, conditions = conditions)
   filePath <- rep(filePath, length(trials))
@@ -295,3 +295,6 @@ coreParser <- function(RawDataRecord, settings)
   res <- list(filePath = filePath, subjectCode = subjectCode, trials = trials, eyesDataObjects = eyesDataObjects)
   return(res)
 }
+
+
+

@@ -8,13 +8,13 @@ noFilter <- function(t,x,y, settings)
 
 standardFilter <- function(t, x, y, settings)
 {
-  screenDim <- settings$screenDim
+  screenRes <- settings$screenResolution
   interpolate <- settings$interpolate
   markers <- new(Class = "FilterMarkers")
   markers1 <- ifelse(x == 0 & y == 0, markers@markerNames$zeroes, markers@markerNames$ok)
-  if (!is.na(screenDim)[1])
+  if (!is.na(screenRes)[1])
   {
-    markers2 <- ifelse(x > screenDim[1] | y > screenDim[2], markers@markerNames$outOfBounds, markers@markerNames$ok)
+    markers2 <- ifelse(x > screenRes[1] | y > screenRes[2], markers@markerNames$outOfBounds, markers@markerNames$ok)
     markers1[which(markers1 == markers@markerNames$ok)] <- markers2[which(markers1 == markers@markerNames$ok)]
   }
   markers@filterMarkers <- markers1

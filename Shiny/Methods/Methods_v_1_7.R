@@ -55,6 +55,7 @@ setGeneric("addAOISet", function(self, AOISetObject, orderIndex){standardGeneric
 setGeneric("addAOISets", function(self, AOISetsObject){standardGeneric("addAOISets")})
 
 setGeneric("addFactorDefinition", function(self, factor){standardGeneric("addFactorDefinition")})
+setGeneric("factorExists", function(self, factor){standardGeneric("factorExists")})
 setGeneric("deleteFactorDefinition", function(self, factorID){standardGeneric("deleteFactorDefinition")})
 setGeneric("updateFactorDefinition", function(self, factorID, factor, FactorsData){standardGeneric("updateFactorDefinition")})
 setGeneric("getFactorIDByName", function(self, factorName){standardGeneric("getFactorIDByName")})
@@ -62,8 +63,10 @@ setGeneric("getNameByFactorID", function(self, factorID){standardGeneric("getNam
 setGeneric("getTypeByFactorID", function(self, factorID){standardGeneric("getTypeByFactorID")})
 setGeneric("getLevelsByFactorID", function(self, factorID){standardGeneric("getLevelsByFactorID")})
 
+setGeneric("factorValueIsCorrect", function(self, factorID, value){standardGeneric("factorValueIsCorrect")})
+
 setGeneric("addFactorValue", function(self, availableFactors, owner, ownerID, factorID, value, replace){standardGeneric("addFactorValue")})
-setGeneric("asDataFrame", function(self, owner, availableFactors){standardGeneric("asDataFrame")})
+setGeneric("asDataFrame", function(self, owner){standardGeneric("asDataFrame")})
 
 
 
@@ -104,13 +107,14 @@ setGeneric("estimateParams", function(self, estimator){standardGeneric("estimate
 
 ## sub functions
 setGeneric("addSubFunction", function(self, subFunction){standardGeneric("addSubFunction")})
+setGeneric("getSubfunctions", function(self, operation = NA, applyTo = NA, event = NA){standardGeneric("getSubfunctions")})
 
 ## Cluster analysis of DataRecords
 setGeneric("findClusters", function(self, clusterAnalyzer){standardGeneric("findClusters")})
 
 ## visualisations
 setGeneric("plotXY", function(self, eye, filter, smoother, period, onStimulus){standardGeneric("plotXY")})
-setGeneric("plotXt", function(self, eye, type, filter, smoother, period, markerType, angular, pointsColor){standardGeneric("plotXt")})
+setGeneric("plotXt", function(self, settings){standardGeneric("plotXt")})
 
 ######################
 #methods_realizations#
@@ -516,28 +520,42 @@ setMethod("filterDataSample", "DataSample",
 
 # Method adds a factor definition (object of the class Factor) into the availableFactors data frame
 ## Method prevents adding factors with duplicate names
+setMethod("factorExists", "AvailableFactors",
+          function(self, factor)
+          {
+            varName <- factor@varName
+            owner <- factor@owner
+            varNames <- self@availableFactors$varName[self@availableFactors$owner == owner]
+            if (any(varNames == varName)) {return(TRUE)}
+            return(FALSE)
+          }
+)
+
 setMethod("addFactorDefinition",  "AvailableFactors",                                   
           function(self, factor)
           {             
-            varName <- factor@varName
-            description <- factor@description
-            type <- factor@type
-            owner <- factor@owner
-            if (length(factor@levels) == 0) {levels = NA} else {levels <- factor@levels}
-            facCnt <- nrow(self@availableFactors)
-            if (facCnt == 0)
+            if (factorExists(self, factor))
             {
-              self@availableFactors <- data.frame(id = 1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = owner, stringsAsFactors = F)
-              colnames(self@availableFactors) <- c("id", "varName", "description", "type", "levels", "owner")
+              warning(paste("A factor with name", factor@varName, "already exists for owner", factor@owner))
               return(self)
-            }
-            if (any(self@availableFactors$varName == varName) & any(self@availableFactors$owner == owner))
-            {
-              warning(paste("A factor with name", varName, "already exists for object class", owner))
             } else
             {
-              newFactorDef <- list(id = self@availableFactors[facCnt,1]+1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = owner)
-              self@availableFactors <- rbind(self@availableFactors, newFactorDef)
+              varName <- factor@varName
+              description <- factor@description
+              type <- factor@type
+              owner <- factor@owner
+              if (length(factor@levels) == 0) {levels = NA} else {levels <- factor@levels}
+              facCnt <- nrow(self@availableFactors)
+              if (facCnt == 0)
+              {
+                self@availableFactors <- data.frame(id = 1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = owner, stringsAsFactors = F)
+                # colnames(self@availableFactors) <- c("id", "varName", "description", "type", "levels", "owner")
+              }
+              else
+              {
+                newFactorDef <- list(id = self@availableFactors[facCnt,1]+1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = owner)
+                self@availableFactors <- rbind(self@availableFactors, newFactorDef)
+              }
             }
             return(self)
           }
@@ -604,164 +622,93 @@ setMethod("updateFactorDefinition",  "AvailableFactors",
 
 # Method adds the factor id and value into Factors list
 ## Method prevents adding values for factors which have already been set
-setMethod("addFactorValue",  "FactorsData",                                   
-          function(self, availableFactors, owner, ownerID, factorID, value, replace)
-          {                         
-            factorRecordNum <- which(availableFactors@availableFactors$id == factorID)
-            factorType <- availableFactors@availableFactors$type[factorRecordNum]
+
+setMethod("factorValueIsCorrect", "AvailableFactors",
+          function(self, factorID, value)
+          {
+            if (is.na(value) | is.null(value))
+            {
+              return(T)
+            }
+            factorDefNum <- which(self@availableFactors$id == factorID)
+            factorType <- self@availableFactors$type[factorDefNum]
             if (factorType %in% c("factor", "ordFactor"))
             {
-              if (!(value %in% availableFactors@availableFactors$levels[[factorRecordNum]]))
+              if (!(value %in% self@availableFactors$levels[[factorDefNum]]))
               {
                 warning("Cannot add a value because it is not a level of the selected factor!")
-                return(self)
+                return(F)
               }
             }
             if (factorType %in% c("integer", "numeric"))
             {
-              if (! (is.numeric(value) | is.integer(value)))
+              if (!(is.numeric(value) | is.integer(value)))
               {
                 warning("Cannot add a value because it is not a number!")
-                return(self)
-              } 
-              else
-              {
-                if (factorType == "integer") {value <- round(value)}
+                return(F)
               }
             }
-            factorRecord <- data.frame(ownerID = ownerID, factorID = factorID, value = as.character(value), stringsAsFactors = F)
-            if (owner == "Subject")
-            {
-              if (nrow(self@subjectsFactors) == 0)
-              {
-                self@subjectsFactors <- rbind(self@subjectsFactors, factorRecord)
-                return(self)
-              }
-              else
-              {
-                if (any(self@subjectsFactors$factorID == factorID & self@subjectsFactors$ownerID == ownerID))
-                {
-                  if (replace)
-                  {
-                    recNum <- which(self@subjectsFactors$factorID == factorID & self@subjectsFactors$ownerID == ownerID)
-                    self@subjectsFactors[recNum,] <- factorRecord[1,]
-                    return(self)
-                  }
-                  else
-                  {
-                    warning("The factor value has been specified already!")
-                    return(self)
-                  }
-                }
-                else
-                {
-                  self@subjectsFactors <- rbind(self@subjectsFactors, factorRecord)
-                  return(self)
-                }
-              }
-            }
-            
-            if (owner == "Stimulus")
-            {
-              if (nrow(self@stimuliFactors) == 0)
-              {
-                self@stimuliFactors <- rbind(self@stimuliFactors, factorRecord)
-                return(self)
-              }
-              else
-              {
-                if (any(self@stimuliFactors$factorID == factorID & self@stimuliFactors$ownerID == ownerID))
-                {
-                  if (replace)
-                  {
-                    recNum <- which(self@stimuliFactors$factorID == factorID & self@stimuliFactors$ownerID == ownerID)
-                    self@stimuliFactors[recNum,] <- factorRecord[1,]
-                    return(self)
-                  }
-                  else
-                  {
-                    warning("The factor value has been specified already!")
-                    return(self)
-                  }
-                }
-                else
-                {
-                  self@stimuliFactors <- rbind(self@stimuliFactors, factorRecord)
-                  return(self)
-                }
-              }
-            }
-            
-            if (owner == "Trial")
-            {
-              if (nrow(self@trialsFactors) == 0)
-              {
-                self@trialsFactors <- rbind(self@trialsFactors, factorRecord)
-                return(self)
-              }
-              else
-              {
-                if (any(self@trialsFactors$factorID == factorID & self@trialsFactors$ownerID == ownerID))
-                {
-                  if (replace)
-                  {
-                    recNum <- which(self@trialsFactors$factorID == factorID & self@trialsFactors$ownerID == ownerID)
-                    self@trialsFactors[recNum,] <- factorRecord[1,]
-                    return(self)
-                  }
-                  else
-                  {
-                    warning("The factor value has been specified already!")
-                    return(self)
-                  }
-                }
-                else
-                {
-                  self@trialsFactors <- rbind(self@trialsFactors, factorRecord)
-                  return(self)
-                }
-              }
-            }
+            return(T)
           }
 )
 
-setMethod("asDataFrame",  "FactorsData",                                   
-          function(self, owner, availableFactors)
-          {
-            factorsIDs <- unique(availFactors@availableFactors$id[availableFactors@availableFactors$owner == owner])
-            if (length(factorsIDs) == 0) {warning("Factors were not specified for this owner!"); return(NULL)}
-            
-            if (owner == "Subject") {ownersFactors <- factorsData@subjectsFactors}
-            if (owner == "Stimulus") {ownersFactors <- factorsData@stimuliFactors}
-            if (owner == "Trial") {ownersFactors <- factorsData@trialsFactors}
+setMethod("addFactorValue",  "FactorsData",                                   
+          function(self, availableFactors, owner, ownerID, factorID, value, replace)
+          {                         
+            if (factorValueIsCorrect(self = availableFactors, factorID = factorID, value = value))
+            {
+              factorRecord <- list(factorID = factorID, value = as.character(value), ownerID = ownerID, owner = owner)
+              if (any(self@factorValues$factorID == factorID & self@factorValues$ownerID == ownerID & self@factorValues$owner == owner))
+              {
+                if (replace)
+                {
+                  recNum <- which(self@factorValues$factorID == factorID & 
+                                    self@factorValues$ownerID == ownerID &
+                                    self@factorValues$owner == owner)
+                  self@factorValues[recNum,] <- factorRecord
+                  return(self)
+                }
+                else
+                {
+                  warning("The factor value has been specified already!")
+                  return(self)
+                }
+              }
+              else
+              {
+                self@factorValues <- rbind(self@factorValues, factorRecord)
+                return(self)
+              }
+            }
+            else return(self)
+})
 
-            if (nrow(ownersFactors) == 0) {warning("Factor values are not specified for this owner!"); return(NULL)}
-            
-            ownersIDs <- as.integer(unique(ownersFactors$ownerID))
-            varCnt <- length(factorsIDs)
-            factorNames <- sapply(factorsIDs, function(x) {getNameByFactorID(availableFactors,x)})
-            df <- list()
-            for (ownerID in ownersIDs)
+
+
+setMethod("asDataFrame",  "FactorsData",                                   
+          function(self, owner)
+          {
+            owners <- sapply(self@factorsDataList, FUN = function(x) {x$owner})
+            ownerFactorsData <- self@factorsDataList[which(owners == owner)]
+            if (length(ownerFactorsData) == 0) {warning("Factor values are not set for this owner!"); return(NULL)}
+            factorsNames <- sapply(ownerFactorsData, FUN = function(x) {names(x$values)})
+            dim(factorsNames) <- prod(dim(factorsNames))
+            uniqueFactorsNames <- unique(factorsNames)
+            df <- lapply(uniqueFactorsNames, FUN = function(x)
             {
-              ownerFactorsIDs <- ownersFactors$factorID[ownersFactors$ownerID == ownerID]
-              varPositions <- sapply(ownerFactorsIDs, function(x) which(factorsIDs == x))
-              values <- ownersFactors$value[which(ownersFactors$ownerID == ownerID)]
-              df <- rbind(df, c(rep(NA, varCnt)))
-              df[nrow(df), varPositions] <- values
-            }
-            df <- as.data.frame(df)
-            colnames(df) <- factorNames
-            factorTypes <- sapply(factorsIDs, function(x) {getTypeByFactorID(availableFactors,x)})
-            factorLevels <- sapply(factorsIDs, function(x) {getLevelsByFactorID(availableFactors,x)})
-            for (i in 1:length(df))
-            {
-              if (factorTypes[i] == "integer") {df[,i] <- as.integer(df[,i])}
-              if (factorTypes[i] == "numeric") {df[,i] <- as.numeric(df[,i])}
-              if (factorTypes[i] == "factor") {df[,i] <- factor(df[,i], levels = factorLevels[[i]])}
-              if (factorTypes[i] == "ordFactor") {df[,i] <- ordered(df[,i], levels = factorLevels[[i]])}
-            }
-            df <- cbind(ownersIDs, df)
-            return(df)
+              res <- sapply(ownerFactorsData, FUN = function(y)
+              {
+                val <- y$values[[which(names(y$values) == x)]]
+                if (class(val) == "factor") {print("Yo")}
+                val
+              })
+              names(res) <- NULL
+              return(res)
+            })
+            ownerIDs <- sapply(ownerFactorsData, FUN = function(x) {x$ownerID})
+            df <- append(list(ownerID = ownerIDs), df)
+            names(df) <- c("ownerID", uniqueFactorsNames)
+            return(data.frame(df, stringsAsFactors = F))
           }
 )
 
@@ -807,6 +754,7 @@ setMethod("addRawDataRecord",  "RawDataRecords",
             settings <- loader@settings
             rawDataRecCnt <- length(self@rawDataRecordsList)
             newRawDataRec <- fun(filepath, settings)
+            
             if (rawDataRecCnt == 0) 
             {
               self@rawDataRecordsList$ids <- 1
@@ -861,22 +809,22 @@ setMethod("delRawDataRecordsById",  "RawDataRecords",
 )
 
 
-setMethod("asDataFrame",  "RawDataRecords",                                   
-          function(self)
-          {
-            if (length(self@rawDataRecordsList) == 0)
-            {
-              df <- data.frame(Id = numeric(), Filename = character(), stringsAsFactors = F)
-              names(df) <- c("Id", "FileNames")
-              return(df)
-            }
-            ids <- self@rawDataRecordsList$ids
-            fileNames <- sapply(self@rawDataRecordsList$rawDataRecords, FUN = function(x) {x@filePath})
-            df <- data.frame(Id = ids, Filename = fileNames, stringsAsFactors = F, row.names = ids)
-            names(df) <- c("Id", "Filename")
-            return(as.data.frame(df,  stringsAsFactors = F))
-          }
-)
+# setMethod("asDataFrame",  "RawDataRecords",                                   
+#           function(self)
+#           {
+#             if (length(self@rawDataRecordsList) == 0)
+#             {
+#               df <- data.frame(Id = numeric(), Filename = character(), stringsAsFactors = F)
+#               names(df) <- c("Id", "FileNames")
+#               return(df)
+#             }
+#             ids <- self@rawDataRecordsList$ids
+#             fileNames <- sapply(self@rawDataRecordsList$rawDataRecords, FUN = function(x) {x@filePath})
+#             df <- data.frame(Id = ids, Filename = fileNames, stringsAsFactors = F, row.names = ids)
+#             names(df) <- c("Id", "Filename")
+#             return(as.data.frame(df,  stringsAsFactors = F))
+#           }
+# )
 
 setMethod("asDataFrame",  "DataSample",                                   
           function(self)
@@ -942,8 +890,8 @@ setMethod("getDataFrame", "EyesData",
                }
                if (length(self@leftEventMarkers@eventMarkers) != 0)
                {
-                 data <- append(data, list(eventMarkers = c(self@leftEventMarkers@eventMarkers, "NULL")))
-                 data <- append(data, list(eventGroups = c(self@leftEventMarkers@eventGroups, 0)))
+                 data <- append(data, list(eventMarkers = c(self@leftEventMarkers@eventMarkers)))
+                 data <- append(data, list(eventGroups = c(self@leftEventMarkers@eventGroups)))
                }
                return(as.data.frame(data))
               }
@@ -981,8 +929,8 @@ setMethod("getDataFrame", "EyesData",
                 }
                 if (length(self@rightEventMarkers@eventMarkers) != 0)
                 {
-                  data <- append(data, list(eventMarkers = c(self@rightEventMarkers@eventMarkers, "NULL")))
-                  data <- append(data, list(eventGroups = c(self@rightEventMarkers@eventGroups, 0)))
+                  data <- append(data, list(eventMarkers = c(self@rightEventMarkers@eventMarkers, NA)))
+                  data <- append(data, list(eventGroups = c(self@rightEventMarkers@eventGroups, NA)))
                 }
                 return(as.data.frame(data))
               }
@@ -1002,7 +950,7 @@ setMethod("dataFilter", "DataRecord",
             fun <- filter@fun
             settings <- filter@settings
             res <- fun(self, settings)
-            print("Filter was ok")
+            print("Filtered")
             return(res)
           }
 )
@@ -1013,7 +961,7 @@ setMethod("dataSmoother", "DataRecord",
             fun <- smoother@fun
             settings <- smoother@settings
             res <- fun(self, settings)
-            print("Smoothing was ok")
+            print("Smoothed")
             return(res)
           }
 )
@@ -1024,7 +972,7 @@ setMethod("eventDetector", "DataRecord",
             fun <- detector@fun
             settings <- detector@settings
             res <- fun(self, settings)
-            print("Detection was ok")
+            print("Detected")
             return(res)
           }
 )
@@ -1045,6 +993,7 @@ setMethod("eventAnalyzer", "DataRecord",
             fun <- analyzer@fun
             settings <- analyzer@settings
             res <- fun(self, settings)
+            print("Event has been analysed!")
             return(res)
           }
 )
@@ -1083,32 +1032,50 @@ setMethod("addSubFunction", "SubFunctions",
           }
 )
 
-setClass("SubFunction",
-         representation(fun = "function",
-                        name = "character",
-                        description = "character",
-                        applyTo = "character",
-                        event = "character",
-                        settings = "list"
-         )
+setMethod("getSubfunctions", "SubFunctions",
+          function(self, operation = NA, applyTo = NA, event = NA)
+          {
+            if (is.na(event) & is.na(applyTo) & is.na(operation))
+            {
+              flags <- rep(T, length(self@subFunctionsList$subFunctions))
+            }
+            if (is.na(event) & is.na(applyTo) & !is.na(operation))
+            {
+              flags <- sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@operation == operation})
+            }
+            if (is.na(event) & !is.na(applyTo) & !is.na(operation))
+            {
+              flags <- sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@operation == operation & x@applyTo == applyTo})
+            }
+            if (!is.na(event) & !is.na(applyTo) & !is.na(operation))
+            {
+              flags <- sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@operation == operation & x@applyTo == applyTo & any(event == x@events)})
+            }
+            subFuns <- self@subFunctionsList$subFunctions[flags]
+            ids <- self@subFunctionsList$ids[flags]
+            sfList <- new(Class = "SubFunctions", subFunctionsList = list(ids = ids, subFunctions = subFuns))
+            return(sfList)
+          }
 )
+
 
 setMethod("asDataFrame", "SubFunctions",
           function(self)
           {
             if (length(self@subFunctionsList$ids) == 0)
             {
-              df <- data.frame(Id = numeric(), Name = character(), Description = character(), 
-                               applyTo = character(), event = character())
+              df <- data.frame(Id = numeric(), Name = character(), Operation = character(), Description = character(), 
+                               ApplyTo = character(), Events = character())
               return(df)
             }
             ids <- self@subFunctionsList$ids
             names <- sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@name})
             descriptions <- sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@description})
+            operations <- sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@operation})
             applyTos <- sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@applyTo})
-            events <- paste(sapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@event}))
-            df <- data.frame(Id = ids, Name = names, Description = descriptions, 
-                             ApplyTo = applyTos, Event = events, stringsAsFactors = F)
+            events <- lapply(self@subFunctionsList$subFunctions, FUN = function(x) {x@events})
+            df <- data.frame(Id = ids, Name = names, Operation = operations, Description = descriptions, 
+                             ApplyTo = applyTos, Events = I(events), stringsAsFactors = F)
             return(df)
           }
 )
@@ -1123,19 +1090,31 @@ setMethod("plotXY", "DataRecord",
 )
 
 setMethod("plotXt", "DataRecord",
-          function(self, eye, type, filter, smoother, period, markerType, angular, pointsColor)
+          function(self, settings)
           {
-            # channel - 1, 2, 3, 4, 5, 6, 7, ...
-            # angular is possible for 1 and 2 channels (i.e. X(t) or Y(t) plot)
-            # period is period of time in sec from trial's start
             eyesData <- self@eyesDataObject
             conditions <- eyesData@conditions@conditions
-            self <- dataFilter(self, filter)
-            self <- dataSmoother(self, smoother)
-            screenDim <- conditions$screenDim
+            
+            screenDist <- conditions$screenDist
+            screenResolution <- conditions$screenResolution
             screenSize <- conditions$screenSize
-            screenDist <- conditions$screenDistance
-
+            plotType <- settings$plotType
+            eye <- settings$eye
+            period <- settings$period
+            markerType <- settings$markerType
+            angular <- settings$angular
+            pointsColor <- settings$pointsColor
+            velType <- settings$velType
+            fl <- settings$fl
+            sampleRate <- conditions$sampleRate
+            
+            size <- length(t)
+            if (is.na(sampleRate))
+            {
+              meandt <- mean(t[-1] - t[-size], na.rm = T)
+              sampleRate <- 1/meandt
+            }
+            
             if (conditions$eye == "both")
             {
               dataLeft <- getDataFrame(eyesData, "left")
@@ -1149,27 +1128,25 @@ setMethod("plotXt", "DataRecord",
               pointsToShow <- which(data$time >= period[1] & data$time <= period[2])
               markers <- switch(markerType,
                                 "No markers" = pointsColor,
-                                "Filter markers" = as.factor(data$filterMarkers),
-                                "Event markers" = as.factor(data$eventMarkers))
+                                "Filter markers" = as.factor(data$filterMarkers[pointsToShow]),
+                                "Event markers" = as.factor(data$eventMarkers[pointsToShow]))
               t <- data$time[pointsToShow]
               x <- data$porx[pointsToShow]
               y <- data$pory[pointsToShow]
               pupx <- data$pupxsize[pointsToShow]
               pupy <- data$pupysize[pointsToShow]
-              
-              if (type == "POR")
+              if (plotType == "POR")
               {
-                quote(plot(x~t, col = markers))
                 if (angular)
                 {
-                  angPos <- calcAngPos(x, y, screenDist, screenDim, screenSize)
+                  angPos <- calcAngPos(x, y, screenDist, screenResolution, screenSize)
                   x <- angPos$xAng
                   y <- angPos$yAng
                 }
                 plot(x~t, col = markers)
-                points(y~t, col = markers)
+                plotXt <- points(y~t, col = markers)
               }
-              if (type == "Pupil")
+              if (plotType == "Pupil")
               {
                 if (conditions$pupilShape == "circle")
                 {
@@ -1178,28 +1155,27 @@ setMethod("plotXt", "DataRecord",
                 if (conditions$pupilShape == "ellipse")
                 {
                   plot(pupx~t, col = markers)
-                  points(pupy~t, col = markers)
+                  plotXt <- points(pupy~t, col = markers)
                 }
               }
-              if (type == "Speed")
+              if (plotType == "Velocity")
               {
-                if (angular)
-                {
-                  vel <- calcAngVel(t, x, y, screenDist, screenDim, screenSize)$vels
-                }
-                else
-                {
-                  vel <- calcPxVel(t, x, y)$vels
-                }
-                plot(vel~t, col = markers)
+                calcVelSettings <- list(velType = velType, angular = angular, screenDist = screenDist, 
+                                        screenResolution = screenResolution, screenSize = screenSize,
+                                        sampleRate = sampleRate, fl = fl)
+                vel <- calcVel(t, x, y, calcVelSettings)$vels
+                ## TO DO: need to use ggplot or segments() to create segmented line chart (color should depend on markers)
+                plotXt <- plot(vel~t[1:length(vel)], col = markers[1:length(vel)], type = "l")
               }
-              if (type == "Acceleration")
+              if (plotType == "Acceleration")
               {
-                
+                calcVelSettings <- list(velType = velType, angular = angular, screenDist = screenDist, 
+                                        screenResolution = screenResolution, screenSize = screenSize,
+                                        sampleRate = sampleRate, fl = fl)
+                accel <- calcVel(t, x, y, calcVelSettings)$accels
+                plotXt <- plot(accel~t[1:length(accel)], col = markers[1:length(accel)], type = "l")
               }
             }
-
-            
-            
+            return(plotXt)
           }
 )

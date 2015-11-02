@@ -57,70 +57,70 @@ setClass("EventMarkers",
          )
 )
 
-setClass("FixationsData",
-         representation(fixations = "data.frame" # fields: position, dispersion, onset, offset, duration, etc.
-         ),
-         prototype(
-         )
-)
-
-setClass("SaccadesData",
-         representation(saccades = "data.frame" # fields: startPosition, endPosition, amplitude, onset, offset, duration, peakVelocity, peakAcceleration, asymmetry, curvature, orientation
-         ),
-         prototype(
-         )
-)
-
-setClass("GlissadesData",
-         representation(glissades = "data.frame" # fields: the same as for saccades + antecedentSaccadeNumber
-         ),
-         prototype(
-         )
-)
-
-setClass("SmoothPursuitsData",
-         representation(smoothPursuits = "data.frame" # fields: ???
-         ),
-         prototype(
-         )
-)
-
-setClass("GapsData",
-         representation(gaps = "data.frame" # fields: startPosition, endPosition, onset, offset, duration, pupSizeStart, pupSizeEnd
-         ),
-         prototype(
-         )
-)
-
-setClass("ArtifcatsData",
-         representation(artifacts = "data.frame" # fields: startPosition, endPosition, onset, offset, duration, peakVelocity, peakAcceleration 
-         ),
-         prototype(
-         )
-)
-
-
-
-setClass("AdditionalEventData",
-         representation(eventName = "character", 
-                        additionalEventsData = "data.frame"
-         ),
-         prototype(
-         )
-)
-
-setClass("EventData",
-         representation(fixations = "FixationsData",
-                        saccades = "SaccadesData",
-                        glissades = "GlissadesData",
-                        smoothPursuits = "SmoothPursuitsData",
-                        gaps = "GapsData",
-                        artifacts = "ArtifcatsData",
-                        additionalEvents = "list" # list of AdditionalEventData objects
-         ),
-         prototype(
-         )
-)
+# setClass("FixationsData",
+#          representation(fixations = "data.frame" # fields: position, dispersion, onset, offset, duration, etc.
+#          ),
+#          prototype(
+#          )
+# )
+# 
+# setClass("SaccadesData",
+#          representation(saccades = "data.frame" # fields: startPosition, endPosition, amplitude, onset, offset, duration, peakVelocity, peakAcceleration, asymmetry, curvature, orientation
+#          ),
+#          prototype(
+#          )
+# )
+# 
+# setClass("GlissadesData",
+#          representation(glissades = "data.frame" # fields: the same as for saccades + antecedentSaccadeNumber
+#          ),
+#          prototype(
+#          )
+# )
+# 
+# setClass("SmoothPursuitsData",
+#          representation(smoothPursuits = "data.frame" # fields: ???
+#          ),
+#          prototype(
+#          )
+# )
+# 
+# setClass("GapsData",
+#          representation(gaps = "data.frame" # fields: startPosition, endPosition, onset, offset, duration, pupSizeStart, pupSizeEnd
+#          ),
+#          prototype(
+#          )
+# )
+# 
+# setClass("ArtifcatsData",
+#          representation(artifacts = "data.frame" # fields: startPosition, endPosition, onset, offset, duration, peakVelocity, peakAcceleration 
+#          ),
+#          prototype(
+#          )
+# )
+# 
+# 
+# 
+# setClass("AdditionalEventData",
+#          representation(eventName = "character", 
+#                         additionalEventsData = "data.frame"
+#          ),
+#          prototype(
+#          )
+# )
+# 
+# setClass("EventData",
+#          representation(fixations = "FixationsData",
+#                         saccades = "SaccadesData",
+#                         glissades = "GlissadesData",
+#                         smoothPursuits = "SmoothPursuitsData",
+#                         gaps = "GapsData",
+#                         artifacts = "ArtifcatsData",
+#                         additionalEvents = "list" # list of AdditionalEventData objects
+#          ),
+#          prototype(
+#          )
+# )
 
 setClass("EyesData",
          representation(fieldNames = "DataFieldNames",
@@ -137,6 +137,9 @@ setClass("EyesData",
                         rightFilterMarkers = "FilterMarkers",
                         leftEventMarkers = "EventMarkers",
                         rightEventMarkers = "EventMarkers"
+#                         ,
+#                         leftAOIMarkers = "AOIHitsMarkers",
+#                         rightAOIMarkers = "AOIHitsMarkers",
          ),
          prototype(
          )

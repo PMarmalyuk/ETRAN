@@ -1,5 +1,3 @@
-
-
 createLoader <- function(name, fun, settings)
 {
   loader <- new(Class = "Loader", name = name, fun = fun, settings = settings)
@@ -43,81 +41,116 @@ createEstimator <- function(name, fun, applyTo, settings)
 }
 
 # Calculates angular height and width in degrees of the eye position 
-# relative to the screen/scene center or the given reference point
-calcAngPos <- function(x, y, screenDist, screenDim, screenSize, refPoint = c(screenDim[1]/2, screenDim[2]/2))
+# relative to the screen left corner (default) or the given reference point
+calcAngPos <- function(x, y, screenDist, screenResolution, screenSize, refPoint = c(0,0))
 {
   d <- screenDist
   w <- screenSize[1]; h <- screenSize[2]
-  wPx <- screenDim[1]; hPx <- screenDim[2]
-  xshift <- ((x-refPoint[1])/wPx)*w
-  yshift <- ((y-refPoint[2])/hPx)*h
-  xAng <- atan(xshift/d)*(180/pi)
-  yAng <- atan(yshift/d)*(180/pi)
+  wPx <- screenResolution[1]; hPx <- screenResolution[2]
+  xAng <- (180/pi)*atan(((x-refPoint[1])/(d*wPx/w)))
+  yAng <- (180/pi)*atan(((y-refPoint[2])/(d*hPx/h)))
   return(list(xAng = xAng, yAng = yAng))
 }
 
 # Calculates horiz. and vert. momentum velocities (px/timeUnit) of the eye movements given by vectors <t, x, y>
-calcXYShiftsVel <- function(t, x, y)
+# calcXYShiftsVel <- function(t, x, y)
+# {
+#   samplesCnt <- length(t)
+#   dts <- t[-1] - t[-samplesCnt]
+#   dxs <- x[-1] - x[-samplesCnt]
+#   dys <- y[-1] - y[-samplesCnt]
+#   xVels <- dxs/dts
+#   yVels <- dys/dts
+#   return(list(xVels = xVels, yVels = yVels))
+# }
+# 
+# # Calculates horiz. and vert. momentum velocities (deg/timeUnit)
+# calcXYShiftsAngVel <- function(t, x, y, screenDist, screenResolution, screenSize)
+# {
+#   samplesCnt <- length(t)
+#   dts <- t[-1] - t[-samplesCnt]
+#   d <- screenDist
+#   w <- screenSize[1]; h <- screenSize[2]
+#   wPx <- screenResolution[1]; hPx <- screenResolution[2]
+#   x1s <- x[-samplesCnt]; x2s <- x[-1]
+#   y1s <- y[-samplesCnt]; y2s <- y[-1]
+#   xshifts <- ((x2s-x1s)/wPx)*w
+#   yshifts <- ((y2s-y1s)/hPx)*h
+#   xAngs <- atan(xshifts/d)
+#   yAngs <- atan(yshifts/d)
+#   xVels <- abs(xAngs)*(180/pi)/dts
+#   yVels <- abs(yAngs)*(180/pi)/dts
+#   return(list(xVels = xVels, yVels = yVels))
+# }
+
+## TO DO: evaluate accelerations in finDiff case
+calcVel <- function(t, x, y, settings)
 {
+  velType <- settings$velType
+  angular <- settings$angular
+  screenDist <- settings$screenDist
+  screenResolution <- settings$screenResolution
+  screenSize <- settings$screenSize
   samplesCnt <- length(t)
-  dts <- t[-1] - t[-samplesCnt]
-  dxs <- x[-1] - x[-samplesCnt]
-  dys <- y[-1] - y[-samplesCnt]
-  xVels <- dxs/dts
-  yVels <- dys/dts
-  return(list(xVels = xVels, yVels = yVels))
+  dl = NA
+  dt = NA
+  vel = NA
+  accel = NA
+  if (samplesCnt >= 2)
+  {
+    dt <- abs(t[-1] - t[-samplesCnt])
+    if (velType == "finDiff")
+    {
+      if (angular)
+      {
+        angPositions <- calcAngPos(x = x, y = y, screenDist, screenResolution, screenSize)
+        x <- angPositions$xAng
+        y <- angPositions$yAng
+      }
+      x1 <- x[-samplesCnt]; x2 <- x[-1]
+      y1 <- y[-samplesCnt]; y2 <- y[-1]
+      dl <- sqrt((x2-x1)^2 + (y2-y1)^2)
+      vel <- dl/dt
+      if (samplesCnt >= 3)
+      {
+        accel <- (vel[-1]-vel[-length(vel)])/dt[-length(dt)]
+      }
+    }
+    if (velType == "analytical")
+    {
+      fs <- settings$sampleRate # sampling frequency in Hz
+      flt <- settings$fl # filter length in msec
+      if (samplesCnt >= flt)
+      {
+        if (angular)
+        {
+          angPositions <- calcAngPos(x = x, y = y, screenDist, screenResolution, screenSize)
+          x <- angPositions$xAng
+          y <- angPositions$yAng
+        }
+        flt <- flt/1000 # change units of filter length to seconds
+        fl <- ceiling(flt*fs) # expressing filter length in samples number
+        if (fl %% 2 == 0) fl <- fl + 1 # turn even number to odd number by incrementing it by 1
+        xdash <- sgolayfilt(x = x, p = 2, n = fl, m = 1, ts = 1)
+        x2dash <- sgolayfilt(x = x, p = 2, n = fl, m = 2, ts = 1)
+        ydash <- sgolayfilt(x = y, p = 2, n = fl, m = 1, ts = 1)
+        y2dash <- sgolayfilt(x = y, p = 2, n = fl, m = 2, ts = 1)
+        dt <- abs(t[-1] - t[-samplesCnt])
+        dldash <- sqrt(xdash^2+ydash^2); dl <- dldash
+        dl2dash <- sqrt(x2dash^2+y2dash^2)
+        vel <- dldash*fs
+        accel <- dl2dash*fs
+      }
+      else
+      {
+        warning("Samples number is greater than filter length! Returning NA for velocities and accelerations")
+      }
+    }
+  }
+  return(list(dists = dl, dts = dt, vels = vel, accels = accel))
 }
 
-# Calculates horiz. and vert. momentum velocities (deg/timeUnit)
-calcXYShiftsAngVel <- function(t, x, y, screenDist, screenDim, screenSize)
-{
-  samplesCnt <- length(t)
-  dts <- t[-1] - t[-samplesCnt]
-  d <- screenDist
-  w <- screenSize[1]; h <- screenSize[2]
-  wPx <- screenDim[1]; hPx <- screenDim[2]
-  x1s <- x[-samplesCnt]; x2s <- x[-1]
-  y1s <- y[-samplesCnt]; y2s <- y[-1]
-  xshifts <- ((x2s-x1s)/wPx)*w
-  yshifts <- ((y2s-y1s)/hPx)*h
-  xAngs <- atan(xshifts/d)
-  yAngs <- atan(yshifts/d)
-  xVels <- abs(xAngs)*(180/pi)/dts
-  yVels <- abs(yAngs)*(180/pi)/dts
-  return(list(xVels = xVels, yVels = yVels))
-}
 
-# Calculates momentum velocities (px/timeUnit)
-calcPxVel <- function(t, x, y)
-{
-  samplesCnt <- length(t)
-  dts <- abs(t[-1] - t[-samplesCnt])
-  dls <- sqrt((x[-1] - x[-samplesCnt])^2 + (y[-1] - y[-samplesCnt])^2)
-  vels <- 
-    res <- list(dists = dls, dts = dts, vels = dls/dts)
-  res
-}
 
-# Calculates angular velocities (deg/timeUnit)
-calcAngVel <- function(t, x, y, screenDist, screenDim, screenSize)
-{
-  samplesCnt <- length(t)
-  dts <- abs(t[-1] - t[-samplesCnt])
-  d <- screenDist
-  w <- screenSize[1]; h <- screenSize[2]
-  wPx <- screenDim[1]; hPx <- screenDim[2]
-  x1s <- x[-samplesCnt]; x2s <- x[-1]
-  y1s <- y[-samplesCnt]; y2s <- y[-1]
-  dP0P1 <- sqrt((((x1s-wPx/2)/wPx)*w)^2 + (((y1s-hPx/2)/hPx)*h)^2)
-  dP0P2 <- sqrt((((x2s-wPx/2)/wPx)*w)^2 + (((y2s-hPx/2)/hPx)*h)^2)
-  alphaW <- atan(dP0P1/d)
-  alphaH <- atan(dP0P2/d)
-  dEyeP1 <- dP0P1/sin(alphaW)
-  dEyeP2 <- dP0P2/sin(alphaH)
-  dP1P2 <- sqrt((((x2s-x1s)/wPx)*w)^2 + (((y2s-y1s)/hPx)*h)^2)
-  angles <- acos((dEyeP1^2 + dEyeP2^2 - dP1P2^2)/(2*dEyeP1*dEyeP2))
-  res <- list(dists = angles*(180/pi), dts = dts, vels = angles*(180/pi)/dts)
-  res
-}
 
 

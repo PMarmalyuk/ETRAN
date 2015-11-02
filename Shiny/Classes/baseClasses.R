@@ -8,10 +8,12 @@ setClass("Experiment",
          )
 )
 
+## TO DO: add a slot for ordering information
 setClass("Trial",
          representation(expID = "numeric",
                         name = "character",
-                        description = "character"
+                        description = "character"#,
+                        # order = "numeric"
          ),
          prototype(
          )
@@ -32,7 +34,7 @@ setClass("Factor",
                         description = "character",
                         type = "character", # numeric, integer, factor, ordFactor
                         levels = "character", #list of factor levels, order is important for ordFactor, NULL for numeric and integer
-                        owner = "character" # "subject", "trial" or "stimulus
+                        owner = "character" # "Subject", "Trial". "Stimulus", "Record", "EventGroup"
          ),
          prototype(
          )
@@ -45,6 +47,7 @@ setClass("Stimulus",
                         path = "character",
                         type = "character", # "Scene", "Image", "Video", "Web page", etc.
                         dim = "integer",
+                        dimOnPresentation = "integer",
                         duration = "numeric", # Duration in ms
                         framesCount = "numeric"
          ),
@@ -79,6 +82,7 @@ setClass("DataRecord",
                         trialID = "numeric",
                         eyesDataObject = "EyesData",
                         analysisResults = "list", #list of EventData, AOISequence, AOITransMatrix, AOIStatsVector objects for each eye
+                        # representations = "list",
                         statistics = "list" # list of statistics (left and right) evaluated for eyesDataObject or an element of analysisResults list
          ),
          prototype(
@@ -124,11 +128,13 @@ setClass("EventAnalyzer",
 
 setClass("SubFunction",
          representation(fun = "function",
-                        name = "character",
+                        name = "character", # dispalyed name of a sub function
                         description = "character",
-                        applyTo = "character",
-                        event = "character",
-                        settings = "list"
+                        operation = "character",
+                        applyTo = "character", # can be "EyesData", "EventGroup", "EventData", "AOISequence", etc. (base eye data class)
+                        events = "character", # if applyTo == "EventGroups" then event types should be specified (to estimate event groups parameters)
+#                        outputs = "numeric", # numeric vector of Factor _ids_: it is necessary to have information about a value returned by sub function
+                        settings = "list" # settings of a sub function
                         )
 )
 

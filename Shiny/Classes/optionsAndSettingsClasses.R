@@ -51,7 +51,7 @@ setClass("Conditions",
          prototype(conditions = list(eye = NA, # "left", "right" or "both"
                                      sampleRate = NA, # frequency in Hz
                                      screenDistance = NA,
-                                     screenDim = NA,
+                                     screenResolution = NA,
                                      screenSize = NA, # width and height of the screen / field of view
                                      pupilShape = NA, #"circle" or "ellipse"
                                      timeUnits = NA, # e.g. 1E-3 for milliseconds

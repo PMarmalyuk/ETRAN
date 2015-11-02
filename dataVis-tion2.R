@@ -1,5 +1,109 @@
-IVT <- function(t, x, y, filterMarkers, settings)
-{
+install.packages("signal")
+install.packages("gridExtra")
+install.packages("ggplot2")
+library(signal)
+library(gridExtra)
+library(ggplot2)
+
+## Classes definition
+setClass("EventMarkers",
+         representation(eventMarkers = "character",
+                        eventGroups = "numeric",
+                        markerNames = "list"
+         ),
+         prototype(markerNames = list(fixation = "Fixation", 
+                                      saccade = "Saccade",
+                                      glissade = "Glissade",
+                                      smoothPursuit = "Smooth pursuit",
+                                      gap = "Gap",
+                                      artifact = "Artifact")
+         )
+)
+
+setClass("FilterMarkers",
+         representation(filterMarkers = "character",
+                        markerNames = "list"
+         ),
+         prototype(markerNames = list(ok = "Ok",
+                                      zeroes = "0", 
+                                      outOfBounds = "Out of bounds")
+         )
+)
+
+## Functions definition
+calcAngPos <- function(x, y, screenDist, screenResolution, screenSize, refPoint = c(0,0)) {
+  d <- screenDist
+  w <- screenSize[1]; h <- screenSize[2]
+  wPx <- screenResolution[1]; hPx <- screenResolution[2]
+  xAng <- (180/pi)*atan(((x-refPoint[1])/(d*wPx/w)))
+  yAng <- (180/pi)*atan(((y-refPoint[2])/(d*hPx/h)))
+  return(list(xAng = xAng, yAng = yAng))
+}
+calcVel <- function(t, x, y, settings) {
+  velType <- settings$velType
+  angular <- settings$angular
+  screenDist <- settings$screenDist
+  screenResolution <- settings$screenResolution
+  screenSize <- settings$screenSize
+  samplesCnt <- length(t)
+  dl = NA
+  dt = NA
+  vel = NA
+  accel = NA
+  if (samplesCnt >= 2)
+  {
+    dt <- abs(t[-1] - t[-samplesCnt])
+    if (velType == "finDiff")
+    {
+      if (angular)
+      {
+        angPositions <- calcAngPos(x = x, y = y, screenDist, screenResolution, screenSize)
+        x <- angPositions$xAng
+        y <- angPositions$yAng
+      }
+      x1 <- x[-samplesCnt]; x2 <- x[-1]
+      y1 <- y[-samplesCnt]; y2 <- y[-1]
+      dl <- sqrt((x2-x1)^2 + (y2-y1)^2)
+      vel <- dl/dt
+      if (samplesCnt >= 3)
+      {
+        accel <- (vel[-1]-vel[-length(vel)])/dt[-length(dt)]
+      }
+    }
+    if (velType == "analytical")
+    {
+      fs <- settings$sampleRate # sampling frequency in Hz
+      flt <- settings$fl # filter length in msec
+      if (samplesCnt >= flt)
+      {
+        if (angular)
+        {
+          angPositions <- calcAngPos(x = x, y = y, screenDist, screenResolution, screenSize)
+          x <- angPositions$xAng
+          y <- angPositions$yAng
+        }
+        flt <- flt/1000 # change units of filter length to seconds
+        fl <- ceiling(flt*fs) # expressing filter length in samples number
+        if (fl %% 2 == 0) fl <- fl + 1 # turn even number to odd number by incrementing it by 1
+        xdash <- sgolayfilt(x = x, p = 2, n = fl, m = 1, ts = 1)
+        x2dash <- sgolayfilt(x = x, p = 2, n = fl, m = 2, ts = 1)
+        ydash <- sgolayfilt(x = y, p = 2, n = fl, m = 1, ts = 1)
+        y2dash <- sgolayfilt(x = y, p = 2, n = fl, m = 2, ts = 1)
+        dt <- abs(t[-1] - t[-samplesCnt])
+        dldash <- sqrt(xdash^2+ydash^2); dl <- dldash
+        dl2dash <- sqrt(x2dash^2+y2dash^2)
+        vel <- dldash*fs
+        accel <- dl2dash*fs
+      }
+      else
+      {
+        warning("Samples number is greater than filter length! Returning NA for velocities and accelerations")
+      }
+    }
+  }
+  return(list(dists = dl, dts = dt, vels = vel, accels = accel))
+}
+IVT <- function(t, x, y, filterMarkers, settings) {
   VT <- settings$VT
   angular <- settings$angular
   screenDist <- settings$screenDistance
@@ -53,12 +157,12 @@ IVT <- function(t, x, y, filterMarkers, settings)
     for (gr in 1:length(eventGroups))
     {
       currentGroup <- eventGroups[[gr]]$evm[1]
-      # Åñëè òåêóùàÿ ãðóïïà ñýìïëîâ - ôèêñàöèÿ
+      # Ð•ÑÐ»Ð¸ Ñ‚ÐµÐºÑƒÑ‰Ð°Ñ Ð³Ñ€ÑƒÐ¿Ð¿Ð° ÑÑÐ¼Ð¿Ð»Ð¾Ð² - Ñ„Ð¸ÐºÑÐ°Ñ†Ð¸Ñ
       if (currentGroup == evm@markerNames$fixation)
       {
-        # òî âû÷èñëÿåì å¸ äëèòåëüíîñòü
+        # Ñ‚Ð¾ Ð²Ñ‹Ñ‡Ð¸ÑÐ»ÑÐµÐ¼ ÐµÑ‘ Ð´Ð»Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð¾ÑÑ‚ÑŒ
         fixLen <- (eventGroups[[gr]]$t[nrow(eventGroups[[gr]])]-eventGroups[[gr]]$t[1])
-        # åñëè ôèêñàöèÿ êîðîòêàÿ, òî ðàññìàòðèâàåì å¸ êàê àðòåôàêò
+        # ÐµÑÐ»Ð¸ Ñ„Ð¸ÐºÑÐ°Ñ†Ð¸Ñ ÐºÐ¾Ñ€Ð¾Ñ‚ÐºÐ°Ñ, Ñ‚Ð¾ Ñ€Ð°ÑÑÐ¼Ð°Ñ‚Ñ€Ð¸Ð²Ð°ÐµÐ¼ ÐµÑ‘ ÐºÐ°Ðº Ð°Ñ€Ñ‚ÐµÑ„Ð°ÐºÑ‚
         if (fixLen < minFixLen)
         {
           artifactGroups <- append(artifactGroups, eventGroups[gr])
@@ -67,7 +171,7 @@ IVT <- function(t, x, y, filterMarkers, settings)
           newEvents <- c(newEvents, rep(evm@markerNames$artifact, nrow(eventGroups[[gr]])))
           #eventMarkersGroups <- append(eventMarkersGroups, rep(eventMarkers@markerNames$artifact, nrow(eventGroups[[gr]])))
         }
-        # åñëè ôèêñàöèÿ íå êîðîòêàÿ
+        # ÐµÑÐ»Ð¸ Ñ„Ð¸ÐºÑÐ°Ñ†Ð¸Ñ Ð½Ðµ ÐºÐ¾Ñ€Ð¾Ñ‚ÐºÐ°Ñ
         if (fixLen >= minFixLen)
         {
           anyGroupBefore <- !is.na(lastGroup)
@@ -94,13 +198,13 @@ IVT <- function(t, x, y, filterMarkers, settings)
           }
           if (fixCloseInSpace)
           {
-            # òî ïðåäûäóùóþ ñàêêàäó ðàññìàòðèâàåì êàê àðòåôàêò çàïèñè
+            # Ñ‚Ð¾ Ð¿Ñ€ÐµÐ´Ñ‹Ð´ÑƒÑ‰ÑƒÑŽ ÑÐ°ÐºÐºÐ°Ð´Ñƒ Ñ€Ð°ÑÑÐ¼Ð°Ñ‚Ñ€Ð¸Ð²Ð°ÐµÐ¼ ÐºÐ°Ðº Ð°Ñ€Ñ‚ÐµÑ„Ð°ÐºÑ‚ Ð·Ð°Ð¿Ð¸ÑÐ¸
             newEvents[tail(newEvents, nrow(saccadeGroups[[length(saccadeGroups)]]))] <- rep(evm@markerNames$artifact, nrow(saccadeGroups[[length(saccadeGroups)]]))
             artifactGroups <- append(artifactGroups, saccadeGroups[length(saccadeGroups)])
             eventMarkersGroups[length(eventMarkersGroups)] <- list(rep(evm@markerNames$artifact, length(eventMarkersGroups[[length(eventMarkersGroups)]])))
             saccadeGroups <- saccadeGroups[-length(saccadeGroups)]
             
-            # à òåêóùóþ ôèêñàöèþ ðàññìàòðèâàåì êàê ïðîäîëæåíèå ïðåäûäóùåé
+            # Ð° Ñ‚ÐµÐºÑƒÑ‰ÑƒÑŽ Ñ„Ð¸ÐºÑÐ°Ñ†Ð¸ÑŽ Ñ€Ð°ÑÑÐ¼Ð°Ñ‚Ñ€Ð¸Ð²Ð°ÐµÐ¼ ÐºÐ°Ðº Ð¿Ñ€Ð¾Ð´Ð¾Ð»Ð¶ÐµÐ½Ð¸Ðµ Ð¿Ñ€ÐµÐ´Ñ‹Ð´ÑƒÑ‰ÐµÐ¹
             lastFixation <- list(rbind(lastFixation, eventGroups[[gr]]))
             fixationGroups[length(fixationGroups)] <- lastFixation
             lastGroup <- evm@markerNames$fixation
@@ -109,31 +213,31 @@ IVT <- function(t, x, y, filterMarkers, settings)
           
           if (!anyGroupBefore | !prevGroupIsSaccade | !anyFixBefore | !fixCloseInTime | !fixCloseInSpace)
           {
-            # òî äîïîëíÿåì ñïèñîê ôèêñàöèé òåêóùåé ôèêñàöèåé
+            # Ñ‚Ð¾ Ð´Ð¾Ð¿Ð¾Ð»Ð½ÑÐµÐ¼ ÑÐ¿Ð¸ÑÐ¾Ðº Ñ„Ð¸ÐºÑÐ°Ñ†Ð¸Ð¹ Ñ‚ÐµÐºÑƒÑ‰ÐµÐ¹ Ñ„Ð¸ÐºÑÐ°Ñ†Ð¸ÐµÐ¹
             fixationGroups <- append(fixationGroups, eventGroups[gr])
             lastGroup <- evm@markerNames$fixation
             eventMarkersGroups <- append(eventMarkersGroups, list(rep(evm@markerNames$fixation, nrow(eventGroups[[gr]]))))
           }
         }
       }
-      # Åñëè òåêóùàÿ ãðóïïà ñýìïëîâ - ñàêêàäà
+      # Ð•ÑÐ»Ð¸ Ñ‚ÐµÐºÑƒÑ‰Ð°Ñ Ð³Ñ€ÑƒÐ¿Ð¿Ð° ÑÑÐ¼Ð¿Ð»Ð¾Ð² - ÑÐ°ÐºÐºÐ°Ð´Ð°
       if (currentGroup == evm@markerNames$saccade)
       {
-        # òî âû÷èñëÿåì ïàðàìåòðû maxVel è maxAccel
+        # Ñ‚Ð¾ Ð²Ñ‹Ñ‡Ð¸ÑÐ»ÑÐµÐ¼ Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ñ‹ maxVel Ð¸ maxAccel
         maxSaccadeVel <- max(eventGroups[[gr]]$vel, na.rm = T)
         maxSaccadeAccel <- max(eventGroups[[gr]]$accel, na.rm = T)
         
-        # è åñëè ñàêêàäà àíîìàëüíà (âêëþ÷àåò ñýìïëû ñ àíîìàëüíûìè çíà÷åíèÿìè ñêîðîñòè èëè óñêîðåíèÿ), 
-        # òî äîïîëíÿåì ñïèñîê àðòåôàêòîâ ýòîé ñàêêàäîé
+        # Ð¸ ÐµÑÐ»Ð¸ ÑÐ°ÐºÐºÐ°Ð´Ð° Ð°Ð½Ð¾Ð¼Ð°Ð»ÑŒÐ½Ð° (Ð²ÐºÐ»ÑŽÑ‡Ð°ÐµÑ‚ ÑÑÐ¼Ð¿Ð»Ñ‹ Ñ Ð°Ð½Ð¾Ð¼Ð°Ð»ÑŒÐ½Ñ‹Ð¼Ð¸ Ð·Ð½Ð°Ñ‡ÐµÐ½Ð¸ÑÐ¼Ð¸ ÑÐºÐ¾Ñ€Ð¾ÑÑ‚Ð¸ Ð¸Ð»Ð¸ ÑƒÑÐºÐ¾Ñ€ÐµÐ½Ð¸Ñ), 
+        # Ñ‚Ð¾ Ð´Ð¾Ð¿Ð¾Ð»Ð½ÑÐµÐ¼ ÑÐ¿Ð¸ÑÐ¾Ðº Ð°Ñ€Ñ‚ÐµÑ„Ð°ÐºÑ‚Ð¾Ð² ÑÑ‚Ð¾Ð¹ ÑÐ°ÐºÐºÐ°Ð´Ð¾Ð¹
         if (maxSaccadeVel > maxVel | maxSaccadeAccel > maxAccel)
         {
           artifactGroups <- append(artifactGroups, eventGroups[gr])
           eventMarkersGroups <- append(eventMarkersGroups, list(rep(evm@markerNames$artifact, nrow(eventGroups[[gr]]))))
         }
-        #	åñëè ñàêêàäà íå àíîìàëüíà
+        #	ÐµÑÐ»Ð¸ ÑÐ°ÐºÐºÐ°Ð´Ð° Ð½Ðµ Ð°Ð½Ð¾Ð¼Ð°Ð»ÑŒÐ½Ð°
         else
         {
-          # òî åñëè ïðåäûäóùàÿ ãðóïïà - ñàêêàäà, òî äîïîëíÿåì ïîñëåäíþþ ñàêêàäó ñýìïëàìè òåêóùåé ñàêêàäû
+          # Ñ‚Ð¾ ÐµÑÐ»Ð¸ Ð¿Ñ€ÐµÐ´Ñ‹Ð´ÑƒÑ‰Ð°Ñ Ð³Ñ€ÑƒÐ¿Ð¿Ð° - ÑÐ°ÐºÐºÐ°Ð´Ð°, Ñ‚Ð¾ Ð´Ð¾Ð¿Ð¾Ð»Ð½ÑÐµÐ¼ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÑŽÑŽ ÑÐ°ÐºÐºÐ°Ð´Ñƒ ÑÑÐ¼Ð¿Ð»Ð°Ð¼Ð¸ Ñ‚ÐµÐºÑƒÑ‰ÐµÐ¹ ÑÐ°ÐºÐºÐ°Ð´Ñ‹
           if (!is.na(lastGroup) & lastGroup == evm@markerNames$saccade)
           {
             lastSaccade <- list(rbind(saccadeGroups[[length(saccadeGroups)]], eventGroups[[gr]]))
@@ -143,7 +247,7 @@ IVT <- function(t, x, y, filterMarkers, settings)
             eventMarkersGroups[length(eventMarkersGroups)] <- lastMarkers
           }
           else
-            # èíà÷å äîïîëíÿåì ñïèñîê ñàêêàä òåêóùåé ñàêêàäîé
+            # Ð¸Ð½Ð°Ñ‡Ðµ Ð´Ð¾Ð¿Ð¾Ð»Ð½ÑÐµÐ¼ ÑÐ¿Ð¸ÑÐ¾Ðº ÑÐ°ÐºÐºÐ°Ð´ Ñ‚ÐµÐºÑƒÑ‰ÐµÐ¹ ÑÐ°ÐºÐºÐ°Ð´Ð¾Ð¹
           {
             saccadeGroups <- append(saccadeGroups, eventGroups[gr])
             lastGroup <- evm@markerNames$saccade
@@ -151,21 +255,21 @@ IVT <- function(t, x, y, filterMarkers, settings)
           }
         }    
       }
-      # Åñëè òåêóùàÿ ãðóïïà ñýìïëîâ - ïðîïóñê
+      # Ð•ÑÐ»Ð¸ Ñ‚ÐµÐºÑƒÑ‰Ð°Ñ Ð³Ñ€ÑƒÐ¿Ð¿Ð° ÑÑÐ¼Ð¿Ð»Ð¾Ð² - Ð¿Ñ€Ð¾Ð¿ÑƒÑÐº
       if (currentGroup == evm@markerNames$gap)
       {
         if (classifyGaps)
         {
-          # òî ïðîâåðÿåì ïî ïàðàìåòðó maxGapLen, äëèííûé ëè ïðîïóñê èëè íå äëèííûé
+          # Ñ‚Ð¾ Ð¿Ñ€Ð¾Ð²ÐµÑ€ÑÐµÐ¼ Ð¿Ð¾ Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ñƒ maxGapLen, Ð´Ð»Ð¸Ð½Ð½Ñ‹Ð¹ Ð»Ð¸ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐº Ð¸Ð»Ð¸ Ð½Ðµ Ð´Ð»Ð¸Ð½Ð½Ñ‹Ð¹
           gapLen <- eventGroups[[gr]]$t[nrow(eventGroups[[gr]])]-eventGroups[[gr]]$t[1]
-          # åñëè äëèííûé, èëè lastGroup = NA, èëè ãðóïïà ÿâëÿåòñÿ ïîñëåäíåé
-          # òî êëàññèôèöèðóåì åãî êàê ïðîïóñê
+          # ÐµÑÐ»Ð¸ Ð´Ð»Ð¸Ð½Ð½Ñ‹Ð¹, Ð¸Ð»Ð¸ lastGroup = NA, Ð¸Ð»Ð¸ Ð³Ñ€ÑƒÐ¿Ð¿Ð° ÑÐ²Ð»ÑÐµÑ‚ÑÑ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÐµÐ¹
+          # Ñ‚Ð¾ ÐºÐ»Ð°ÑÑÐ¸Ñ„Ð¸Ñ†Ð¸Ñ€ÑƒÐµÐ¼ ÐµÐ³Ð¾ ÐºÐ°Ðº Ð¿Ñ€Ð¾Ð¿ÑƒÑÐº
           if (gapLen > maxGapLen | is.na(lastGroup) | gr == length(eventGroups))
           {
             gapClass <- evm@markerNames$gap
           }
-          # åñëè íå äëèííûé, è ãðóïïà íå ÿâëÿåòñÿ ïîñëåäíåé, è ãðóïïà íå ÿâëÿåòñÿ ïåðâîé
-          # òî êëàññèôèöèðóåì ïðîïóñê ïî áëèçîñòè ñýìïëîâ, ñìåæíûõ ñ ïðîïóñêîì 
+          # ÐµÑÐ»Ð¸ Ð½Ðµ Ð´Ð»Ð¸Ð½Ð½Ñ‹Ð¹, Ð¸ Ð³Ñ€ÑƒÐ¿Ð¿Ð° Ð½Ðµ ÑÐ²Ð»ÑÐµÑ‚ÑÑ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÐµÐ¹, Ð¸ Ð³Ñ€ÑƒÐ¿Ð¿Ð° Ð½Ðµ ÑÐ²Ð»ÑÐµÑ‚ÑÑ Ð¿ÐµÑ€Ð²Ð¾Ð¹
+          # Ñ‚Ð¾ ÐºÐ»Ð°ÑÑÐ¸Ñ„Ð¸Ñ†Ð¸Ñ€ÑƒÐµÐ¼ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐº Ð¿Ð¾ Ð±Ð»Ð¸Ð·Ð¾ÑÑ‚Ð¸ ÑÑÐ¼Ð¿Ð»Ð¾Ð², ÑÐ¼ÐµÐ¶Ð½Ñ‹Ñ… Ñ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐºÐ¾Ð¼ 
           if (gapLen <= maxGapLen & gr != length(eventGroups) & !is.na(lastGroup))
           {
             
@@ -180,20 +284,20 @@ IVT <- function(t, x, y, filterMarkers, settings)
               if (t2-t1 <= MaxTBetFix)
               {
                 dist <- sqrt((pos1[1]-pos2[1])^2 + (pos1[2]-pos2[2])^2)
-                # åñëè ñìåæíûå ñ ïðîïóñêîì ñýìïëû áëèçêè âî âðåìåíè è ïðîñòðàíñòâå, 
-                # òî îí êëàññèôèöèðóåòñÿ êàê ôèêñàöèÿ
+                # ÐµÑÐ»Ð¸ ÑÐ¼ÐµÐ¶Ð½Ñ‹Ðµ Ñ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐºÐ¾Ð¼ ÑÑÐ¼Ð¿Ð»Ñ‹ Ð±Ð»Ð¸Ð·ÐºÐ¸ Ð²Ð¾ Ð²Ñ€ÐµÐ¼ÐµÐ½Ð¸ Ð¸ Ð¿Ñ€Ð¾ÑÑ‚Ñ€Ð°Ð½ÑÑ‚Ð²Ðµ, 
+                # Ñ‚Ð¾ Ð¾Ð½ ÐºÐ»Ð°ÑÑÐ¸Ñ„Ð¸Ñ†Ð¸Ñ€ÑƒÐµÑ‚ÑÑ ÐºÐ°Ðº Ñ„Ð¸ÐºÑÐ°Ñ†Ð¸Ñ
                 if (dist <= MaxDistBetFix)
                 {
                   gapClass <- evm@markerNames$fixation
                 }
                 else
-                  # åñëè íå áëèçêè â ïðîñòðàíñòâå, òî ïðîïóñê êëàññèôèöèðóåòñÿ êàê ñàêêàäà
+                  # ÐµÑÐ»Ð¸ Ð½Ðµ Ð±Ð»Ð¸Ð·ÐºÐ¸ Ð² Ð¿Ñ€Ð¾ÑÑ‚Ñ€Ð°Ð½ÑÑ‚Ð²Ðµ, Ñ‚Ð¾ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐº ÐºÐ»Ð°ÑÑÐ¸Ñ„Ð¸Ñ†Ð¸Ñ€ÑƒÐµÑ‚ÑÑ ÐºÐ°Ðº ÑÐ°ÐºÐºÐ°Ð´Ð°
                 {
                   gapClass <- evm@markerNames$saccade
                 }
               }
               else
-                # åñëè íå áëèçêè âî âðåìåíè, òî ïðîïóñê êëàññèôèöèðóåòñÿ êàê ñàêêàäà
+                # ÐµÑÐ»Ð¸ Ð½Ðµ Ð±Ð»Ð¸Ð·ÐºÐ¸ Ð²Ð¾ Ð²Ñ€ÐµÐ¼ÐµÐ½Ð¸, Ñ‚Ð¾ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐº ÐºÐ»Ð°ÑÑÐ¸Ñ„Ð¸Ñ†Ð¸Ñ€ÑƒÐµÑ‚ÑÑ ÐºÐ°Ðº ÑÐ°ÐºÐºÐ°Ð´Ð°
               {
                 gapClass <- evm@markerNames$saccade
               }
@@ -209,18 +313,18 @@ IVT <- function(t, x, y, filterMarkers, settings)
           gapClass <- evm@markerNames$gap
         }
         
-        # ðåçóëüòàò êëàññèôèêàöèè ïðîïóñêà ïîçâîëÿåò îòíåñòè åãî ñýìïëû ê òîìó èëè èíîìó ñïèñêó ñîáûòèé
-        # åñëè ïðîïóñê - äëèííûé ïðîïóñê, òî ïîïîëíÿåì ñïèñîê ïðîïóñêîâ
+        # Ñ€ÐµÐ·ÑƒÐ»ÑŒÑ‚Ð°Ñ‚ ÐºÐ»Ð°ÑÑÐ¸Ñ„Ð¸ÐºÐ°Ñ†Ð¸Ð¸ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐºÐ° Ð¿Ð¾Ð·Ð²Ð¾Ð»ÑÐµÑ‚ Ð¾Ñ‚Ð½ÐµÑÑ‚Ð¸ ÐµÐ³Ð¾ ÑÑÐ¼Ð¿Ð»Ñ‹ Ðº Ñ‚Ð¾Ð¼Ñƒ Ð¸Ð»Ð¸ Ð¸Ð½Ð¾Ð¼Ñƒ ÑÐ¿Ð¸ÑÐºÑƒ ÑÐ¾Ð±Ñ‹Ñ‚Ð¸Ð¹
+        # ÐµÑÐ»Ð¸ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐº - Ð´Ð»Ð¸Ð½Ð½Ñ‹Ð¹ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐº, Ñ‚Ð¾ Ð¿Ð¾Ð¿Ð¾Ð»Ð½ÑÐµÐ¼ ÑÐ¿Ð¸ÑÐ¾Ðº Ð¿Ñ€Ð¾Ð¿ÑƒÑÐºÐ¾Ð²
         if (gapClass == evm@markerNames$gap)
         {
           gapGroups <- append(gapGroups, eventGroups[gr])
           lastGroup <- evm@markerNames$gap
           eventMarkersGroups <- append(eventMarkersGroups, rep(evm@markerNames$gap, nrow(eventGroups[[gr]])))
         }
-        # åñëè ïðîïóñê - ôèêñàöèÿ
+        # ÐµÑÐ»Ð¸ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐº - Ñ„Ð¸ÐºÑÐ°Ñ†Ð¸Ñ
         if (gapClass == evm@markerNames$fixation)
         {
-          # òî åñëè ïîñëåäíÿÿ ãðóïïà - ôèêñàöèÿ, òî äîáàâëÿåì ñýìïëû ïðîïóñêà â ýòó ãðóïïó
+          # Ñ‚Ð¾ ÐµÑÐ»Ð¸ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÑÑ Ð³Ñ€ÑƒÐ¿Ð¿Ð° - Ñ„Ð¸ÐºÑÐ°Ñ†Ð¸Ñ, Ñ‚Ð¾ Ð´Ð¾Ð±Ð°Ð²Ð»ÑÐµÐ¼ ÑÑÐ¼Ð¿Ð»Ñ‹ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐºÐ° Ð² ÑÑ‚Ñƒ Ð³Ñ€ÑƒÐ¿Ð¿Ñƒ
           if (lastGroup == evm@markerNames$fixation)
           {
             lastFixation <- rbind(eventGroups[[gr-1]], eventGroups[[gr]])
@@ -228,7 +332,7 @@ IVT <- function(t, x, y, filterMarkers, settings)
             lastGroup <- evm@markerNames$fixation
             eventMarkersGroups <- append(eventMarkersGroups, rep(evm@markerNames$fixation, nrow(eventGroups[[gr]])))
           }
-          # èíà÷å äîáàâëÿåì íîâóþ ãðóïïó â ñïèñîê ôèêñàöèé
+          # Ð¸Ð½Ð°Ñ‡Ðµ Ð´Ð¾Ð±Ð°Ð²Ð»ÑÐµÐ¼ Ð½Ð¾Ð²ÑƒÑŽ Ð³Ñ€ÑƒÐ¿Ð¿Ñƒ Ð² ÑÐ¿Ð¸ÑÐ¾Ðº Ñ„Ð¸ÐºÑÐ°Ñ†Ð¸Ð¹
           else
           {
             fixationGroups <- append(fixationGroups, eventGroups[gr])
@@ -236,10 +340,10 @@ IVT <- function(t, x, y, filterMarkers, settings)
             eventMarkersGroups <- append(eventMarkersGroups, rep(evm@markerNames$fixation, nrow(eventGroups[[gr]])))
           }
         }
-        # åñëè ïðîïóñê - ñàêêàäà
+        # ÐµÑÐ»Ð¸ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐº - ÑÐ°ÐºÐºÐ°Ð´Ð°
         if (gapClass == evm@markerNames$saccade)
         {
-          # òî åñëè ïîñëåäíÿÿ ãðóïïà - ñàêêàäà, òî äîáàâëÿåì ñýìïëû ïðîïóñêà â ýòó ãðóïïó
+          # Ñ‚Ð¾ ÐµÑÐ»Ð¸ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÑÑ Ð³Ñ€ÑƒÐ¿Ð¿Ð° - ÑÐ°ÐºÐºÐ°Ð´Ð°, Ñ‚Ð¾ Ð´Ð¾Ð±Ð°Ð²Ð»ÑÐµÐ¼ ÑÑÐ¼Ð¿Ð»Ñ‹ Ð¿Ñ€Ð¾Ð¿ÑƒÑÐºÐ° Ð² ÑÑ‚Ñƒ Ð³Ñ€ÑƒÐ¿Ð¿Ñƒ
           if (lastGroup == evm@markerNames$saccade)
           {
             lastSaccade <- rbind(eventGroups[[gr-1]], eventGroups[[gr]])
@@ -247,7 +351,7 @@ IVT <- function(t, x, y, filterMarkers, settings)
             lastGroup <- evm@markerNames$saccade
             eventMarkersGroups <- append(eventMarkersGroups, rep(evm@markerNames$saccade, nrow(eventGroups[[gr]])))
           }
-          # èíà÷å äîáàâëÿåì íîâóþ ãðóïïó â ñïèñîê ñàêêàä
+          # Ð¸Ð½Ð°Ñ‡Ðµ Ð´Ð¾Ð±Ð°Ð²Ð»ÑÐµÐ¼ Ð½Ð¾Ð²ÑƒÑŽ Ð³Ñ€ÑƒÐ¿Ð¿Ñƒ Ð² ÑÐ¿Ð¸ÑÐ¾Ðº ÑÐ°ÐºÐºÐ°Ð´
           if (lastGroup == evm@markerNames$fixation | lastGroup == evm@markerNames$gap)
           {
             saccadeGroups <- append(saccadeGroups, eventGroups[gr])
@@ -262,9 +366,7 @@ IVT <- function(t, x, y, filterMarkers, settings)
   }
   return(evm)
 }
-
-ANH <- function(t, x, y, filterMarkers, settings) 
-{
+ANH <- function(t, x, y, filterMarkers, settings) {
   angular <- settings$angular
   screenDist <- settings$screenDistance
   screenResolution <- settings$screenResolution
@@ -298,7 +400,7 @@ ANH <- function(t, x, y, filterMarkers, settings)
   # Using Savitsky-Golay filter to get velocities and accelerations using derivatves of approximated x and y signals
   vel <- calcVel(t, x, y, settings)
   accels <- vel$accels
-
+  
   evm <- new(Class = "EventMarkers")
   rawEvM <- ifelse(filterMarkers@filterMarkers != filterMarkers@markerNames$ok, "Gap", "Not Gap")[-size]
   windowSize <- floor(minFixationDur/mean(vel$dts, na.rm = T))
@@ -329,11 +431,11 @@ ANH <- function(t, x, y, filterMarkers, settings)
   ### Saccades detection
   ### Velocity peaks, saccades onsets and offsets search
   
-  #Íàõîäèì íîìåðà ñýìïëîâ íà÷àëà ïèêà è êîíöà ïèêà
+  #ÐÐ°Ñ…Ð¾Ð´Ð¸Ð¼ Ð½Ð¾Ð¼ÐµÑ€Ð° ÑÑÐ¼Ð¿Ð»Ð¾Ð² Ð½Ð°Ñ‡Ð°Ð»Ð° Ð¿Ð¸ÐºÐ° Ð¸ ÐºÐ¾Ð½Ñ†Ð° Ð¿Ð¸ÐºÐ°
   above_Threshold <- (vel$vels > PT)
   peaks <- which(above_Threshold[-1]!=above_Threshold[-length(above_Threshold)])
   if (peaks[1]<=windowSize) peaks <- peaks[-c(1:2)]
-  #Íàõîäèì onset-û
+  #ÐÐ°Ñ…Ð¾Ð´Ð¸Ð¼ onset-Ñ‹
   STon <- getThreshold(vel$vels[which(rawEvM == "Not Gap")], PT0 = 250, tolerance = 0.1, sigmaCoef = 3)
   leftmost_peaks <- peaks[seq(1,length(peaks),2)]
   onsets <- c()
@@ -351,7 +453,7 @@ ANH <- function(t, x, y, filterMarkers, settings)
       else nsample <- nsample - 1
     }
   }
-  #Íàõîäèì offset-û
+  #ÐÐ°Ñ…Ð¾Ð´Ð¸Ð¼ offset-Ñ‹
   rightmost_peaks <- peaks[seq(2,length(peaks),2)]
   offsets <- c()
   offset_Thresholds <- c()
@@ -391,7 +493,7 @@ ANH <- function(t, x, y, filterMarkers, settings)
                                    evm@markerNames$gap))
     }
   }
-
+  
   ############################
   ### Fixation detection ###
   ############################
@@ -403,16 +505,14 @@ ANH <- function(t, x, y, filterMarkers, settings)
   evm@eventGroups <- group 
   return(evm)
 }
-
-IDT <- function(t, x, y, filterMarkers, settings)
-{
+IDT <- function(t, x, y, filterMarkers, settings) {
   
   dispersionThreshold <- settings$dispersionThreshold # in px or degrees
   durationThreshold <- settings$durationThreshold # in milliseconds
   durationThreshold <- durationThreshold/1000 # now in seconds
   
   angular <- settings$angular
-  screenDist <- settings$screenDistance
+  screenDist <- settings$screenDist
   screenResolution <- settings$screenResolution
   screenSize <- settings$screenSize
   
@@ -424,7 +524,7 @@ IDT <- function(t, x, y, filterMarkers, settings)
   }
   
   evm <- new(Class = "EventMarkers")
-
+  
   size <- length(t)
   rawEvM <- c()
   rawEvM[1:(size-1)] <- evm@markerNames$saccade
@@ -460,40 +560,121 @@ IDT <- function(t, x, y, filterMarkers, settings)
   return(evm)
 }
 
-## CORE DETECTOR ##
-# This detector uses specified function (IVT, IDT, Ada-NH, ...) to detect oculomotor events
-coreDetector <- function(DataRecord, settings)
-{
-  t <- DataRecord@eyesDataObject@time@time
-  algorithm <- settings$subfun
-  if (DataRecord@eyesDataObject@conditions@conditions$eye == "left")
-  {
-    leftX <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx
-    leftY <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory
-    filterMarkers <- DataRecord@eyesDataObject@leftFilterMarkers
-    res <- algorithm(t = t, x = leftX, y = leftY, filterMarkers, settings)
-    DataRecord@eyesDataObject@leftEventMarkers <- res
-  }
-  if (DataRecord@eyesDataObject@conditions@conditions$eye == "right")
-  {
-    rightX <- DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx
-    rightY <- DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory
-    filterMarkers <- DataRecord@eyesDataObject@rightFilterMarkers
-    res <- algorithm(t = t, x = rightX, y = rightY, filterMarkers, settings)
-    DataRecord@eyesDataObject@rightEventMarkers <- res
-  }
-  if (DataRecord@eyesDataObject@conditions@conditions$eye == "both")
-  {
-    leftX <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx
-    leftY <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory
-    rightX <- DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx
-    rightY <- DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory
-    leftFilterMarkers <- DataRecord@eyesDataObject@leftFilterMarkers
-    rightFilterMarkers <- DataRecord@eyesDataObject@rightFilterMarkers
-    resLeft <- algorithm(t = t, x = leftX, y = leftY, leftFilterMarkers, settings)
-    resRight <- algorithm(t = t, x = rightX, y = rightY, rightFilterMarkers, settings)
-    DataRecord@eyesDataObject@leftEventMarkers <- resLeft
-    DataRecord@eyesDataObject@rightEventMarkers <- resRight
-  }
-  return(DataRecord)
-}
+## Settings definition
+settingsVels <- list(#the next args are used to calculate angular positions and velocity
+                      angular          = T,
+                      screenDist       = 50, # cm
+                      screenSize       = c(30, 20), # cm
+                      screenResolution = c(1280,1024), # px
+                      velType          = "analytical", #finDiff
+                      sampleRate       = 500, # Hz   
+                      fl               = 20 # msec
+                    )
+settingsIVT <- list(VT               = 30, # in deg/second if angular is TRUE (30 is a standard value, rule of thumb)
+                    postProcess      = F # do not touch
+)
+
+settingsIDT <- list(dispersionThreshold = 1/2, # minimum DT in IDT algorithm! (see Identifying Fixations and Saccades in Eye-Tracking Protocols)
+                    durationThreshold   = 100 # minimum DurationT in IDT algorithm (-||-)
+)
+
+settingsANH <- list(maxSaccadeVel    = 1000, # deg/s (all args for ANH are set to recommended values)
+                    maxSaccadeAcc    = 100000, # deg/s^2
+                    minSaccadeDur    = 0.01, # seconds
+                    minFixationDur   = 0.04, # seconds
+                    PT0              = 0.250, # seconds
+                    tolerance        = 0.00001 # seconds                 
+)
+
+#-----------------------------------Ð’Ð¸Ð·ÑƒÐ°Ð»Ð¸Ð·Ð°Ñ†Ð¸Ñ----------------------------
+mainpath <- "F:\\Ð˜Ð½ÑÑ‚Ð¸Ñ‚ÑƒÑ‚\\ÐŸÑ€Ð¾ÐµÐºÑ‚Ñ‹\\EyeTrackingPackage\\Data\\Tower-mounted SMI\\"
+filepath <- paste(mainpath,"Marmalyuk_Yuriev_problem_solving_Lugancov_1232_Trial001 Samples.txt", sep="")
+test_data = read.csv(file = filepath, header = T, dec = ".", comment.char = "#", sep = "\t")[-1,]
+t <- test_data$Time/1000000 # !!! Need to convert time to seconds !!!
+x <- test_data$L.POR.X..px. # !!! NOT RAW X !!! 
+y <- test_data$L.POR.Y..px. # !!! NOT RAW Y !!! 
+
+### Checking velocity plot
+velos <- calcVel(t,x,y,settings)
+plot(velos$vels)
+
+### Detecting events
+fm <- new(Class = "FilterMarkers", filterMarkers = rep("Ok", length(t)))
+ANHdata <- ANH(t,x,y,filterMarkers = fm,append(settingsANH, settingsVels))
+IDTdata <- IDT(t,x,y,filterMarkers = fm, append(settingsIDT, settingsVels))
+IVTData <- IVT(t, x, y, filterMarkers = fm, settingsIVT)
+
+indexes <- 80:180
+leg_posANH <- c(.82,.84)
+leg_posIDT <- c(.82,.91)
+
+
+IVT_coords_plot <- qplot(x[indexes],y[indexes],
+                         colour = IVTData@eventMarkers[indexes], 
+                         size = I(3),
+                         main = "IVT, ÐºÐ¾Ð¾Ñ€Ð´Ð¸Ð½Ð°Ñ‚Ñ‹",
+                         xlab = "x ÐºÐ¾Ð¾Ñ€Ð´Ð¸Ð½Ð°Ñ‚Ð°",
+                         ylab = "y ÐºÐ¾Ð¾Ñ€Ð´Ð¸Ð½Ð°Ñ‚Ð°") +
+  scale_colour_manual(labels = c("Ð¤Ð¸ÐºÑÐ°Ñ†Ð¸Ñ","Ð¡Ð°ÐºÐºÐ°Ð´Ð°"), 
+                      values = c("black", "red")) +
+  theme(legend.position=leg_posANH,
+        legend.title=element_blank()) 
+
+IVTplot <- qplot(indexes,velos$vels[indexes], 
+                 colour = IVTData@eventMarkers[indexes], 
+                 size = I(4),
+                 main = "IVT, ÑÐºÐ¾Ñ€Ð¾ÑÑ‚Ð¸",
+                 xlab = "Ð’Ñ€ÐµÐ¼Ñ",
+                 ylab = "Ð¡ÐºÐ¾Ñ€Ð¾ÑÑ‚ÑŒ") +
+  scale_colour_manual(labels = c("Ð¤Ð¸ÐºÑÐ°Ñ†Ð¸Ñ","Ð¡Ð°ÐºÐºÐ°Ð´Ð°"), 
+                      values = c("black", "red")) +
+  theme(legend.position=leg_posANH,
+        legend.title=element_blank()) 
+
+ANH_coords_plot <- qplot(x[indexes],y[indexes],
+                         colour = ANHdata@eventMarkers[indexes], 
+                         size = I(3),
+                         main = "AdaptiveNH, ÐºÐ¾Ð¾Ñ€Ð´Ð¸Ð½Ð°Ñ‚Ñ‹",
+                         xlab = "x ÐºÐ¾Ð¾Ñ€Ð´Ð¸Ð½Ð°Ñ‚Ð°",
+                         ylab = "y ÐºÐ¾Ð¾Ñ€Ð´Ð¸Ð½Ð°Ñ‚Ð°") +
+  scale_colour_manual(labels = c("Ð¤Ð¸ÐºÑÐ°Ñ†Ð¸Ñ","ÐÑ€Ñ‚ÐµÑ„Ð°ÐºÑ‚","Ð“Ð»Ð¸ÑÑÐ°Ð´Ð°","Ð¡Ð°ÐºÐºÐ°Ð´Ð°"), 
+                      values = c("black",   "green",  "blue",    "red")) +
+  theme(legend.position=leg_posANH,
+        legend.title=element_blank()) 
+
+ANHplot <- qplot(indexes,velos$vels[indexes], 
+      colour = ANHdata@eventMarkers[indexes], 
+      size = I(4),
+      main = "AdaptiveNH, ÑÐºÐ¾Ñ€Ð¾ÑÑ‚Ð¸",
+      xlab = "Ð’Ñ€ÐµÐ¼Ñ",
+      ylab = "Ð¡ÐºÐ¾Ñ€Ð¾ÑÑ‚ÑŒ") +
+scale_colour_manual(labels = c("Ð¤Ð¸ÐºÑÐ°Ñ†Ð¸Ñ","ÐÑ€Ñ‚ÐµÑ„Ð°ÐºÑ‚","Ð“Ð»Ð¸ÑÑÐ°Ð´Ð°","Ð¡Ð°ÐºÐºÐ°Ð´Ð°"), 
+                    values = c("black",   "green",  "blue",    "red")) +
+theme(legend.position=leg_posANH,
+      legend.title=element_blank()) 
+
+IDT_coords_plot <- qplot(x[indexes],y[indexes],
+                         colour = IDTdata@eventMarkers[indexes], 
+                         size = I(3),
+                         main = "IDT, ÐºÐ¾Ð¾Ñ€Ð´Ð¸Ð½Ð°Ñ‚Ñ‹",
+                         xlab = "x ÐºÐ¾Ð¾Ñ€Ð´Ð¸Ð½Ð°Ñ‚Ð°",
+                         ylab = "y ÐºÐ¾Ð¾Ñ€Ð´Ð¸Ð½Ð°Ñ‚Ð°") +
+  scale_colour_manual(labels = c("Ð¤Ð¸ÐºÑÐ°Ñ†Ð¸Ñ","Ð¡Ð°ÐºÐºÐ°Ð´Ð°"), 
+                      values = c("black",   "red")) +
+  theme(legend.position=leg_posIDT,
+        legend.title=element_blank())
+
+IDTplot <- qplot(indexes,velos$vels[indexes], 
+      colour = IDTdata@eventMarkers[indexes], 
+      size = I(4),
+      main = "IDT, ÑÐºÐ¾Ñ€Ð¾ÑÑ‚Ð¸",
+      xlab = "Ð’Ñ€ÐµÐ¼Ñ",
+      ylab = "Ð¡ÐºÐ¾Ñ€Ð¾ÑÑ‚ÑŒ") +
+scale_colour_manual(labels = c("Ð¤Ð¸ÐºÑÐ°Ñ†Ð¸Ñ","Ð¡Ð°ÐºÐºÐ°Ð´Ð°"), 
+                    values = c("black",   "red")) +
+theme(legend.position=leg_posIDT,
+      legend.title=element_blank())
+
+grid.arrange(IVT_coords_plot,IVTplot,
+             ANH_coords_plot,ANHplot,
+             IDT_coords_plot,IDTplot)
