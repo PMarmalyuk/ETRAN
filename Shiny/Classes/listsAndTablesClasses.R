@@ -62,6 +62,8 @@ setClass("AvailableFactors",
 ## (e.g. one EventData table per data record for an eye)
 ## owner_id is ID of an object linked to a factor's value (e.g. subject ID, stimulus ID, trial ID, data record ID, event group ID, etc.)
 ## owner is a type of an object ("Subject", "Stimulus", "Trial", "DataRecord", "EventGroup", etc.)
+
+## NEED TO ADD FACTOR ID!!!
 setClass("FactorsData",
          representation(factorsDataList = "list") # list of owner_id, owner, value
          ,

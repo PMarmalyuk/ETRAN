@@ -1,9 +1,11 @@
 ## Validity code of all events except gap
 ## no settings
+
+## CHANGE LOGICAL EXPRESSION TO THAT IS USING FILTER MARKERS
 getValCode <- function(data, settings)
 {
   evmn <- settings$evmn
-  if (any(data$eventMarkers == evmn$gap)) 
+  if (any(data$filterMarkers == evmn$gap)) 
   {
     valCode <- "Invalid"
   }
