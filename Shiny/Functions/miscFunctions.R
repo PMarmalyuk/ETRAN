@@ -10,12 +10,6 @@ createParser <- function(name, fun, settings)
   return(parser)
 }
 
-createFilter <- function(name, fun, settings)
-{
-  filter <- new(Class = "Filter", name = name, fun = fun, settings = settings)
-  return(filter)
-}
-
 createSmoother <- function(name, fun, settings)
 {
   smoother <- new(Class = "Smoother", name = name, fun = fun, settings = settings)

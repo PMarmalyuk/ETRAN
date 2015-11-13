@@ -1,26 +1,34 @@
-noFilter <- function(t,x,y, settings)
+createFilter <- function(name, fun, settings)
 {
-  markers <- new(Class = "FilterMarkers")
-  markers@filterMarkers <- rep(markers@markerNames$ok, length(t))
-  res <- list(t = t, x = x, y = y, filterMarkers = markers)
+  filter <- new(Class = "Filter", name = name, fun = fun, settings = settings)
+  return(filter)
+}
+
+# noFilter INDEPENDENT OF ETRAN CLASSES:
+noFilter <- function(t,x,y,settings)
+{
+  markerNames <- settings$filterMarkerNames
+  filterMarkers <- rep(markerNames$ok, length(t))
+  res <- list(t = t, x = x, y = y, filterMarkers = filterMarkers)
   return(res)
 }
 
+# standardFilter INDEPENDENT OF ETRAN CLASSES:
 standardFilter <- function(t, x, y, settings)
 {
   screenRes <- settings$screenResolution
   interpolate <- settings$interpolate
-  markers <- new(Class = "FilterMarkers")
-  markers1 <- ifelse(x == 0 & y == 0, markers@markerNames$zeroes, markers@markerNames$ok)
+  markerNames <- settings$filterMarkerNames
+  markers1 <- ifelse(x == 0 & y == 0, markerNames$zeroes, markerNames$ok)
   if (!is.na(screenRes)[1])
   {
-    markers2 <- ifelse(x > screenRes[1] | y > screenRes[2], markers@markerNames$outOfBounds, markers@markerNames$ok)
-    markers1[which(markers1 == markers@markerNames$ok)] <- markers2[which(markers1 == markers@markerNames$ok)]
+    markers2 <- ifelse(x > screenRes[1] | y > screenRes[2], markerNames$outOfBounds, markerNames$ok)
+    markers1[which(markers1 == markerNames$ok)] <- markers2[which(markers1 == markerNames$ok)]
   }
-  markers@filterMarkers <- markers1
+  filterMarkers <- markers1
   if (interpolate)
   {
-    gapMarkers <- ifelse(markers@filterMarkers != markers@markerNames$ok, "GAP", "NOT GAP")
+    gapMarkers <- ifelse(filterMarkers != markerNames$ok, "GAP", "NOT GAP")
     gapMarks <- data.frame(firstGap = gapMarkers[-length(gapMarkers)], secondGap = gapMarkers[-1])
     transitions <- apply(gapMarks, MARGIN = 1, function(x) {if (x[2] != x[1]) {1} else {0}})
     group <- c(1,cumsum(transitions)+1)
@@ -70,7 +78,7 @@ standardFilter <- function(t, x, y, settings)
       t <- data$t; x <- data$x; y <- data$y
     }
   }
-  res <- list(t = t, x = x, y = y, filterMarkers = markers)
+  res <- list(t = t, x = x, y = y, filterMarkers = filterMarkers)
   return(res)
 }
 
@@ -92,7 +100,8 @@ coreFilter <- function(DataRecord, settings)
       DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx <- res$x
       DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory <- res$y
     }
-    DataRecord@eyesDataObject@leftFilterMarkers <- res$filterMarkers
+    fMarkers <- new(Class = "FilterMarkers", markerNames = settings$filterMarkerNames, filterMarkers = res$filterMarkers)
+    DataRecord@eyesDataObject@leftFilterMarkers <- fMarkers
   }
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "right")
   {
@@ -104,7 +113,8 @@ coreFilter <- function(DataRecord, settings)
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx <- res$x
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory <- res$y
     }
-    DataRecord@eyesDataObject@rightFilterMarkers <- res$filterMarkers
+    fMarkers <- new(Class = "FilterMarkers", markerNames = settings$filterMarkerNames, filterMarkers = res$filterMarkers)
+    DataRecord@eyesDataObject@rightFilterMarkers <- fMarkers
   }
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "both")
   {
@@ -121,8 +131,10 @@ coreFilter <- function(DataRecord, settings)
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx <- resRight$x
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory <- resRight$y
     }
-    DataRecord@eyesDataObject@leftFilterMarkers <- resLeft$filterMarkers
-    DataRecord@eyesDataObject@rightFilterMarkers <- resRight$filterMarkers
+    leftFMarkers <- new(Class = "FilterMarkers", markerNames = settings$filterMarkerNames, filterMarkers = resLeft$filterMarkers)
+    DataRecord@eyesDataObject@leftFilterMarkers <- leftFMarkers
+    rightFMarkers <- new(Class = "FilterMarkers", markerNames = settings$filterMarkerNames, filterMarkers = resRight$filterMarkers)
+    DataRecord@eyesDataObject@rightFilterMarkers <- rightFMarkers
   }
   return(DataRecord)
 }

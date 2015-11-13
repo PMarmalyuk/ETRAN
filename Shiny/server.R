@@ -1,11 +1,11 @@
 shinyServer(function(input, output, session) {
   ### INITIALISATION ###
   ## Attach packages
-  library(devtools)
-  library(DT)
-  library(htmlwidgets)
-  library(D3TableFilter)
-  library(shinydashboard)
+  # library(devtools)
+  # library(DT)
+  # library(htmlwidgets)
+  # library(D3TableFilter)
+  # library(shinydashboard)
   
   ## Creating session objects
   source('Initialize.R', local = T)
@@ -31,6 +31,8 @@ shinyServer(function(input, output, session) {
                          smpKey = "SMP",
                          parserSep = "\t",
                          ##
+                         defaultFilterMarkersNames = new(Class = "FilterMarkers")@markerNames,
+                         defaultEventMarkersNames = new(Class = "EventMarkers")@markerNames,
                          tempDataRecords = data.frame(Id = numeric(), File = character(), Experiment = character(), Trial = character(), Subject = character(), Associated = logical()),
                          dataSample = new(Class = "DataSample", keys = data.frame(expID = numeric(), 
                                                                                   subjectID = numeric(), 
@@ -61,7 +63,8 @@ shinyServer(function(input, output, session) {
 
   activeFilter <- reactive(
     {
-      settings <- list(subfun = noFilter, interpolate = F)
+      defFMNames <- vals$defaultFilterMarkersNames
+      settings <- list(subfun = noFilter, interpolate = F, filterMarkerNames = defFMNames)
       filter <- createFilter(name = "Standard", fun = coreFilter, settings = settings)
       if (input$filterType == 'External Filter')
       {
@@ -69,11 +72,11 @@ shinyServer(function(input, output, session) {
         ## TO DO: Filter using external extFilter
       } else if (input$filterType == 'No filter')
       {
-        settings <- list(subfun = noFilter, interpolate = F)
+        settings <- list(subfun = noFilter, interpolate = F, filterMarkerNames = defFMNames)
         filter <- createFilter(name = "Standard", fun = coreFilter, settings = settings)
       } else if (input$filterType == 'Core Filter')
       {
-        settings <- list(subfun = standardFilter, interpolate = input$interpolate)
+        settings <- list(subfun = standardFilter, interpolate = input$interpolate, filterMarkerNames = defFMNames)
         if (!input$useExpConditions)
         {
           settings <- append(settings, list(screenResolution = c(input$filterScrResX, input$filterScrResY)))
