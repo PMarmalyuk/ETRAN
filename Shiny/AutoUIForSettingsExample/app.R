@@ -19,5 +19,4 @@ library(DT)
 library(htmlwidgets)
 library(D3TableFilter)
 # options(shiny.maxRequestSize = 1000*1024^2)
-runApp("F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Shiny\\AutoUIForSettingsTest")
-
+runApp("F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\Shiny\\AutoUIForSettingsExample\\")
