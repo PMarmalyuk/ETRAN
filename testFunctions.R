@@ -13,9 +13,7 @@ source("Functions\\eventAnalyzersNew.R", local = T)
 source("Functions\\estimatorsNew.R", local = T)
 source("Methods\\Methods_v_1_7.R", local = T)
 
-source('Functions\\DataRecordSubFunctions.R', local = T)
-source('Functions\\EventGroupSubFunctions.R', local = T)
-source('CoreSubFunctionsInit.R', local = T)
+
 library(data.table)
 rawSett <- new(Class = "ReadSettings")
 folder <- "F:/Институт/Проекты/EyeTrackingPackage/Data/TestData"
@@ -47,13 +45,15 @@ dataRec <- new(Class = "DataRecord", expID = 1, subjectID = 1, trialID = 1, eyes
 
 # Event Detection test
 smoother <- createSmoother("Standard", fun = coreSmoother, settings = list(subfun = medianFilt, fl = 33))
+
 filter <- createFilter(name = "Standard", fun = coreFilter, settings = list(subfun = standardFilter, 
                                                                             screenResolution = conditions@conditions$screenResolution, 
-                                                                            interpolate = F))
+                                                                            interpolate = F,
+                                                                            filterMarkerNames = new(Class = "FilterMarkers")@markerNames))
 detector <- createDetector("Standard", fun = coreDetector, settings = list(subfun = IVT,
                                                                            postProcess = F,
                                                                            VT = 15,
-                                                                           velType = "finDiff",
+                                                                           velType = "analytical",
                                                                            sampleRate = 500,
                                                                            fl = 33,
                                                                            angular = T,
@@ -74,17 +74,98 @@ dataRec@eyesDataObject@leftEventMarkers <- res@eyesDataObject@leftEventMarkers
 dataRec@eyesDataObject@rightEventMarkers <- res@eyesDataObject@rightEventMarkers
 
 # Event Analysis test
-subFuns <- getSubfunctions(self = subFunctions, operation = "Event Analysis")
-sfToApply <- subFuns@subFunctionsList$subFunctions
-analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer, 
-                           settings = list(subFunctions = sfToApply))
+# subFuns <- getSubfunctions(self = subFunctions, operation = "Event Analysis")
+# sfToApply <- subFuns@subFunctionsList$subFunctions
+source('Functions\\DataRecordSubFunctions.R', local = T)
+source('Functions\\EventGroupSubFunctions.R', local = T)
+source('CoreSubFunctionsInit.R', local = T)
 source("Functions\\eventAnalyzersNew.R", local = T)
-Rprof("test.out")
-dataRec <- eventAnalyzer(dataRec, analyzer)
-Rprof(NULL)
-summaryRprof("test.out")
+subFunctions <- subFunctions@subFunctionsList$subFunctions
+analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
+                           settings = list(subFunctions = subFunctions))
 
-str(asDataFrame(dataRec@analysisResults$leftEventData, owner = "Fixation"))
+
+#Rprof("test.out")
+
+
+
+#Rprof(NULL)
+#summaryRprof("test.out")
+
+
+# vls <- dataRec@analysisResults$leftEventData@factorsDataList[[1]]$values
+# for (i in 1:length(vls))
+# {
+#   fnew <- createFactorFromReturnedValue(x = vls[i])
+#   fnew@description <- "Yo"
+#   fnew@owner <- "Event"
+#   ObsSegmIntFctrs <- addFactorDefinition(ObsSegmIntFctrs, factor = fnew)
+# }
+dataRec <- eventAnalyzer(dataRec, analyzer)
+ObsSegmIntFctrs <- new(Class = "AvailableFactors")
+eventsFactors <- new(Class = "FactorsData")
+for (i in 1:length(dataRec@analysisResults$leftEventData@factorsDataList))
+{
+  vls_record <- dataRec@analysisResults$leftEventData@factorsDataList[[i]]
+  owner <- c("Event", vls_record$owner)
+  ownerID <- vls_record$ownerID
+  vls <- vls_record$values
+  for (j in 1:length(vls))
+  {
+    fctr <- createFactorFromReturnedValue(x = vls[j])
+    fctr@description <- "Yo"
+    fctr@owner <- "Event"
+    whichFactor <- factorExists(self = ObsSegmIntFctrs, factor = fctr)
+    if (!whichFactor$exists) 
+    {
+      ObsSegmIntFctrs <- addFactorDefinition(ObsSegmIntFctrs, factor = fctr)
+      factorID <- tail(ObsSegmIntFctrs@availableFactors$id, 1)
+    } else
+    {
+      # print(whichFactor)
+      factorID <- whichFactor$id
+    }
+    # factorID <- getFactorIDByName(self = ObsSegmIntFctrs, factorName = names(vls[j]))
+    value = vls[[j]]
+    # print(factorID)
+    eventsFactors <- addFactorValue(self = eventsFactors, 
+                                    availableFactors = ObsSegmIntFctrs, 
+                                    owner = owner,
+                                    ownerID = ownerID,
+                                    factorID = factorID,
+                                    eye = "left",
+                                    value = value,
+                                    replace = T)
+  }
+}
+
+createFactorFromReturnedValue <- function(x)
+{
+  factor_new <- new(Class = "Factor", varName = as.character(names(x)))
+  x <- unlist(x)
+  cls <- class(x)[1]
+  if (cls == "integer")
+  {
+    factor_new@type <- "integer"
+    factor_new@levels <- as.character(NA)
+  }
+  if (cls == "numeric")
+  {
+    factor_new@type <- "numeric"
+    factor_new@levels <- as.character(NA)
+  }
+  if (cls == "factor")
+  {
+    factor_new@type <- "factor"
+    factor_new@levels <- levels(x)
+  }
+  if (cls == "ordered")
+  {
+    factor_new@type <- "ordFactor"
+    factor_new@levels <- levels(x)
+  }
+  return(factor_new)
+}
 
 # Estimators test
 dataRec@statistics$left <- list()

@@ -2,7 +2,7 @@ setClass("ReadSettings",
          representation(readSettings = "list"),
          prototype(readSettings = list(encoding = "UTF-8",   
                                        sep = "\t",
-                                       dec = ",",
+                                       dec = ".",
                                        skip = 20,
                                        comment.char = "#",
                                        header = T)

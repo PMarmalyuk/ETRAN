@@ -34,7 +34,7 @@ setClass("Factor",
                         description = "character",
                         type = "character", # numeric, integer, factor, ordFactor
                         levels = "character", #list of factor levels, order is important for ordFactor, NULL for numeric and integer
-                        owner = "character" # "Subject", "Trial". "Stimulus", "Record", "EventGroup"
+                        owner = "character" # "Subject", "Trial". "Stimulus", "Record", "Observation", "EventGroup", ...
          ),
          prototype(
          )

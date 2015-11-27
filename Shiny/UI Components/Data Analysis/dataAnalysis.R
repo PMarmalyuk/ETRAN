@@ -61,7 +61,8 @@ tabItem(tabName = "Analysis",
                                                 tabPanel(inputId = "statisticsEstimation", title = "Statistics Estimation",
                                                          tabPanel(inputId = "eventsParams", title = "Calculate Event Parameters", 
                                                                   dataTableOutput("subFunctions2"),
-                                                                  uiOutput("subFunctionSettings2")
+                                                                  uiOutput("subFunctionSettings2"),
+                                                                  actionButton("calcStats", label = "Calculate Statistics")
                                                          )
                                                 ),
                                                 tabPanel(inputId = "statsDistributions", title = "Distributions"),

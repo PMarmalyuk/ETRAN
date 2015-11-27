@@ -1,9 +1,12 @@
 standardAnalyzer <- function(data, eventMarkerNames, settings, conditions)
 {
-  data <- data[-which(is.na(data$eventGroups) | is.na(data$eventMarkers)),]
+  if (any(is.na(data$eventGroups) | is.na(data$eventMarkers)))
+  {
+    data <- data[-which(is.na(data$eventGroups) | is.na(data$eventMarkers)),]
+  }
   sampleGroupsByEventType <- split(data, data$eventMarkers)
   subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@operation == "Event Analysis"})]
-
+  
   sampleGroups <- split(data, f = list(data$eventMarkers, data$eventGroups), drop = T)
   eventGroupsCompexKeys <- strsplit(names(sampleGroups), ".", fixed = T)
   evTypes <- sapply(eventGroupsCompexKeys, FUN = function(x) {x[1]})
@@ -29,6 +32,7 @@ standardAnalyzer <- function(data, eventMarkerNames, settings, conditions)
     return(eventData)
   })
   res <- new(Class = "FactorsData", factorsDataList = eventsData)
+  print(res)
   return(res)
 }
 
