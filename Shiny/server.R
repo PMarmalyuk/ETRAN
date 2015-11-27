@@ -60,6 +60,11 @@ shinyServer(function(input, output, session) {
                          subFunctions = subFunctions,
                          activeSubFunctionsIDs = subFunctions@subFunctionsList$ids
                          )
+  
+#   calcStatsButton <- observeEvent(input$calcStats,
+#                                   {
+#                                     
+#                                   })
 
   activeFilter <- reactive(
     {
@@ -979,7 +984,10 @@ shinyServer(function(input, output, session) {
               vals$dataSample@DataRecordsList[[which(vals$dataSample@ids == recID)]]@eyesDataObject@rightEventMarkers <<- res@eyesDataObject@rightEventMarkers
               print("Samples distribution by event types:")
               print(table(vals$dataSample@DataRecordsList[[which(vals$dataSample@ids == recID)]]@eyesDataObject@leftEventMarkers@eventMarkers))
-              # vals$dataSampleUpdateFlags$Flag[vals$dataSampleUpdateFlags$Id %in% recID] <- 2
+#               analyzer <- createAnalyzer()
+#               estimator <- createEstimator(name = "Standard", fun = coreEstimator,
+#                                            settings = list(subFunctions = isolate(vals$subFunctions)))
+#               eventAnalyzer(self = res, analyzer = )
             }
           }
   )
