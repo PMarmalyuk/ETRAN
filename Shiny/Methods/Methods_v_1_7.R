@@ -65,7 +65,7 @@ setGeneric("getLevelsByFactorID", function(self, factorID){standardGeneric("getL
 
 setGeneric("factorValueIsCorrect", function(self, factorID, value){standardGeneric("factorValueIsCorrect")})
 
-setGeneric("addFactorValue", function(self, availableFactors, owner, ownerID, factorID, value, replace){standardGeneric("addFactorValue")})
+setGeneric("addFactorValue", function(self, availableFactors, owner, ownerID, factorID, eye, value, replace){standardGeneric("addFactorValue")})
 setGeneric("asDataFrame", function(self, owner){standardGeneric("asDataFrame")})
 
 
@@ -523,18 +523,23 @@ setMethod("filterDataSample", "DataSample",
 setMethod("factorExists", "AvailableFactors",
           function(self, factor)
           {
+            if (nrow(self@availableFactors) == 0) {return(list(exists = FALSE, id = NA))}
             varName <- factor@varName
             owner <- factor@owner
             varNames <- self@availableFactors$varName[self@availableFactors$owner == owner]
-            if (any(varNames == varName)) {return(TRUE)}
-            return(FALSE)
+            if (any(varNames == varName)) 
+            {
+              factorID <- self@availableFactors$id[which(varNames == varName)]
+              return(list(exists = TRUE, id = factorID))
+            }
+            return(list(exists = FALSE, id = NA))
           }
 )
 
 setMethod("addFactorDefinition",  "AvailableFactors",                                   
           function(self, factor)
           {             
-            if (factorExists(self, factor))
+            if (factorExists(self, factor)$exists)
             {
               warning(paste("A factor with name", factor@varName, "already exists for owner", factor@owner))
               return(self)
@@ -653,19 +658,21 @@ setMethod("factorValueIsCorrect", "AvailableFactors",
 )
 
 setMethod("addFactorValue",  "FactorsData",                                   
-          function(self, availableFactors, owner, ownerID, factorID, value, replace)
+          function(self, availableFactors, owner, ownerID, factorID, eye, value, replace)
           {                         
             if (factorValueIsCorrect(self = availableFactors, factorID = factorID, value = value))
             {
-              factorRecord <- list(factorID = factorID, value = as.character(value), ownerID = ownerID, owner = owner)
-              if (any(self@factorValues$factorID == factorID & self@factorValues$ownerID == ownerID & self@factorValues$owner == owner))
+              if (any(self@factorsDataList$factorID == factorID & 
+                      self@factorsDataList$ownerID == ownerID & 
+                      self@factorsDataList$owner == owner))
               {
                 if (replace)
                 {
-                  recNum <- which(self@factorValues$factorID == factorID & 
-                                    self@factorValues$ownerID == ownerID &
-                                    self@factorValues$owner == owner)
-                  self@factorValues[recNum,] <- factorRecord
+                  recNum <- which(self@factorsDataList$factorID == factorID & 
+                                    self@factorsDataList$ownerID == ownerID &
+                                    self@factorsDataList$owner == owner)
+                  self@factorsDataList$value[recNum,] <- I(value)
+                  self@factorsDataList$eye[recNum,] <- eye
                   return(self)
                 }
                 else
@@ -676,7 +683,8 @@ setMethod("addFactorValue",  "FactorsData",
               }
               else
               {
-                self@factorValues <- rbind(self@factorValues, factorRecord)
+                factorRecord <- data.frame(factorID = factorID, eye = eye, value = I(list(value)), ownerID = ownerID, owner = I(list(owner)))
+                self@factorsDataList <- rbind(self@factorsDataList, factorRecord)
                 return(self)
               }
             }
@@ -699,7 +707,6 @@ setMethod("asDataFrame",  "FactorsData",
               res <- sapply(ownerFactorsData, FUN = function(y)
               {
                 val <- y$values[[which(names(y$values) == x)]]
-                if (class(val) == "factor") {print("Yo")}
                 val
               })
               names(res) <- NULL
