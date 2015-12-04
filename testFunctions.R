@@ -12,8 +12,6 @@ source("Functions\\detectors.R", local = T)
 source("Functions\\eventAnalyzersNew.R", local = T)
 source("Functions\\estimatorsNew.R", local = T)
 source("Methods\\Methods_v_1_7.R", local = T)
-
-
 library(data.table)
 rawSett <- new(Class = "ReadSettings")
 folder <- "F:/Институт/Проекты/EyeTrackingPackage/Data/TestData"
@@ -81,91 +79,16 @@ source('Functions\\EventGroupSubFunctions.R', local = T)
 source('CoreSubFunctionsInit.R', local = T)
 source("Functions\\eventAnalyzersNew.R", local = T)
 subFunctions <- subFunctions@subFunctionsList$subFunctions
+internalFactors <- new(Class = "AvailableFactors")
 analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
-                           settings = list(subFunctions = subFunctions))
+                           settings = list(subFunctions = subFunctions, internalFactors = eventAnalysisResult$intFctrs))
+eventAnalysisResult <- eventAnalyzer(dataRec, analyzer)
 
+dataRec@eyesDataObject@conditions@conditions
 
-#Rprof("test.out")
-
-
-
-#Rprof(NULL)
-#summaryRprof("test.out")
-
-
-# vls <- dataRec@analysisResults$leftEventData@factorsDataList[[1]]$values
-# for (i in 1:length(vls))
-# {
-#   fnew <- createFactorFromReturnedValue(x = vls[i])
-#   fnew@description <- "Yo"
-#   fnew@owner <- "Event"
-#   ObsSegmIntFctrs <- addFactorDefinition(ObsSegmIntFctrs, factor = fnew)
-# }
-dataRec <- eventAnalyzer(dataRec, analyzer)
-ObsSegmIntFctrs <- new(Class = "AvailableFactors")
-eventsFactors <- new(Class = "FactorsData")
-for (i in 1:length(dataRec@analysisResults$leftEventData@factorsDataList))
-{
-  vls_record <- dataRec@analysisResults$leftEventData@factorsDataList[[i]]
-  owner <- c("Event", vls_record$owner)
-  ownerID <- vls_record$ownerID
-  vls <- vls_record$values
-  for (j in 1:length(vls))
-  {
-    fctr <- createFactorFromReturnedValue(x = vls[j])
-    fctr@description <- "Yo"
-    fctr@owner <- "Event"
-    whichFactor <- factorExists(self = ObsSegmIntFctrs, factor = fctr)
-    if (!whichFactor$exists) 
-    {
-      ObsSegmIntFctrs <- addFactorDefinition(ObsSegmIntFctrs, factor = fctr)
-      factorID <- tail(ObsSegmIntFctrs@availableFactors$id, 1)
-    } else
-    {
-      # print(whichFactor)
-      factorID <- whichFactor$id
-    }
-    # factorID <- getFactorIDByName(self = ObsSegmIntFctrs, factorName = names(vls[j]))
-    value = vls[[j]]
-    # print(factorID)
-    eventsFactors <- addFactorValue(self = eventsFactors, 
-                                    availableFactors = ObsSegmIntFctrs, 
-                                    owner = owner,
-                                    ownerID = ownerID,
-                                    factorID = factorID,
-                                    eye = "left",
-                                    value = value,
-                                    replace = T)
-  }
-}
-
-createFactorFromReturnedValue <- function(x)
-{
-  factor_new <- new(Class = "Factor", varName = as.character(names(x)))
-  x <- unlist(x)
-  cls <- class(x)[1]
-  if (cls == "integer")
-  {
-    factor_new@type <- "integer"
-    factor_new@levels <- as.character(NA)
-  }
-  if (cls == "numeric")
-  {
-    factor_new@type <- "numeric"
-    factor_new@levels <- as.character(NA)
-  }
-  if (cls == "factor")
-  {
-    factor_new@type <- "factor"
-    factor_new@levels <- levels(x)
-  }
-  if (cls == "ordered")
-  {
-    factor_new@type <- "ordFactor"
-    factor_new@levels <- levels(x)
-  }
-  return(factor_new)
-}
+evd <- eventAnalysisResult$dataRec@analysisResults$eventData
+evd2 <- deleteFactorValue(evd, owner = c("Event", "Fixation"), ownerID = 1, factorID = 3, eye = "left")
+evd@factorsDataList[1:10,]
 
 # Estimators test
 dataRec@statistics$left <- list()

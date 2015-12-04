@@ -66,9 +66,12 @@ setGeneric("getLevelsByFactorID", function(self, factorID){standardGeneric("getL
 setGeneric("factorValueIsCorrect", function(self, factorID, value){standardGeneric("factorValueIsCorrect")})
 
 setGeneric("addFactorValue", function(self, availableFactors, owner, ownerID, factorID, eye, value, replace){standardGeneric("addFactorValue")})
+setGeneric("deleteFactorValue", function(self, owner, ownerID, factorID, eye){standardGeneric("deleteFactorValue")})
+setGeneric("deleteAllFactorValuesForOwner", function(self, owner){standardGeneric("deleteAllFactorValuesForOwner")})
+setGeneric("deleteAllFactorValuesForOwnerID", function(self, ownerID){standardGeneric("deleteAllFactorValuesForOwnerID")})
+setGeneric("deleteAllFactorValuesForFactorID", function(self, factorID){standardGeneric("deleteAllFactorValuesForFactorID")})
+
 setGeneric("asDataFrame", function(self, owner){standardGeneric("asDataFrame")})
-
-
 
 setGeneric("addDataRecord", function(self, dataRecord){standardGeneric("addDataRecord")})
 setGeneric("updateDataRecord", function(self, id, dataRecord, updateFlag){standardGeneric("updateDataRecord")})
@@ -598,7 +601,7 @@ setMethod("getLevelsByFactorID",  "AvailableFactors",
           }
 )
 
-## TO DO: drop factor's values after deletion
+## May be we need to drop factor's values after deletion (but in app's logic, not in methods)
 setMethod("deleteFactorDefinition",  "AvailableFactors",                                   
           function(self, factorID)
           {             
@@ -610,7 +613,7 @@ setMethod("deleteFactorDefinition",  "AvailableFactors",
 ## TO DO: 
 ## Method updates data of a factor defined in AvailableFactors object by factorID
 ## varName and description can be updated without any consistensy checking
-## if owner changed then drop ownerID data in FactorsData object
+## if owner changed then we need to drop ownerID data in FactorsData object in app's code
 ## type can be changed with corresponding transformations: 
 ## e.g. factor levels to factor level numbers if changing type from factor/ordFactor to int/numeric
 ## if changing type from int/num to factor then levels and order should be specified
@@ -662,17 +665,22 @@ setMethod("addFactorValue",  "FactorsData",
           {                         
             if (factorValueIsCorrect(self = availableFactors, factorID = factorID, value = value))
             {
-              if (any(self@factorsDataList$factorID == factorID & 
-                      self@factorsDataList$ownerID == ownerID & 
-                      self@factorsDataList$owner == owner))
+              recEqual <- F
+              if (length(self@factorsDataList) > 0)
+              {
+                recEqual <- (self@factorsDataList$factorID == factorID) & 
+                  (sapply(self@factorsDataList$ownerID, FUN = identical, ownerID)) &
+                  (sapply(self@factorsDataList$owner, FUN = identical, owner)) &
+                  (self@factorsDataList$eye == eye)
+                
+              }
+              if (any(recEqual))
               {
                 if (replace)
                 {
-                  recNum <- which(self@factorsDataList$factorID == factorID & 
-                                    self@factorsDataList$ownerID == ownerID &
-                                    self@factorsDataList$owner == owner)
-                  self@factorsDataList$value[recNum,] <- I(value)
-                  self@factorsDataList$eye[recNum,] <- eye
+                  recNum <- which(recEqual)
+                  self@factorsDataList$value[recNum] <- I(value)
+                  self@factorsDataList$eye[recNum] <- eye
                   return(self)
                 }
                 else
@@ -683,7 +691,7 @@ setMethod("addFactorValue",  "FactorsData",
               }
               else
               {
-                factorRecord <- data.frame(factorID = factorID, eye = eye, value = I(list(value)), ownerID = ownerID, owner = I(list(owner)))
+                factorRecord <- data.frame(factorID = factorID, eye = eye, value = I(list(value)), ownerID = I(list(ownerID)), owner = I(list(owner)))
                 self@factorsDataList <- rbind(self@factorsDataList, factorRecord)
                 return(self)
               }
@@ -691,6 +699,78 @@ setMethod("addFactorValue",  "FactorsData",
             else return(self)
 })
 
+
+setMethod("deleteFactorValue",  "FactorsData",                                   
+          function(self, owner, ownerID, factorID, eye)
+          {                         
+            recEqual <- (self@factorsDataList$factorID == factorID) & 
+              (sapply(self@factorsDataList$ownerID, FUN = identical, ownerID)) &
+              (sapply(self@factorsDataList$owner, FUN = identical, owner)) &
+              (self@factorsDataList$eye == eye)
+            if (any(recEqual))
+            {
+              self@factorsDataList <- self@factorsDataList[-which(recEqual),]
+            }
+            else 
+            {
+              print("There is no such value!")
+            }
+            return(self)
+          }
+         
+)
+
+setMethod("deleteAllFactorValuesForOwner",  "FactorsData",                                   
+          function(self, owner)
+          {                         
+            recEqual <- sapply(self@factorsDataList$owner, FUN = identical, owner)
+            if (any(recEqual))
+            {
+              self@factorsDataList <- self@factorsDataList[-which(recEqual),]
+            }
+            else 
+            {
+              print("There is no such owner!")
+            }
+            return(self)
+          }
+          
+)
+
+setMethod("deleteAllFactorValuesForOwnerID",  "FactorsData",                                   
+          function(self, ownerID)
+          {                         
+            recEqual <- sapply(self@factorsDataList$ownerID, FUN = identical, ownerID)
+            if (any(recEqual))
+            {
+              self@factorsDataList <- self@factorsDataList[-which(recEqual),]
+            }
+            else 
+            {
+              print("There is no such owner ID!")
+            }
+            return(self)
+          }
+          
+)
+
+setMethod("deleteAllFactorValuesForFactorID",  "FactorsData",                                   
+          function(self, factorID)
+          {                         
+            recEqual <- (self@factorsDataList$factorID == factorID)
+            
+            if (any(recEqual))
+            {
+              self@factorsDataList <- self@factorsDataList[-which(recEqual),]
+            }
+            else 
+            {
+              print("There is no such factor ID!")
+            }
+            return(self)
+          }
+          
+)
 
 
 setMethod("asDataFrame",  "FactorsData",                                   

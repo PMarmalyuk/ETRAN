@@ -46,7 +46,8 @@ calcAngPos <- function(x, y, screenDist, screenResolution, screenSize, refPoint 
   return(list(xAng = xAng, yAng = yAng))
 }
 
-# Calculates horiz. and vert. momentum velocities (px/timeUnit) of the eye movements given by vectors <t, x, y>
+# TO DO: 
+# Calculates horiz. and vert. momentum velocities (px or degrees per timeUnit) of the eye movements given by vectors <t, x, y>
 # calcXYShiftsVel <- function(t, x, y)
 # {
 #   samplesCnt <- length(t)
@@ -57,27 +58,7 @@ calcAngPos <- function(x, y, screenDist, screenResolution, screenSize, refPoint 
 #   yVels <- dys/dts
 #   return(list(xVels = xVels, yVels = yVels))
 # }
-# 
-# # Calculates horiz. and vert. momentum velocities (deg/timeUnit)
-# calcXYShiftsAngVel <- function(t, x, y, screenDist, screenResolution, screenSize)
-# {
-#   samplesCnt <- length(t)
-#   dts <- t[-1] - t[-samplesCnt]
-#   d <- screenDist
-#   w <- screenSize[1]; h <- screenSize[2]
-#   wPx <- screenResolution[1]; hPx <- screenResolution[2]
-#   x1s <- x[-samplesCnt]; x2s <- x[-1]
-#   y1s <- y[-samplesCnt]; y2s <- y[-1]
-#   xshifts <- ((x2s-x1s)/wPx)*w
-#   yshifts <- ((y2s-y1s)/hPx)*h
-#   xAngs <- atan(xshifts/d)
-#   yAngs <- atan(yshifts/d)
-#   xVels <- abs(xAngs)*(180/pi)/dts
-#   yVels <- abs(yAngs)*(180/pi)/dts
-#   return(list(xVels = xVels, yVels = yVels))
-# }
 
-## TO DO: evaluate accelerations in finDiff case
 calcVel <- function(t, x, y, settings)
 {
   velType <- settings$velType
@@ -144,7 +125,32 @@ calcVel <- function(t, x, y, settings)
   return(list(dists = dl, dts = dt, vels = vel, accels = accel))
 }
 
-
-
+createFactorFromReturnedValue <- function(x)
+{
+  factor_new <- new(Class = "Factor", varName = as.character(names(x)))
+  x <- unlist(x)
+  cls <- class(x)[1]
+  if (cls == "integer")
+  {
+    factor_new@type <- "integer"
+    factor_new@levels <- as.character(NA)
+  }
+  if (cls == "numeric")
+  {
+    factor_new@type <- "numeric"
+    factor_new@levels <- as.character(NA)
+  }
+  if (cls == "factor")
+  {
+    factor_new@type <- "factor"
+    factor_new@levels <- levels(x)
+  }
+  if (cls == "ordered")
+  {
+    factor_new@type <- "ordFactor"
+    factor_new@levels <- levels(x)
+  }
+  return(factor_new)
+}
 
 

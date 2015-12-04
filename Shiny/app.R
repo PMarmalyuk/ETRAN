@@ -6,7 +6,6 @@ if (!require("htmlwidgets")) install.packages("htmlwidgets")
 if (!require("D3TableFilter")) devtools::install_github("ThomasSiegmund/D3TableFilter")
 if (!require("signal")) install.packages("signal")
 if (!require("data.table")) install.packages("data.table")
-library(devtools)
 install_github("Rdatatable/data.table", build_vignettes = FALSE)
 
 # install.packages(c("Rcpp", "httpuv", "shiny"))

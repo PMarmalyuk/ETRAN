@@ -81,9 +81,7 @@ setClass("DataRecord",
                         subjectID = "numeric",
                         trialID = "numeric",
                         eyesDataObject = "EyesData",
-                        analysisResults = "list", #list of EventData, AOISequence, AOITransMatrix, AOIStatsVector objects for each eye
-                        # representations = "list",
-                        statistics = "list" # list of statistics (left and right) evaluated for eyesDataObject or an element of analysisResults list
+                        analysisResults = "list" #list of EventData, FrameData, AOIData, AOISequence, AOITransMatrix, AOIStatsVector objects
          ),
          prototype(
          )

@@ -1,12 +1,10 @@
-standardAnalyzer <- function(data, eventMarkerNames, settings, conditions)
+standardAnalyzer <- function(data, filterMarkerNames, eventMarkerNames, settings, conditions)
 {
   if (any(is.na(data$eventGroups) | is.na(data$eventMarkers)))
   {
     data <- data[-which(is.na(data$eventGroups) | is.na(data$eventMarkers)),]
   }
-  sampleGroupsByEventType <- split(data, data$eventMarkers)
   subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@operation == "Event Analysis"})]
-  
   sampleGroups <- split(data, f = list(data$eventMarkers, data$eventGroups), drop = T)
   eventGroupsCompexKeys <- strsplit(names(sampleGroups), ".", fixed = T)
   evTypes <- sapply(eventGroupsCompexKeys, FUN = function(x) {x[1]})
@@ -24,42 +22,99 @@ standardAnalyzer <- function(data, eventMarkerNames, settings, conditions)
     ## Apply each of selected sub function to current group's samples
     functionsResults <- lapply(subFunsToApply, FUN = function(x)
     {
-      settings <- append(x@settings, list(evmn = eventMarkerNames, conditions = conditions))
+      settings <- append(x@settings, list(fmn = filterMarkerNames, evmn = eventMarkerNames, conditions = conditions))
       functionResult <- x@fun(eventSamples, settings)
       return(functionResult)
     })
     eventData <- list(owner = evType, ownerID = groupID, values = unlist(functionsResults, recursive = F))
     return(eventData)
   })
-  res <- new(Class = "FactorsData", factorsDataList = eventsData)
-  print(res)
-  return(res)
+  return(eventsData)
 }
+
+eventDataAsFactorsData <- function(analyzerResults, internalFactors)
+{
+  eventsFctrs <- list()
+  for (i in 1:length(analyzerResults))
+  {
+    vals_record <- analyzerResults[[i]]
+    owner <- c("Event", vals_record$owner)
+    ownerID <- list(EventGroup = vals_record$ownerID)
+    vls <- vals_record$values
+    for (j in 1:length(vls))
+    {
+      fctr <- createFactorFromReturnedValue(x = vls[j])
+      # TO DO: extract factor description from sub function output?
+      fctr@description <- as.character(NA)
+      fctr@owner <- "Event"
+      whichFactor <- factorExists(self = internalFactors, factor = fctr)
+      if (!whichFactor$exists) 
+      {
+        internalFactors <- addFactorDefinition(internalFactors, factor = fctr)
+        factorID <- tail(internalFactors@availableFactors$id, 1)
+      } else
+      {
+        factorID <- whichFactor$id
+      }
+      value = vls[[j]]
+      eventsFctrs <- rbind(eventsFctrs, list(factorID = factorID, eye = "left", value = value, ownerID = ownerID, owner = owner))
+    }
+  }
+  return(list(eventFactors = eventsFctrs, internalFactors = internalFactors))
+}
+  
+
+
 
 ## CORE ANALYZER ##
 coreEventAnalyzer <- function(DataRecord, settings)
 {
+  internalFactors <- settings$internalFactors
   conditions <- DataRecord@eyesDataObject@conditions@conditions
   if (conditions$eye == "left")
   {
     data <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
     eventMarkerNames <- DataRecord@eyesDataObject@leftEventMarkers@markerNames
-    DataRecord@analysisResults$leftEventData <- standardAnalyzer(data, eventMarkerNames, settings, conditions)
+    filterMarkerNames <- DataRecord@eyesDataObject@leftFilterMarkers@markerNames
+    
+    analyzerResults <- standardAnalyzer(data, filterMarkerNames, eventMarkerNames, settings, conditions)
+    
+    factorsData <- eventDataAsFactorsData(analyzerResults, internalFactors)
+    internalFactors <- factorsData$internalFactors
+    eventFactors <- factorsData$eventFactors
+    DataRecord@analysisResults$eventData <- new(Class = "FactorsData", factorsDataList = as.data.frame(eventFactors))
   }
   if (conditions$eye == "right")
   {
     data <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
     eventMarkerNames <- DataRecord@eyesDataObject@rightEventMarkers@markerNames
-    DataRecord@analysisResults$rightEventData <- standardAnalyzer(data, eventMarkerNames, settings, conditions)
+    filterMarkerNames <- DataRecord@eyesDataObject@rightFilterMarkers@markerNames
+    analyzerResults <- standardAnalyzer(data, filterMarkerNames, eventMarkerNames, settings, conditions)
+    factorsData <- eventDataAsFactorsData(analyzerResults, internalFactors)
+    internalFactors <- factorsData$internalFactors
+    eventFactors <- factorsData$eventFactors
+    DataRecord@analysisResults$eventData <- new(Class = "FactorsData", factorsDataList = as.data.frame(eventFactors))
   }
   if (conditions$eye == "both")
   {
     dataLeft <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
-    dataRight <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
     leftEventMarkerNames <- DataRecord@eyesDataObject@leftEventMarkers@markerNames
+    leftFilterMarkerNames <- DataRecord@eyesDataObject@leftFilterMarkers@markerNames
+    leftAnalyzerResults <- standardAnalyzer(dataLeft, leftFilterMarkerNames, leftEventMarkerNames, settings, conditions)
+    leftFactorsData <- eventDataAsFactorsData(leftAnalyzerResults, internalFactors)
+    internalFactors <- leftFactorsData$internalFactors
+    leftEventFactors <- leftFactorsData$eventFactors
+    
+    dataRight <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
     rightEventMarkerNames <- DataRecord@eyesDataObject@rightEventMarkers@markerNames
-    DataRecord@analysisResults$leftEventData <- standardAnalyzer(dataLeft, leftEventMarkerNames, settings, conditions)
-    DataRecord@analysisResults$rightEventData <- standardAnalyzer(dataRight, rightEventMarkerNames, settings, conditions)
+    rightFilterMarkerNames <- DataRecord@eyesDataObject@rightFilterMarkers@markerNames
+    rightAnalyzerResults <- standardAnalyzer(dataRight, rightFilterMarkerNames, rightEventMarkerNames, settings, conditions)
+    rightFactorsData <- eventDataAsFactorsData(rightAnalyzerResults, internalFactors)
+    internalFactors <- rightFactorsData$internalFactors
+    rightEventFactors <- rightFactorsData$eventFactors
+    
+    eventFactors <- rbind(leftEventFactors, rightEventFactors)
+    DataRecord@analysisResults$eventData <- rbind(Class = "FactorsData", factorsDataList = as.data.frame(eventFactors))
   }
-  return(DataRecord)
+  return(list(dataRec = DataRecord, intFctrs = internalFactors))
 }
