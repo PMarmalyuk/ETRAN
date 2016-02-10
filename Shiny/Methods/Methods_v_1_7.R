@@ -529,6 +529,9 @@ setMethod("factorExists", "AvailableFactors",
             if (nrow(self@availableFactors) == 0) {return(list(exists = FALSE, id = NA))}
             varName <- factor@varName
             owner <- factor@owner
+            
+            identical(list("a", "b"),list("a", "b"))
+            
             varNames <- self@availableFactors$varName[self@availableFactors$owner == owner]
             if (any(varNames == varName)) 
             {
@@ -556,12 +559,12 @@ setMethod("addFactorDefinition",  "AvailableFactors",
               facCnt <- nrow(self@availableFactors)
               if (facCnt == 0)
               {
-                self@availableFactors <- data.frame(id = 1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = owner, stringsAsFactors = F)
+                self@availableFactors <- data.frame(id = 1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = I(list(owner)), stringsAsFactors = F)
                 # colnames(self@availableFactors) <- c("id", "varName", "description", "type", "levels", "owner")
               }
               else
               {
-                newFactorDef <- list(id = self@availableFactors[facCnt,1]+1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = owner)
+                newFactorDef <- list(id = self@availableFactors[facCnt,1]+1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = I(list(owner)))
                 self@availableFactors <- rbind(self@availableFactors, newFactorDef)
               }
             }
@@ -702,7 +705,11 @@ setMethod("addFactorValue",  "FactorsData",
 
 setMethod("deleteFactorValue",  "FactorsData",                                   
           function(self, owner, ownerID, factorID, eye)
-          {                         
+          {                        
+            print(any(self@factorsDataList$factorID == factorID))
+            print(any(sapply(self@factorsDataList$ownerID, FUN = identical, ownerID)))
+            print(any(sapply(self@factorsDataList$owner, FUN = identical, owner)))
+            print(any((self@factorsDataList$eye == eye)))
             recEqual <- (self@factorsDataList$factorID == factorID) & 
               (sapply(self@factorsDataList$ownerID, FUN = identical, ownerID)) &
               (sapply(self@factorsDataList$owner, FUN = identical, owner)) &

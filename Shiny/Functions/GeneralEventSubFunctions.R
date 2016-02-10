@@ -1,7 +1,8 @@
+# OCULOMOTOR EVENTS' ANALYSIS FUNCTIONS DEFINITIONS SECTION
+
 ## Validity code of all events except gap
 ## no settings
-
-## CHANGE LOGICAL EXPRESSION TO THAT IS USING FILTER MARKERS
+## CHANGE LOGICAL EXPRESSION TO THAT IS USING FILTER MARKERS (?)
 getValCode <- function(data, settings)
 {
   evmn <- settings$evmn
@@ -13,7 +14,8 @@ getValCode <- function(data, settings)
   {
     valCode <- "Valid"
   }
-  return(list(valCode = factor(valCode, levels = c("Invalid", "Valid"))))
+  return(list(vals = list(valCode = factor(valCode, levels = c("Invalid", "Valid"))), 
+              info = list(valCode = "Validity code of an event")))
 }
 
 ## On/Offset and duration of any event
@@ -23,7 +25,12 @@ getOnOffSetDuration <- function(data, settings)
   onset = data$time[1]
   offset = tail(data$time, 1)
   duration = offset - onset
-  return(list(onset = as.numeric(onset), offset = as.numeric(offset), duration = as.numeric(duration)))
+  return(list(vals = list(onset = as.numeric(onset), 
+                          offset = as.numeric(offset), 
+                          duration = as.numeric(duration)),
+              info = list(onset = "Onset of an event", 
+                          offset = "Offset of an event", 
+                          duration = "Duration of an event")))
 }
 
 ## Start/End positions of all events except gap
@@ -49,8 +56,14 @@ getStartEndPositionsXY <- function(data, settings)
     endPositionX <- tail(data$porx, 1)
     endPositionY <- tail(data$pory, 1)
   }
-  return(list(startPositionX = as.numeric(startPositionX), startPositionY = as.numeric(startPositionY), 
-              endPositionX = as.numeric(endPositionX), endPositionY = as.numeric(endPositionY)))
+  return(list(vals = list(startPositionX = as.numeric(startPositionX), 
+                          startPositionY = as.numeric(startPositionY), 
+                          endPositionX = as.numeric(endPositionX), 
+                          endPositionY = as.numeric(endPositionY)),
+              info = list(startPositionX = "Horisontal position of the first sample of an event", 
+                          startPositionY = "Vertical position of the first sample of an event", 
+                          endPositionX = "Horisontal position of the last sample of an event", 
+                          endPositionY = "Vertical position of the last sample of an event")))
 }
 
 ## Fixation center of mass
@@ -72,7 +85,10 @@ getCenterOfMassXY <- function(data, settings)
     centerX <- mean(data$porx)
     centerY <- mean(data$pory)
   }
-  return(list(centerX = as.numeric(centerX), centerY = as.numeric(centerY)))
+  return(list(vals = list(centerX = as.numeric(centerX), 
+                          centerY = as.numeric(centerY)),
+              info = list(centerX = "Center of mass of event X coordinates",
+                          centerY = "Center of mass of event Y coordinates")))
 }
 
 ## Fixation dispersions and radius
@@ -100,7 +116,12 @@ getDispersionXYAndRadius <- function(data, settings)
     dispersionY <- sd(data$pory)
     radius <- mean(sqrt((positionX - data$porx)^2 + (positionY - data$pory)^2))
   }
-  return(list(dispersionX = as.numeric(dispersionX), dispersionY = as.numeric(dispersionY), radius = as.numeric(radius)))
+  return(list(vals = list(dispersionX = as.numeric(dispersionX), 
+                          dispersionY = as.numeric(dispersionY), 
+                          radius = as.numeric(radius)),
+              info = list(dispersionX = "Dispersion of event X coordinates",
+                          dispersionY = "Dispersion of event Y coordinates",
+                          radius = "Radius of event coordinates (mean distance from event's center of mass)")))
 }
 
 ## Mean and sd of pupil size (all events)
@@ -125,14 +146,17 @@ getPupilMeanAndSD <- function(data, settings)
     meanPupilSize <- NA
     sdPupilSize <- NA
   }
-  return(list(meanPupilSize = as.numeric(meanPupilSize), sdPupilSize = as.numeric(sdPupilSize)))
+  return(list(vals = list(meanPupilSize = as.numeric(meanPupilSize), 
+                          sdPupilSize = as.numeric(sdPupilSize)),
+              info = list(meanPupilSize = "Mean size of a pupil",
+                          sdPupilSize = "Standard deviation of a size of a pupil")))
 }
 
 ## Saccades & Glissades amplitude
 ## settings: angular
 getAmplitude <- function(data, settings)
 {
-  positions <- getStartEndPositionsXY(data, settings)
+  positions <- getStartEndPositionsXY(data, settings)$vals
   posX0 <- positions$startPositionX
   posX1 <- positions$endPositionX
   posY0 <- positions$startPositionY
@@ -140,17 +164,25 @@ getAmplitude <- function(data, settings)
   amplitudeX <- abs(posX1-posX0)
   amplitudeY <- abs(posY1-posY0)
   amplitude <- sqrt(amplitudeX^2 + amplitudeY^2)
-  return(list(amplitudeX = as.numeric(amplitudeX), amplitudeY = as.numeric(amplitudeY), amplitude = as.numeric(amplitude)))
+  return(list(vals = list(amplitudeX = as.numeric(amplitudeX), 
+                          amplitudeY = as.numeric(amplitudeY), 
+                          amplitude = as.numeric(amplitude)),
+              info = list(amplitudeX = "Horisontal amplitude of a saccade/glissade",
+                          amplitudeY = "Vertical amplitude of a saccade/glissade",
+                          amplitude = "Amplitude of a saccade/glissade")))
 }
 
 ## Length and curvature of a path of a part of a trajectory related to a processed event (all events except gaps)
 ## settings: angular
 getPathLengthAndCurvature <- function(data, settings)
 {
-  amplitude <- getAmplitude(data, settings)$amplitude
+  amplitude <- getAmplitude(data, settings)$vals$amplitude
   length <- sum(sqrt((data$porx[-1]-data$porx[-length(data$porx)])^2 + (data$pory[-1]-data$pory[-length(data$pory)])^2))
   curvature <- length/amplitude
-  return(list(length = as.numeric(length), curvature = as.numeric(curvature)))
+  return(list(vals = list(length = as.numeric(length), 
+                          curvature = as.numeric(curvature)),
+              info = list(length = "Length of a gaze path during an event",
+                          curvature = "Curvature of a gaze path during an event")))
 }
 
 ## Peak velocity and acceleration during event
@@ -191,10 +223,14 @@ getPeakVelAcDecelAndAsymmetry <- function(data, settings)
       }
     }
   }
-  return(list(peakVelocity = as.numeric(peakVelocity), 
-              peakAcceleration = as.numeric(peakAcceleration), 
-              peakDeceleration = as.numeric(peakDeceleration),
-              asymmetry = as.numeric(asymmetry)))
+  return(list(vals = list(peakVelocity = as.numeric(peakVelocity), 
+                          peakAcceleration = as.numeric(peakAcceleration), 
+                          peakDeceleration = as.numeric(peakDeceleration),
+                          asymmetry = as.numeric(asymmetry)),
+              info = list(peakVelocity = "Peak velocity of gaze movement during an event",
+                          peakAcceleration = "Peak acceleration of gaze movement during an event",
+                          peakDeceleration = "Peak deceleration of gaze movement during an event",
+                          asymmetry = "Asymmetry of gaze movement during an event (acceleration and deceleration times ratio)")))
 }
 
 ## Orientation of a saccade/glissade/smooth pursuit
@@ -213,5 +249,10 @@ getXAxisOrientation <- function(data, settings)
     orientXAxis <- atan2(y = dy, x = dx) * (180/pi)
     if (orientXAxis < 0) {orientXAxis <- 360 + orientXAxis}
   }
-  return(list(orientXAxis = as.numeric(orientXAxis)))
+  return(list(vals = list(orientXAxis = as.numeric(orientXAxis)),
+              info = list(orientXAxis = "Orientation of an event (saccade, glissade or smooth pursuit) with respect to X axis")))
 }
+
+# AOI EVENTS' ANALYSIS FUNCTIONS DEFINITIONS SECTION
+
+# FRAME EVENTS' ANALYSIS FUNCTIONS DEFINITIONS SECTION

@@ -13,6 +13,7 @@ source("Functions\\eventAnalyzersNew.R", local = T)
 source("Functions\\estimatorsNew.R", local = T)
 source("Methods\\Methods_v_1_7.R", local = T)
 library(data.table)
+library(signal)
 rawSett <- new(Class = "ReadSettings")
 folder <- "F:/Институт/Проекты/EyeTrackingPackage/Data/TestData"
 records <- new(Class = "RawDataRecords")
@@ -75,24 +76,29 @@ dataRec@eyesDataObject@rightEventMarkers <- res@eyesDataObject@rightEventMarkers
 # subFuns <- getSubfunctions(self = subFunctions, operation = "Event Analysis")
 # sfToApply <- subFuns@subFunctionsList$subFunctions
 source('Functions\\DataRecordSubFunctions.R', local = T)
-source('Functions\\EventGroupSubFunctions.R', local = T)
+source('Functions\\GeneralEventSubFunctions.R', local = T)
 source('CoreSubFunctionsInit.R', local = T)
 source("Functions\\eventAnalyzersNew.R", local = T)
-subFunctions <- subFunctions@subFunctionsList$subFunctions
-internalFactors <- new(Class = "AvailableFactors")
+subFunctionsBodies <- subFunctions@subFunctionsList$subFunctions
+eventFactors <- new(Class = "AvailableFactors")
 analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
-                           settings = list(subFunctions = subFunctions, internalFactors = eventAnalysisResult$intFctrs))
+                           settings = list(operation = "Oculomotor Events Analysis", 
+                                           subFunctions = subFunctionsBodies, 
+                                           eventFactors = eventFactors))
 eventAnalysisResult <- eventAnalyzer(dataRec, analyzer)
+eventAnalysisResult$dataRec@analysisResults$eventFactorsData
+eventAnalysisResult$eventFactors
+# data <- eventAnalysisResult$dataRec@analysisResults$eventData@factorsDataList
+# data[sapply(eventAnalysisResult$dataRec@analysisResults$eventData@factorsDataList$owner, identical, c("Event", "Gap")),]
+# eventAnalysisResult$intFctrs@availableFactors$varName[eventAnalysisResult$intFctrs@availableFactors$id == 3]
 
-dataRec@eyesDataObject@conditions@conditions
 
 evd <- eventAnalysisResult$dataRec@analysisResults$eventData
-evd2 <- deleteFactorValue(evd, owner = c("Event", "Fixation"), ownerID = 1, factorID = 3, eye = "left")
 evd@factorsDataList[1:10,]
+evd2 <- deleteFactorValue(evd, owner = c("Event", "Fixation"), ownerID = list(EventGroup = 1), factorID = 3, eye = "left")
+evd2@factorsDataList[1:10,]
 
 # Estimators test
-dataRec@statistics$left <- list()
-dataRec@statistics$right <- list()
 source('Functions\\DataRecordSubFunctions.R', local = T)
 source('CoreSubFunctionsInit.R', local = T)
 source("Functions\\estimatorsNew.R", local = T)

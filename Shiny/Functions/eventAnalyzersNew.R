@@ -1,120 +1,157 @@
-standardAnalyzer <- function(data, filterMarkerNames, eventMarkerNames, settings, conditions)
+generalEventAnalyzer <- function(data, operation, settings)
 {
-  if (any(is.na(data$eventGroups) | is.na(data$eventMarkers)))
+  if (operation == "Oculomotor Events Analysis")
   {
-    data <- data[-which(is.na(data$eventGroups) | is.na(data$eventMarkers)),]
-  }
-  subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@operation == "Event Analysis"})]
-  sampleGroups <- split(data, f = list(data$eventMarkers, data$eventGroups), drop = T)
-  eventGroupsCompexKeys <- strsplit(names(sampleGroups), ".", fixed = T)
-  evTypes <- sapply(eventGroupsCompexKeys, FUN = function(x) {x[1]})
-  groupIDs <- sapply(eventGroupsCompexKeys, FUN = function(x) {as.numeric(x[2])})
-  allEventsData <- cbind(sampleGroups, evTypes, groupIDs)
-  eventsData <- apply(X = allEventsData, MARGIN = 1, FUN = function(x)
-  {
-    eventSamples <- x[[1]]
-    ## Get current event type (fixation, saccade, etc.)
-    evType <- x[[2]]
-    ## Get current event group number
-    groupID <- x[[3]]
-    ## Select functions to apply for current event type
-    subFunsToApply <- subFunctions[sapply(subFunctions, FUN = function(x) {any(x@events == evType)})]
-    ## Apply each of selected sub function to current group's samples
-    functionsResults <- lapply(subFunsToApply, FUN = function(x)
+    if (any(is.na(data$eventGroups) | is.na(data$eventMarkers)))
     {
-      settings <- append(x@settings, list(fmn = filterMarkerNames, evmn = eventMarkerNames, conditions = conditions))
-      functionResult <- x@fun(eventSamples, settings)
-      return(functionResult)
+      data <- data[-which(is.na(data$eventGroups) | is.na(data$eventMarkers)),]
+    }
+    subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@applyTo == "Oculomotor Events"})]
+    sampleGroups <- split(data, f = list(data$eventMarkers, data$eventGroups), drop = T)
+    eventGroupsCompexKeys <- strsplit(names(sampleGroups), ".", fixed = T)
+    evTypes <- sapply(eventGroupsCompexKeys, FUN = function(x) {x[1]})
+    groupIDs <- sapply(eventGroupsCompexKeys, FUN = function(x) {as.numeric(x[2])})
+    allEventsData <- cbind(sampleGroups, evTypes, groupIDs)
+    analysisData <- apply(X = allEventsData, MARGIN = 1, FUN = function(x)
+    {
+      eventSamples <- x[[1]]
+      ## Get current event type (fixation, saccade, etc.)
+      evType <- x[[2]]
+      ## Get current event group number
+      groupID <- x[[3]]
+      ## Select functions to apply for current event type
+      subFunsToApply <- subFunctions[sapply(subFunctions, FUN = function(x) {any(x@applyWhen == evType)})]
+      ## Apply each of selected sub function to current group's samples
+      functionsResults <- lapply(subFunsToApply, FUN = function(x)
+      {
+        settings <- append(x@settings, settings)
+        functionResult <- x@fun(eventSamples, settings)
+        return(functionResult)
+      })
+      analysisDatum <- list(owner = evType, ownerID = groupID, valsAndInfo = functionsResults)
+      return(analysisDatum)
     })
-    eventData <- list(owner = evType, ownerID = groupID, values = unlist(functionsResults, recursive = F))
-    return(eventData)
-  })
-  return(eventsData)
+  }
+  if (operation == "AOI Events Analysis")
+  {
+    #
+    subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@applyTo == "AOI Events"})]
+  }
+  if (operation == "Frame Events Analysis")
+  {
+    #
+    subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@applyTo == "Frame Events"})]
+  }
+  return(analysisData)
 }
 
-eventDataAsFactorsData <- function(analyzerResults, internalFactors)
+generalEventDataAsFactorsData <- function(analysisData, operation, eventFactors, settings)
 {
-  eventsFctrs <- list()
-  for (i in 1:length(analyzerResults))
+  fctrs <- list()
+  if (operation == "Event Analysis")
   {
-    vals_record <- analyzerResults[[i]]
-    owner <- c("Event", vals_record$owner)
-    ownerID <- list(EventGroup = vals_record$ownerID)
-    vls <- vals_record$values
-    for (j in 1:length(vls))
+    mainOwner <- "Event"
+    ownerID <- list(EventGroup = NA)
+  }
+  if (operation == "AOI Analysis")
+  {
+    mainOwner <- "AOI"
+    ownerID <- list(AOIID = NA)
+  }
+  if (operation == "Frame Analysis")
+  {
+    mainOwner <- "Frame"
+    ownerID <- list(FrameID = NA)
+  }
+  eye <- settings$conditions$eye
+  for (i in 1:length(analysisData))
+  {
+    owner <- c(mainOwner, analysisData[[i]]$owner)
+    ownerID[[1]] <- analysisData[[i]]$ownerID
+    subFunVls <- analysisData[[i]]$valsAndInfo
+    if (length(subFunVls) == 0) {print(subFunVls)}
+    if (!(length(subFunVls) == 0))
     {
-      fctr <- createFactorFromReturnedValue(x = vls[j])
-      # TO DO: extract factor description from sub function output?
-      fctr@description <- as.character(NA)
-      fctr@owner <- "Event"
-      whichFactor <- factorExists(self = internalFactors, factor = fctr)
-      if (!whichFactor$exists) 
+      for (j in 1:length(subFunVls))
       {
-        internalFactors <- addFactorDefinition(internalFactors, factor = fctr)
-        factorID <- tail(internalFactors@availableFactors$id, 1)
-      } else
-      {
-        factorID <- whichFactor$id
+        for (k in 1:length(subFunVls[[j]]$vals))
+        {
+          fctr <- createFactorFromReturnedValue(x = subFunVls[[j]]$vals[[k]])  
+          value <- subFunVls[[j]]$vals[[k]]
+          fctr@varName <- as.character(names(subFunVls[[j]]$vals[k]))
+          fctr@description <- as.character(subFunVls[[j]]$info[[k]])
+          fctr@owner <- mainOwner
+          whichFactor <- factorExists(self = eventFactors, factor = fctr)
+          if (!whichFactor$exists) 
+          {
+            eventFactors <- addFactorDefinition(eventFactors, factor = fctr)
+            factorID <- tail(eventFactors@availableFactors$id, 1)
+          } else
+          {
+            factorID <- whichFactor$id
+          }
+          fctrs <- rbind(fctrs, list(factorID = factorID, eye = eye, value = value, ownerID = ownerID, owner = owner))
+        }
       }
-      value = vls[[j]]
-      eventsFctrs <- rbind(eventsFctrs, list(factorID = factorID, eye = "left", value = value, ownerID = ownerID, owner = owner))
     }
   }
-  return(list(eventFactors = eventsFctrs, internalFactors = internalFactors))
+
+  return(list(factorsData = fctrs, eventFactorsDef = eventFactors))
 }
   
-
-
-
 ## CORE ANALYZER ##
 coreEventAnalyzer <- function(DataRecord, settings)
 {
-  internalFactors <- settings$internalFactors
+  eventFactorsDef <- settings$eventFactors
   conditions <- DataRecord@eyesDataObject@conditions@conditions
+  operation <- settings$operation
   if (conditions$eye == "left")
   {
+    # TO DO: getDataFrame should also add AOIName and FrameID columns into returned data frame
     data <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
     eventMarkerNames <- DataRecord@eyesDataObject@leftEventMarkers@markerNames
     filterMarkerNames <- DataRecord@eyesDataObject@leftFilterMarkers@markerNames
-    
-    analyzerResults <- standardAnalyzer(data, filterMarkerNames, eventMarkerNames, settings, conditions)
-    
-    factorsData <- eventDataAsFactorsData(analyzerResults, internalFactors)
-    internalFactors <- factorsData$internalFactors
-    eventFactors <- factorsData$eventFactors
-    DataRecord@analysisResults$eventData <- new(Class = "FactorsData", factorsDataList = as.data.frame(eventFactors))
+    settings <- append(settings, list(fmn = filterMarkerNames, evmn = eventMarkerNames, conditions = conditions))
+    analyzerResults <- generalEventAnalyzer(data, operation, settings)
+    factorsData <- generalEventDataAsFactorsData(analyzerResults, operation, eventFactorsDef, settings)
+    eventFactorsDef <- factorsData$eventFactorsDef
+    eventFactorsData <- factorsData$factorsData
+    DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", factorsDataList = as.data.frame(eventFactorsData))
   }
   if (conditions$eye == "right")
   {
     data <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
     eventMarkerNames <- DataRecord@eyesDataObject@rightEventMarkers@markerNames
     filterMarkerNames <- DataRecord@eyesDataObject@rightFilterMarkers@markerNames
-    analyzerResults <- standardAnalyzer(data, filterMarkerNames, eventMarkerNames, settings, conditions)
-    factorsData <- eventDataAsFactorsData(analyzerResults, internalFactors)
-    internalFactors <- factorsData$internalFactors
-    eventFactors <- factorsData$eventFactors
-    DataRecord@analysisResults$eventData <- new(Class = "FactorsData", factorsDataList = as.data.frame(eventFactors))
+    settings <- append(settings, list(fmn = filterMarkerNames, evmn = eventMarkerNames, conditions = conditions))
+    analyzerResults <- generalEventAnalyzer(data, operation, settings)
+    factorsData <- generalEventDataAsFactorsData(analyzerResults, operation, eventFactorsDef, settings)
+    eventFactorsDef <- factorsData$eventFactorsDef
+    eventFactorsData <- factorsData$factorsData
+    DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", factorsDataList = as.data.frame(eventFactorsData))
   }
   if (conditions$eye == "both")
   {
     dataLeft <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
-    leftEventMarkerNames <- DataRecord@eyesDataObject@leftEventMarkers@markerNames
     leftFilterMarkerNames <- DataRecord@eyesDataObject@leftFilterMarkers@markerNames
-    leftAnalyzerResults <- standardAnalyzer(dataLeft, leftFilterMarkerNames, leftEventMarkerNames, settings, conditions)
-    leftFactorsData <- eventDataAsFactorsData(leftAnalyzerResults, internalFactors)
-    internalFactors <- leftFactorsData$internalFactors
-    leftEventFactors <- leftFactorsData$eventFactors
+    leftEventMarkerNames <- DataRecord@eyesDataObject@leftEventMarkers@markerNames
+    leftSettings <- append(settings, list(fmn = leftFilterMarkerNames, evmn = leftEventMarkerNames, conditions = conditions))
+    leftAnalyzerResults <- generalEventAnalyzer(dataLeft, operation, leftSettings)
+    leftFactorsData <- generalEventDataAsFactorsData(leftAnalyzerResults, operation, eventFactorsDef, leftSettings)
+    eventFactorsDef <- leftFactorsData$eventFactorsDef
+    leftEventFactorsData <- leftFactorsData$factorsData
     
     dataRight <- getDataFrame(DataRecord@eyesDataObject, eye = "right")
-    rightEventMarkerNames <- DataRecord@eyesDataObject@rightEventMarkers@markerNames
     rightFilterMarkerNames <- DataRecord@eyesDataObject@rightFilterMarkers@markerNames
-    rightAnalyzerResults <- standardAnalyzer(dataRight, rightFilterMarkerNames, rightEventMarkerNames, settings, conditions)
-    rightFactorsData <- eventDataAsFactorsData(rightAnalyzerResults, internalFactors)
-    internalFactors <- rightFactorsData$internalFactors
-    rightEventFactors <- rightFactorsData$eventFactors
+    rightEventMarkerNames <- DataRecord@eyesDataObject@rightEventMarkers@markerNames
+    rightSettings <- append(settings, list(fmn = rightFilterMarkerNames, evmn = rightEventMarkerNames, conditions = conditions))
+    rightAnalyzerResults <- generalEventAnalyzer(dataRight, operation, rightSettings)
+    rightFactorsData <- generalEventDataAsFactorsData(rightAnalyzerResults, operation, eventFactorsDef, rightSettings)
+    eventFactorsDef <- rightFactorsData$eventFactorsDef
+    rightEventFactorsData <- rightFactorsData$factorsData
     
-    eventFactors <- rbind(leftEventFactors, rightEventFactors)
-    DataRecord@analysisResults$eventData <- rbind(Class = "FactorsData", factorsDataList = as.data.frame(eventFactors))
+    eventFactorsData <- rbind(leftEventFactorsData, rightEventFactorsData)
+    DataRecord@analysisResults$eventFactorsData <- rbind(Class = "FactorsData", factorsDataList = as.data.frame(eventFactorsData))
   }
-  return(list(dataRec = DataRecord, intFctrs = internalFactors))
+  return(list(dataRec = DataRecord, eventFactors = eventFactorsDef))
 }

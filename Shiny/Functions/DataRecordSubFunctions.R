@@ -1,7 +1,8 @@
 trajDurationEstimator <- function(data, settings)
 {
   t <- data$time
-  return(list('Trajectory Duration' = as.numeric(tail(t, 1) - t[1])))
+  return(list(vals = list(trajDur = as.numeric(tail(t, 1) - t[1])),
+              info = list(trajDur = "Trajectory duration")))
 }
 
 trajLengthEstimator <- function(data, settings)
@@ -28,7 +29,8 @@ trajLengthEstimator <- function(data, settings)
     dxs <- x[-1] - x[-length(x)]
     dys <- y[-1] - y[-length(y)]
   }
-  return(list('Trajectory Length'= as.numeric(sum(sqrt(dxs^2 + dys^2)))))
+  return(list(vals = list(trajLen = as.numeric(sum(sqrt(dxs^2 + dys^2)))),
+              info = list(trajLen = "Trajectory length")))
 }
 
 eventCounter <- function(data, settings)
@@ -39,8 +41,42 @@ eventCounter <- function(data, settings)
   res <- lapply(eventTypes, FUN = function(x) {
     eventRow <- tab[which(rownames(tab) == x),]
     eventCnt <- list(as.integer(length(which(eventRow != 0))))
-    names(eventCnt) <- paste(x, "Count")
+    names(eventCnt) <- paste0(x, " Count")
     return(eventCnt)
   })
-  return(unlist(res, recursive = F))
+  return(list(vals = res,
+              info = list(names(res))))
+}
+
+eventStatistics <- function(eventData, settings)
+{
+  eventType <- settings$eventType
+  paramNames
+  if (eventType == "All") {all = TRUE}
+  if (eventType == evmn$fixation | all)
+  {
+    # code for calculating descriptive stats of fixations
+  }
+  if (eventType == evmn$saccade | all)
+  {
+    # code for calculating descriptive stats of saccades
+  }
+  if (eventType == evmn$glissade | all)
+  {
+    # code for calculating descriptive stats of glissades
+  }
+  if (eventType == evmn$gap | all)
+  {
+    # code for calculating descriptive stats of gaps
+  }
+  if (eventType == evmn$smoothPursuit | all)
+  {
+    # code for calculating descriptive stats of smooth pursuit events
+  }
+  if (eventType == evmn$artifact | all)
+  {
+    # code for calculating descriptive stats of artifacts
+  }
+  
+  
 }

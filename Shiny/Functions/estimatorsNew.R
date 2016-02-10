@@ -65,11 +65,77 @@ coreEstimator <- function(DataRecord, settings)
   })
   res2left <- unlist(lapply(res, FUN = function(x) {return(x$resLeft)}), recursive = F)
   res2right <- unlist(lapply(res, FUN = function(x) {return(x$resRight)}), recursive = F)
-  # res3left <- res2left[sapply(res2left, FUN = function(x) {ifelse(is.null(x[[1]]),F,T)})]
-  # res3right <- res2right[sapply(res2right, FUN = function(x) {ifelse(is.null(x[[1]]),F,T)})]
-  # res4left <- unlist(res3left, recursive = F)
-  # res4right <- unlist(res3right, recursive = F)
   DataRecord@statistics$left <- modifyList(x = DataRecord@statistics$left, val = res2left, keep.null = F)
   DataRecord@statistics$right <- modifyList(x = DataRecord@statistics$right, val = res2right, keep.null = F)
   return(DataRecord)
+}
+
+generalParamEstimator <- function(data, operation, settings)
+{
+  
+}
+
+paramsDataAsFactorsData <- function(estimatorsResults, operation, mainFactorsDef, settings)
+{
+  
+}
+
+coreDataRecordParamEstimator <- function(DataRecord, settings)
+{
+  eventFactorsDef <- settings$eventFactorsDef
+  eventFactorsData <- DataRecord@analysisResults$eventFactorsData
+  
+  mainFactorsDef <- settings$mainFactorsDef
+  mainFactorsData <- settings$mainFactorsData
+  
+  conditions <- DataRecord@eyesDataObject@conditions@conditions
+  operation <- settings$operation
+  eye <- conditions$eye
+  
+  if (operation == "Eyes Data")
+  {
+    subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@applyTo == "Eyes Data"})]
+    if (eye == "left")
+    {
+      data <- getDataFrame(DataRecord@eyesDataObject, eye = "left")
+      eventMarkerNames <- DataRecord@eyesDataObject@leftEventMarkers@markerNames
+      filterMarkerNames <- DataRecord@eyesDataObject@leftFilterMarkers@markerNames
+      settings <- append(settings, list(fmn = filterMarkerNames, evmn = eventMarkerNames, conditions = conditions))
+      estimatorsResults <- generalParamEstimator(data, operation, settings)
+      factorsData <- paramsDataAsFactorsData(estimatorsResults, operation, mainFactorsDef, settings)
+      factorsDef <- factorsData$mainFactorsDef
+      factorsData <- factorsData$mainFactorsData
+      mainFactorsData <- new(Class = "FactorsData", factorsDataList = as.data.frame(eventFactorsData))
+      # Here we should add new main factors definitions and their values to 
+    }
+    if (eye = "right")
+    {
+      
+    }
+    if (eye = "both")
+    {
+      
+    }
+  }
+  if (operation == "Event Data")
+  {
+    subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@applyTo == "Event Data"})]
+  }
+  if (operation == "AOI Data")
+  {
+    subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@applyTo == "AOI Data"})]
+  }
+  if (operation == "AOI Sequence")
+  {
+    subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@applyTo == "AOI Sequence"})]
+  }
+  if (operation == "AOI Stats Vector")
+  {
+    subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@applyTo == "AOI Stats Vector"})]
+  }
+  if (operation == "AOI Transition Matrix")
+  {
+    subFunctions <- settings$subFunctions[sapply(settings$subFunctions, FUN = function(x) {x@applyTo == "AOI Transition Matrix"})]
+  }
+  return(list(dataRec = DataRecord, mainFactorsData = factorsData, mainFactorsDef = factorsDef))
 }

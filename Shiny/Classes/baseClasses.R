@@ -126,15 +126,25 @@ setClass("EventAnalyzer",
 
 setClass("SubFunction",
          representation(fun = "function",
-                        name = "character", # dispalyed name of a sub function
+                        name = "character", # displayed name of a sub function
                         description = "character",
-                        operation = "character",
-                        applyTo = "character", # can be "EyesData", "EventGroup", "EventData", "AOISequence", etc. (base eye data class)
-                        events = "character", # if applyTo == "EventGroups" then event types should be specified (to estimate event groups parameters)
-#                        outputs = "numeric", # numeric vector of Factor _ids_: it is necessary to have information about a value returned by sub function
+                        operation = "character", # can be "Event Analysis" or "Record Analysis" or "Main Entity Analysis"
+                        applyTo = "character", # Event Analysis cases: "Oculomotor Events", "AOI Events", "Frame Events",
+                                               # Record Analysis cases: "Eyes Data", "Event Data", "AOI Data", "AOI Sequence", "AOI Stats Vector", "AOI Transition Matrix"
+                                               # Main Entity Analysis cases: "ObservationsData", "TrialData", "StimulusData"
+                        applyWhen = "character", # if applyTo == "Oculomotor Events" then event types should be specified (for which this function is appropriate)
+                                              # if applyTo == "AOI Events" then AOI types should be specified
+                                              # ***
+                                              # if applyTo == "EventData" then event types should be specified (for which this function is appropriate)
+                                              # if applyTo == "AOIData" then AOI type should be specified (for which this function is appropriate)
+                                              # 
+                        
                         settings = "list" # settings of a sub function
                         )
 )
+
+
+
 
 setClass("ParamEstimator",
          representation(fun = "function",

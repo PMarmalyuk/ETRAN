@@ -63,9 +63,9 @@ calcVel <- function(t, x, y, settings)
 {
   velType <- settings$velType
   angular <- settings$angular
-  screenDist <- settings$screenDist
-  screenResolution <- settings$screenResolution
-  screenSize <- settings$screenSize
+  screenDist <- settings$conditions$screenDist
+  screenResolution <- settings$conditions$screenResolution
+  screenSize <- settings$conditions$screenSize
   samplesCnt <- length(t)
   dl = NA
   dt = NA
@@ -127,7 +127,7 @@ calcVel <- function(t, x, y, settings)
 
 createFactorFromReturnedValue <- function(x)
 {
-  factor_new <- new(Class = "Factor", varName = as.character(names(x)))
+  factor_new <- new(Class = "Factor")
   x <- unlist(x)
   cls <- class(x)[1]
   if (cls == "integer")

@@ -11,7 +11,7 @@ source("Functions\\detectors.R", local = T)
 source("Functions\\eventAnalyzersNew.R", local = T)
 source("Functions\\estimatorsNew.R", local = T)
 source("Functions\\DataRecordSubFunctions.R", local = T)
-source("Functions\\EventGroupSubFunctions.R", local = T)
+source("Functions\\GeneralEventSubFunctions.R", local = T)
 source("Methods\\Methods_v_1_7.R", local = T)
 
 
