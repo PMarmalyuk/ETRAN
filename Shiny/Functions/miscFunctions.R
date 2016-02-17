@@ -16,12 +16,6 @@ createSmoother <- function(name, fun, settings)
   return(smoother)
 }
 
-createDetector <- function(name, fun, settings)
-{
-  detector <- new(Class = "EventDetector", name = name, fun = fun, settings = settings)
-  return(detector)
-}
-
 createAnalyzer <- function(name, fun, settings)
 {
   analyzer <- new(Class = "EventAnalyzer", name = name, fun = fun, settings = settings)
@@ -63,9 +57,9 @@ calcVel <- function(t, x, y, settings)
 {
   velType <- settings$velType
   angular <- settings$angular
-  screenDist <- settings$conditions$screenDist
-  screenResolution <- settings$conditions$screenResolution
-  screenSize <- settings$conditions$screenSize
+  screenDist <- settings$screenDistance
+  screenResolution <- settings$screenResolution
+  screenSize <- settings$screenSize
   samplesCnt <- length(t)
   dl = NA
   dt = NA

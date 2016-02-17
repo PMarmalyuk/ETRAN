@@ -5,6 +5,13 @@ source("Classes\\optionsAndSettingsClasses.R", local = T)
 source("Classes\\baseEyeDataClasses.R", local = T)
 source("Classes\\baseClasses.R", local = T)
 source("Classes\\listsAndTablesClasses.R", local = T)
+source("Classes\\Events\\filterEvent.R", local = T)
+source("Classes\\Events\\oculomotorEvent.R", local = T)
+source("Classes\\Events\\AOIEvent.R", local = T)
+source("Classes\\Events\\syncEvent.R", local = T)
+source("Classes\\Events\\frameEvent.R", local = T)
+source("Classes\\Events\\windowEvent.R", local = T)
+source("Classes\\representations.R", local = T)
 source("Functions\\dataParsers.R", local = T)
 source("Functions\\filters.R", local = T)
 source("Functions\\smoothers.R", local = T)
@@ -45,32 +52,54 @@ dataRec <- new(Class = "DataRecord", expID = 1, subjectID = 1, trialID = 1, eyes
 # Event Detection test
 smoother <- createSmoother("Standard", fun = coreSmoother, settings = list(subfun = medianFilt, fl = 33))
 
-filter <- createFilter(name = "Standard", fun = coreFilter, settings = list(subfun = standardFilter, 
-                                                                            screenResolution = conditions@conditions$screenResolution, 
-                                                                            interpolate = F,
-                                                                            filterMarkerNames = new(Class = "FilterMarkers")@markerNames))
-detector <- createDetector("Standard", fun = coreDetector, settings = list(subfun = IVT,
-                                                                           postProcess = F,
-                                                                           VT = 15,
-                                                                           velType = "analytical",
-                                                                           sampleRate = 500,
-                                                                           fl = 33,
-                                                                           angular = T,
-                                                                           screenDistance = 100,
-                                                                           screenResolution = c(1280, 1024),
-                                                                           screenSize = c(33.7, 27),
-                                                                           MaxTBetFix = 0.075,
-                                                                           MaxDistBetFix = 0.5,
-                                                                           minFixLen = 0.05,
-                                                                           maxGapLen = 0.07,
-                                                                           maxVel = 1000,
-                                                                           maxAccel = 1000000,
-                                                                           classifyGaps = F))
-res <- detectEvents(dataRec, filter, smoother, detector)
-dataRec@eyesDataObject@leftFilterMarkers <- res@eyesDataObject@leftFilterMarkers
-dataRec@eyesDataObject@rightFilterMarkers <- res@eyesDataObject@rightFilterMarkers
-dataRec@eyesDataObject@leftEventMarkers <- res@eyesDataObject@leftEventMarkers
-dataRec@eyesDataObject@rightEventMarkers <- res@eyesDataObject@rightEventMarkers
+detectors <- list(ids = c(1, 2, 3), 
+                  detectors = list(noFilt = createFilter(id = 1, name = "Standard", fun = coreFilter, description = "Test Filter",
+                                                         settings = list(subfun = noFilter),
+                                                         markersDefinition = new(Class = "EventMarkersDefinition", 
+                                                                                 eventTypesIDs = c(1,2,3),
+                                                                                 typesMarkers = c("OK", "GAP", "ARTIFACT"))
+                  ),
+                  standardFilt = createFilter(id = 2, name = "Standard", fun = coreFilter, description = "Test Filter",
+                                              settings = list(subfun = standardFilter, 
+                                                              screenResolution = conditions@conditions$screenResolution, 
+                                                              interpolate = F),
+                                              markersDefinition = new(Class = "EventMarkersDefinition", 
+                                                                      eventTypesIDs = c(1,2,3),
+                                                                      typesMarkers = c("OK", "GAP", "ARTIFACT"))
+                  ),
+                  standardDetector = createDetector(id = 3, name = "Standard", fun = coreDetector,description = "Test Detector",
+                                                    settings = list(subfun = IVT,
+                                                                    postProcess = F,
+                                                                    VT = 15,
+                                                                    velType = "analytical",
+                                                                    sampleRate = 500,
+                                                                    fl = 33,
+                                                                    angular = T,
+                                                                    screenDistance = 100,
+                                                                    screenResolution = c(1280, 1024),
+                                                                    screenSize = c(33.7, 27),
+                                                                    MaxTBetFix = 0.075,
+                                                                    MaxDistBetFix = 0.5,
+                                                                    minFixLen = 0.05,
+                                                                    maxGapLen = 0.07,
+                                                                    maxVel = 1000,
+                                                                    maxAccel = 1000000,
+                                                                    classifyGaps = F),
+                                                    markersDefinition = new(Class = "EventMarkersDefinition", 
+                                                                            eventTypesIDs = c(1,2,3,4),
+                                                                            typesMarkers = c("FIXATION", "SACCADE", "GAP", "ARTIFACT"))
+                                                    
+                  )
+                  )
+)
+
+
+dataRec <- dataFilter(self = dataRec, filter = detectors$detectors[[2]])
+dataRec@eyesDataObject@leftEventsMarkers$filterMarkers
+
+dataRec <- detectEvents(dataRec, filter = detectors$detectors[[1]], smoother, detector = detectors$detectors[[3]])
+dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers
+
 
 # Event Analysis test
 # subFuns <- getSubfunctions(self = subFunctions, operation = "Event Analysis")
@@ -86,7 +115,9 @@ analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
                                            subFunctions = subFunctionsBodies, 
                                            eventFactors = eventFactors))
 eventAnalysisResult <- eventAnalyzer(dataRec, analyzer)
-eventAnalysisResult$dataRec@analysisResults$eventFactorsData
+fd <- eventAnalysisResult$dataRec@analysisResults$eventFactorsData@factorsDataList
+
+  
 eventAnalysisResult$eventFactors
 # data <- eventAnalysisResult$dataRec@analysisResults$eventData@factorsDataList
 # data[sapply(eventAnalysisResult$dataRec@analysisResults$eventData@factorsDataList$owner, identical, c("Event", "Gap")),]

@@ -81,7 +81,7 @@ setClass("DataRecord",
                         subjectID = "numeric",
                         trialID = "numeric",
                         eyesDataObject = "EyesData",
-                        analysisResults = "list" #list of EventData, FrameData, AOIData, AOISequence, AOITransMatrix, AOIStatsVector objects
+                        analysisResults = "list" #list of FactorsData (EventData, FrameData, AOIData, SyncData factors), AOISequence, AOITransMatrix and AOIStatsVector objects
          ),
          prototype(
          )
@@ -95,30 +95,39 @@ setClass("Loader",
 
 setClass("Parser",
          representation(name = "character",
+                        description = "character",
                         fun = "function",
                         settings = "list")
 )
 
-setClass("Filter",
-         representation(fun = "function",
-                        name = "character",
-                        settings = "list")
-)
-
 setClass("Smoother",
-         representation(fun = "function",
-                        name = "character",
+         representation(name = "character",
+                        description = "character",
+                        fun = "function",
                         settings = "list")
 )
 
+setClass("EventDetectors", representation(ids = "numeric", detectors = "list"))
 
-setClass("EventDetector",
-         representation(fun = "function",
-                        name = "character",
-                        settings = "list")
+setClass("EventMarkersDefinition",
+         representation(eventTypesIDs = "numeric", # a vector of IDs of event types
+                        typesMarkers = "character" # a vector of markers for corresponding event type IDs
+         )
 )
+
+setClass("EventDetector", representation(id = "numeric",
+                                         name = "character",
+                                         description = "character",
+                                         fun = "function",
+                                         settings = "list"))
 
 setClass("EventAnalyzer",
+         representation(fun = "function",
+                        name = "character",
+                        settings = "list")
+)
+
+setClass("ParamEstimator",
          representation(fun = "function",
                         name = "character",
                         settings = "list")
@@ -128,26 +137,11 @@ setClass("SubFunction",
          representation(fun = "function",
                         name = "character", # displayed name of a sub function
                         description = "character",
-                        operation = "character", # can be "Event Analysis" or "Record Analysis" or "Main Entity Analysis"
-                        applyTo = "character", # Event Analysis cases: "Oculomotor Events", "AOI Events", "Frame Events",
-                                               # Record Analysis cases: "Eyes Data", "Event Data", "AOI Data", "AOI Sequence", "AOI Stats Vector", "AOI Transition Matrix"
-                                               # Main Entity Analysis cases: "ObservationsData", "TrialData", "StimulusData"
-                        applyWhen = "character", # if applyTo == "Oculomotor Events" then event types should be specified (for which this function is appropriate)
-                                              # if applyTo == "AOI Events" then AOI types should be specified
-                                              # ***
-                                              # if applyTo == "EventData" then event types should be specified (for which this function is appropriate)
-                                              # if applyTo == "AOIData" then AOI type should be specified (for which this function is appropriate)
-                                              # 
-                        
-                        settings = "list" # settings of a sub function
-                        )
-)
+                        classes = "list", # list(mainClass = "EyesData", subClass = "PupilData")
+                                          # list(mainClass = "EventMarkers", subClass = "FilterEventMarkers")
+                                          # list(mainClass = "EventData", subClass = "OculomotorEvent", eventIDs = c(1, 2, 3))
+                                          # list(mainClass = "EventData", subClass = "SyncEvent", eventIDs = c(4, 5, 6))
+                        settings = "list")) # settings of a sub function
 
 
 
-
-setClass("ParamEstimator",
-         representation(fun = "function",
-                        name = "character",
-                        settings = "list")
-)

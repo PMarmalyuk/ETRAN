@@ -48,7 +48,7 @@ generalEventAnalyzer <- function(data, operation, settings)
 generalEventDataAsFactorsData <- function(analysisData, operation, eventFactors, settings)
 {
   fctrs <- list()
-  if (operation == "Event Analysis")
+  if (operation == "Oculomotor Events Analysis")
   {
     mainOwner <- "Event"
     ownerID <- list(EventGroup = NA)

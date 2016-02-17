@@ -108,11 +108,11 @@ coreDataRecordParamEstimator <- function(DataRecord, settings)
       mainFactorsData <- new(Class = "FactorsData", factorsDataList = as.data.frame(eventFactorsData))
       # Here we should add new main factors definitions and their values to 
     }
-    if (eye = "right")
+    if (eye == "right")
     {
       
     }
-    if (eye = "both")
+    if (eye == "both")
     {
       
     }

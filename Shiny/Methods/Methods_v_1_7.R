@@ -1037,12 +1037,14 @@ setMethod("getDataFrame", "EyesData",
 }
 )
 
-## TO DO: implement a method that adds a specific DataRecord object into a DataSample object 
+## ??? TO DO: implement a method that adds a specific DataRecord object into a DataSample object 
 setMethod("dataFilter", "DataRecord",
           function(self, filter)
           {
             fun <- filter@fun
-            settings <- filter@settings
+            # markersDef <- filter@markersDefinition
+            filterID <- filter@id
+            settings <- append(filter@settings, list(filterID = filterID))#, markersDef = markersDef))
             res <- fun(self, settings)
             print("Filtered")
             return(res)
@@ -1064,7 +1066,8 @@ setMethod("eventDetector", "DataRecord",
           function(self, detector)
           {
             fun <- detector@fun
-            settings <- detector@settings
+            detectorID <- detector@id
+            settings <- append(detector@settings, list(detectorID = detectorID))#, markersDef = markersDef))
             res <- fun(self, settings)
             print("Detected")
             return(res)

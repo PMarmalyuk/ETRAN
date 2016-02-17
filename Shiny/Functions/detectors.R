@@ -1,28 +1,41 @@
-IVT <- function(t, x, y, filterMarkers, settings)
+createDetector <- function(id, name, description, fun, settings, markersDefinition)
 {
+  detector <- new(Class = "OculomotorEventDetector", id = id, name = name, fun = fun, description = description,
+                  settings = settings, markersDefinition = markersDefinition)
+  return(detector)
+}
+
+IVT <- function(t, x, y, settings)
+{
+  filterMarkers <- settings$filterMarkers
+  
+  filterOkMarker <- 1
+  filterGapMarker <- 2
+  filterArtMarker <- 3
+  
+  fixMarker <- 1
+  sacMarker <- 2
+  gapMarker <- 3
+  artMarker <- 4
+  
   VT <- settings$VT
   angular <- settings$angular
   screenDist <- settings$screenDistance
   screenResolution <- settings$screenResolution
   screenSize <- settings$screenSize
   postProcess <- settings$postProcess
+  
   # 1. Velocities and accelerations estimation
   vel <- calcVel(t, x, y, settings)
   accels <- vel$accels
   
   # 2. Classification stage: getting raw event markers
-  evm <- new(Class = "EventMarkers")
-  gapMarkers <- ifelse(filterMarkers@filterMarkers != filterMarkers@markerNames$ok, "Gap", "Not gap")
-  rawEventMarkers <- ifelse(gapMarkers[1:length(accels)] == "Gap", evm@markerNames$gap, ifelse(vel$vels[1:length(accels)] <= VT, evm@markerNames$fixation, evm@markerNames$saccade))
-  evm@eventMarkers <- rawEventMarkers
+  gapMarkers <- ifelse(filterMarkers != filterOkMarker, filterGapMarker, filterOkMarker)
+  rawEventMarkers <- ifelse(gapMarkers[1:length(accels)] == filterGapMarker, gapMarker, ifelse(vel$vels[1:length(accels)] <= VT, fixMarker, sacMarker))
   evmarks <- data.frame(firstEv = rawEventMarkers[-length(rawEventMarkers)], secondEv = rawEventMarkers[-1])
   transitions <- apply(evmarks, MARGIN = 1, function(x) {if (x[2] != x[1]) {1} else {0}})
   group <- c(1,cumsum(transitions)+1)
-  if (!postProcess)
-  {
-    evm@eventGroups <- group
-  }
-  else
+  if (postProcess)
   {
     classifyGaps <- settings$classifyGaps
     MaxTBetFix <- settings$MaxTBetFix
@@ -54,7 +67,7 @@ IVT <- function(t, x, y, filterMarkers, settings)
     {
       currentGroup <- eventGroups[[gr]]$evm[1]
       # Если текущая группа сэмплов - фиксация
-      if (currentGroup == evm@markerNames$fixation)
+      if (currentGroup == fixMarker)
       {
         # то вычисляем её длительность
         fixLen <- (eventGroups[[gr]]$t[nrow(eventGroups[[gr]])]-eventGroups[[gr]]$t[1])
@@ -64,7 +77,7 @@ IVT <- function(t, x, y, filterMarkers, settings)
           artifactGroups <- append(artifactGroups, eventGroups[gr])
           group <- group + 1
           newGroups <- c(newGroups, rep(group, nrow(eventGroups[[gr]])))
-          newEvents <- c(newEvents, rep(evm@markerNames$artifact, nrow(eventGroups[[gr]])))
+          newEvents <- c(newEvents, rep(artMarker, nrow(eventGroups[[gr]])))
           #eventMarkersGroups <- append(eventMarkersGroups, rep(eventMarkers@markerNames$artifact, nrow(eventGroups[[gr]])))
         }
         # если фиксация не короткая
@@ -76,7 +89,7 @@ IVT <- function(t, x, y, filterMarkers, settings)
           fixCloseInTime <- F
           fixCloseInSpace <- F
           
-          if (anyGroupBefore) {prevGroupIsSaccade <- (lastGroup == evm@markerNames$saccade)}
+          if (anyGroupBefore) {prevGroupIsSaccade <- (lastGroup == sacMarker)}
           if (prevGroupIsSaccade) {anyFixBefore <- (length(fixationGroups) != 0)}
           if (anyFixBefore) 
           {
@@ -95,29 +108,29 @@ IVT <- function(t, x, y, filterMarkers, settings)
           if (fixCloseInSpace)
           {
             # то предыдущую саккаду рассматриваем как артефакт записи
-            newEvents[tail(newEvents, nrow(saccadeGroups[[length(saccadeGroups)]]))] <- rep(evm@markerNames$artifact, nrow(saccadeGroups[[length(saccadeGroups)]]))
+            newEvents[tail(newEvents, nrow(saccadeGroups[[length(saccadeGroups)]]))] <- rep(artMarker, nrow(saccadeGroups[[length(saccadeGroups)]]))
             artifactGroups <- append(artifactGroups, saccadeGroups[length(saccadeGroups)])
-            eventMarkersGroups[length(eventMarkersGroups)] <- list(rep(evm@markerNames$artifact, length(eventMarkersGroups[[length(eventMarkersGroups)]])))
+            eventMarkersGroups[length(eventMarkersGroups)] <- list(rep(artMarker, length(eventMarkersGroups[[length(eventMarkersGroups)]])))
             saccadeGroups <- saccadeGroups[-length(saccadeGroups)]
             
             # а текущую фиксацию рассматриваем как продолжение предыдущей
             lastFixation <- list(rbind(lastFixation, eventGroups[[gr]]))
             fixationGroups[length(fixationGroups)] <- lastFixation
-            lastGroup <- evm@markerNames$fixation
-            eventMarkersGroups <- append(eventMarkersGroups, list(rep(evm@markerNames$fixation, nrow(eventGroups[[gr]]))))
+            lastGroup <- fixMarker
+            eventMarkersGroups <- append(eventMarkersGroups, list(rep(fixMarker, nrow(eventGroups[[gr]]))))
           }
           
           if (!anyGroupBefore | !prevGroupIsSaccade | !anyFixBefore | !fixCloseInTime | !fixCloseInSpace)
           {
             # то дополняем список фиксаций текущей фиксацией
             fixationGroups <- append(fixationGroups, eventGroups[gr])
-            lastGroup <- evm@markerNames$fixation
-            eventMarkersGroups <- append(eventMarkersGroups, list(rep(evm@markerNames$fixation, nrow(eventGroups[[gr]]))))
+            lastGroup <- fixMarker
+            eventMarkersGroups <- append(eventMarkersGroups, list(rep(fixMarker, nrow(eventGroups[[gr]]))))
           }
         }
       }
       # Если текущая группа сэмплов - саккада
-      if (currentGroup == evm@markerNames$saccade)
+      if (currentGroup == sacMarker)
       {
         # то вычисляем параметры maxVel и maxAccel
         maxSaccadeVel <- max(eventGroups[[gr]]$vel, na.rm = T)
@@ -128,31 +141,31 @@ IVT <- function(t, x, y, filterMarkers, settings)
         if (maxSaccadeVel > maxVel | maxSaccadeAccel > maxAccel)
         {
           artifactGroups <- append(artifactGroups, eventGroups[gr])
-          eventMarkersGroups <- append(eventMarkersGroups, list(rep(evm@markerNames$artifact, nrow(eventGroups[[gr]]))))
+          eventMarkersGroups <- append(eventMarkersGroups, list(rep(artMarker, nrow(eventGroups[[gr]]))))
         }
         #	если саккада не аномальна
         else
         {
           # то если предыдущая группа - саккада, то дополняем последнюю саккаду сэмплами текущей саккады
-          if (!is.na(lastGroup) & lastGroup == evm@markerNames$saccade)
+          if (!is.na(lastGroup) & lastGroup == sacMarker)
           {
             lastSaccade <- list(rbind(saccadeGroups[[length(saccadeGroups)]], eventGroups[[gr]]))
             saccadeGroups[length(saccadeGroups)] <- lastSaccade
-            lastGroup <- evm@markerNames$saccade
-            lastMarkers <- list(c(eventMarkersGroups[[length(eventMarkersGroups)]], rep(evm@markerNames$saccade, nrow(eventGroups[[gr]]))))
+            lastGroup <- sacMarker
+            lastMarkers <- list(c(eventMarkersGroups[[length(eventMarkersGroups)]], rep(sacMarker, nrow(eventGroups[[gr]]))))
             eventMarkersGroups[length(eventMarkersGroups)] <- lastMarkers
           }
           else
             # иначе дополняем список саккад текущей саккадой
           {
             saccadeGroups <- append(saccadeGroups, eventGroups[gr])
-            lastGroup <- evm@markerNames$saccade
-            eventMarkersGroups <- append(eventMarkersGroups, list(rep(evm@markerNames$saccade, nrow(eventGroups[[gr]]))))
+            lastGroup <- sacMarker
+            eventMarkersGroups <- append(eventMarkersGroups, list(rep(sacMarker, nrow(eventGroups[[gr]]))))
           }
         }    
       }
       # Если текущая группа сэмплов - пропуск
-      if (currentGroup == evm@markerNames$gap)
+      if (currentGroup == gapMarker)
       {
         if (classifyGaps)
         {
@@ -162,14 +175,14 @@ IVT <- function(t, x, y, filterMarkers, settings)
           # то классифицируем его как пропуск
           if (gapLen > maxGapLen | is.na(lastGroup) | gr == length(eventGroups))
           {
-            gapClass <- evm@markerNames$gap
+            gapClass <- gapMarker
           }
           # если не длинный, и группа не является последней, и группа не является первой
           # то классифицируем пропуск по близости сэмплов, смежных с пропуском 
           if (gapLen <= maxGapLen & gr != length(eventGroups) & !is.na(lastGroup))
           {
             
-            if (lastGroup != evm@markerNames$gap & eventGroups[[gr+1]]$evm[1] != evm@markerNames$gap)
+            if (lastGroup != gapMarker & eventGroups[[gr+1]]$evm[1] != gapMarker)
             {
               lastSmpBeforeGap <- eventGroups[[gr-1]][nrow(eventGroups[[gr-1]]),]
               firstSmpAfterGap <- eventGroups[[gr+1]][1,]
@@ -184,125 +197,93 @@ IVT <- function(t, x, y, filterMarkers, settings)
                 # то он классифицируется как фиксация
                 if (dist <= MaxDistBetFix)
                 {
-                  gapClass <- evm@markerNames$fixation
+                  gapClass <- fixMarker
                 }
                 else
                   # если не близки в пространстве, то пропуск классифицируется как саккада
                 {
-                  gapClass <- evm@markerNames$saccade
+                  gapClass <- sacMarker
                 }
               }
               else
                 # если не близки во времени, то пропуск классифицируется как саккада
               {
-                gapClass <- evm@markerNames$saccade
+                gapClass <- sacMarker
               }
             }
-            if (lastGroup == evm@markerNames$gap | eventGroups[[gr+1]]$evm[1] == evm@markerNames$gap)
+            if (lastGroup == gapMarker | eventGroups[[gr+1]]$evm[1] == gapMarker)
             {
-              gapClass <- evm@markerNames$gap
+              gapClass <- gapMarker
             }
           }
         }
         else
         {
-          gapClass <- evm@markerNames$gap
+          gapClass <- gapMarker
         }
         
         # результат классификации пропуска позволяет отнести его сэмплы к тому или иному списку событий
         # если пропуск - длинный пропуск, то пополняем список пропусков
-        if (gapClass == evm@markerNames$gap)
+        if (gapClass == gapMarker)
         {
           gapGroups <- append(gapGroups, eventGroups[gr])
-          lastGroup <- evm@markerNames$gap
-          eventMarkersGroups <- append(eventMarkersGroups, rep(evm@markerNames$gap, nrow(eventGroups[[gr]])))
+          lastGroup <- gapMarker
+          eventMarkersGroups <- append(eventMarkersGroups, rep(gapMarker, nrow(eventGroups[[gr]])))
         }
         # если пропуск - фиксация
-        if (gapClass == evm@markerNames$fixation)
+        if (gapClass == fixMarker)
         {
           # то если последняя группа - фиксация, то добавляем сэмплы пропуска в эту группу
-          if (lastGroup == evm@markerNames$fixation)
+          if (lastGroup == fixMarker)
           {
             lastFixation <- rbind(eventGroups[[gr-1]], eventGroups[[gr]])
             fixationGroups[length(fixationGroups)] <- list(lastFixation)
-            lastGroup <- evm@markerNames$fixation
-            eventMarkersGroups <- append(eventMarkersGroups, rep(evm@markerNames$fixation, nrow(eventGroups[[gr]])))
+            lastGroup <- fixMarker
+            eventMarkersGroups <- append(eventMarkersGroups, rep(fixMarker, nrow(eventGroups[[gr]])))
           }
           # иначе добавляем новую группу в список фиксаций
           else
           {
             fixationGroups <- append(fixationGroups, eventGroups[gr])
-            lastGroup <- evm@markerNames$fixation
-            eventMarkersGroups <- append(eventMarkersGroups, rep(evm@markerNames$fixation, nrow(eventGroups[[gr]])))
+            lastGroup <- fixMarker
+            eventMarkersGroups <- append(eventMarkersGroups, rep(fixMarker, nrow(eventGroups[[gr]])))
           }
         }
         # если пропуск - саккада
-        if (gapClass == evm@markerNames$saccade)
+        if (gapClass == sacMarker)
         {
           # то если последняя группа - саккада, то добавляем сэмплы пропуска в эту группу
-          if (lastGroup == evm@markerNames$saccade)
+          if (lastGroup == sacMarker)
           {
             lastSaccade <- rbind(eventGroups[[gr-1]], eventGroups[[gr]])
             saccadeGroups[length(saccadeGroups)] <- list(lastSaccade)
-            lastGroup <- evm@markerNames$saccade
-            eventMarkersGroups <- append(eventMarkersGroups, rep(evm@markerNames$saccade, nrow(eventGroups[[gr]])))
+            lastGroup <- sacMarker
+            eventMarkersGroups <- append(eventMarkersGroups, rep(sacMarker, nrow(eventGroups[[gr]])))
           }
           # иначе добавляем новую группу в список саккад
-          if (lastGroup == evm@markerNames$fixation | lastGroup == evm@markerNames$gap)
+          if (lastGroup == fixMarker | lastGroup == gapMarker)
           {
             saccadeGroups <- append(saccadeGroups, eventGroups[gr])
-            lastGroup <- evm@markerNames$saccade
-            eventMarkersGroups <- append(eventMarkersGroups, rep(evm@markerNames$saccade, nrow(eventGroups[[gr]])))
+            lastGroup <- sacMarker
+            eventMarkersGroups <- append(eventMarkersGroups, rep(sacMarker, nrow(eventGroups[[gr]])))
           }
         }
       }
     }
-    evm@eventMarkers <- unlist(eventMarkersGroups)
-    evm@eventGroups <- group
+    eventMarkers <- eventMarkersGroups
   }
-  return(evm)
+  else
+  {
+    eventMarkersGroups <- rawEventMarkers
+  }
+  # Is group filled correctly?
+  ## group is a vector with event ordinal numbers (including the case of post processing results)
+  return(list(eventMarkers = eventMarkersGroups, eventGroups = group))
 }
 
-ANH <- function(t, x, y, filterMarkers, settings) 
+ANH <- function(t, x, y, settings) 
 {
-  angular <- settings$angular
-  screenDist <- settings$screenDistance
-  screenResolution <- settings$screenResolution
-  screenSize <- settings$screenSize
-  postProcess <- settings$postProcess
-  velType <- settings$velType
-  fl <- settings$fl
-  fs <- settings$sampleRate
-  if (is.na(fs))
-  {
-    meandt <- mean(t[-1] - t[-length(t)], na.rm = T)
-    fs <- 1/meandt
-  }
-  screenDist <- settings$screenDistance
-  screenResolution <- settings$screenResolution
-  screenSize <- settings$screenSize
-  angular <- settings$angular
-  velType <- settings$velType
-  fl <- settings$fl
-  fs <- settings$sampleRate
-  size <- length(t)
-  if (is.na(fs))
-  {
-    meandt <- mean(t[-1] - t[-size], na.rm = T)
-    fs <- 1/meandt
-  }
-  maxSaccadeVel  <- settings$maxSaccadeVel
-  maxSaccadeAcc  <- settings$maxSaccadeAcc
-  minSaccadeDur  <- settings$minSaccadeDur
-  minFixationDur <- settings$minFixationDur
-  # Using Savitsky-Golay filter to get velocities and accelerations using derivatves of approximated x and y signals
-  vel <- calcVel(t, x, y, settings)
-  accels <- vel$accels
-
-  evm <- new(Class = "EventMarkers")
-  rawEvM <- ifelse(filterMarkers@filterMarkers != filterMarkers@markerNames$ok, "Gap", "Not Gap")[-size]
-  windowSize <- floor(minFixationDur/mean(vel$dts, na.rm = T))
-  ### Peak velocity Threshold calculation
+  # ANH internal functions definitions
   getThreshold <- function(Vel,PT0,tolerance,sigmaCoef) {
     PT <- PT0
     repeat {
@@ -325,7 +306,44 @@ ANH <- function(t, x, y, filterMarkers, settings)
     }
     PT
   }
-  PT <- getThreshold(vel$vels[which(rawEvM == "Not Gap")], PT0 = 250, tolerance = 0.1, sigmaCoef = 6)
+  
+  filterMarkers <- settings$filterMarkers
+
+  filterOkMarker <- 1
+  filterGapMarker <- 2
+  filterArtMarker <- 3
+  fixMarker <- 1
+  sacMarker <- 2
+  gliMarker <- 3
+  gapMarker <- 4
+  artMarker <- 5
+  
+  angular <- settings$angular
+  screenDist <- settings$screenDistance
+  screenResolution <- settings$screenResolution
+  screenSize <- settings$screenSize
+  postProcess <- settings$postProcess
+  velType <- settings$velType
+  fl <- settings$fl
+  fs <- settings$sampleRate
+  size <- length(t)
+  if (is.na(fs))
+  {
+    meandt <- mean(t[-1] - t[-size], na.rm = T)
+    fs <- 1/meandt
+  }
+  maxSaccadeVel  <- settings$maxSaccadeVel
+  maxSaccadeAcc  <- settings$maxSaccadeAcc
+  minSaccadeDur  <- settings$minSaccadeDur
+  minFixationDur <- settings$minFixationDur
+  # Using Savitsky-Golay filter to get velocities and accelerations using derivatves of approximated x and y signals
+  vel <- calcVel(t, x, y, settings)
+  accels <- vel$accels
+  rawEvM <- ifelse(filterMarkers != filterOkMarker, filterGapMarker, filterOkMarker)[-size]
+  windowSize <- floor(minFixationDur/mean(vel$dts, na.rm = T))
+  
+  ### Peak velocity Threshold calculation
+  PT <- getThreshold(vel$vels[which(rawEvM == filterOkMarker)], PT0 = 250, tolerance = 0.1, sigmaCoef = 6)
   ### Saccades detection
   ### Velocity peaks, saccades onsets and offsets search
   
@@ -334,7 +352,7 @@ ANH <- function(t, x, y, filterMarkers, settings)
   peaks <- which(above_Threshold[-1]!=above_Threshold[-length(above_Threshold)])
   if (peaks[1]<=windowSize) peaks <- peaks[-c(1:2)]
   #Находим onset-ы
-  STon <- getThreshold(vel$vels[which(rawEvM == "Not Gap")], PT0 = 250, tolerance = 0.1, sigmaCoef = 3)
+  STon <- getThreshold(vel$vels[which(rawEvM == filterOkMarker)], PT0 = 250, tolerance = 0.1, sigmaCoef = 3)
   leftmost_peaks <- peaks[seq(1,length(peaks),2)]
   onsets <- c()
   for (i in leftmost_peaks){
@@ -377,57 +395,59 @@ ANH <- function(t, x, y, filterMarkers, settings)
   ### Saccade detection
   for (i in 1:length(offsets))
     if (sum(vel$dts[onsets[i]:offsets[i]])>minSaccadeDur)
-      rawEvM[onsets[i]:offsets[i]] <- ifelse(rawEvM[onsets[i]:offsets[i]]=="Gap",evm@markerNames$gap, evm@markerNames$saccade)
+      rawEvM[onsets[i]:offsets[i]] <- ifelse(rawEvM[onsets[i]:offsets[i]]==filterGapMarker, gapMarker, sacMarker)
   
   ### Glissade detection
   for (i in 1:length(offsets)) {
     n <- ifelse((offsets[i]+windowSize)>=size,size-1,offsets[i]+windowSize)
     for (j in offsets[i]:n) {
-      if (rawEvM[j]=="Not Gap") 
+      if (rawEvM[j]==filterOkMarker) 
         rawEvM[j] <- ifelse((vel$vels[j] > PT), 
-                            evm@markerNames$glissade, #HighVelGlissade
+                            gliMarker, #HighVelGlissade
                             ifelse(vel$vels[j] > offset_Thresholds[i], 
-                                   evm@markerNames$glissade, #LowVelGlissade
-                                   evm@markerNames$gap))
+                                   gliMarker, #LowVelGlissade
+                                   gapMarker))
     }
   }
 
   ############################
   ### Fixation detection ###
   ############################
-  rawEvM <- ifelse(rawEvM == "Not Gap", evm@markerNames$fixation, rawEvM)
+  rawEvM <- ifelse(rawEvM == filterOkMarker, fixMarker, rawEvM)
   evmarks <- data.frame(firstEv = rawEvM[-length(rawEvM)], secondEv = rawEvM[-1])
   transitions <- apply(evmarks, MARGIN = 1, function(x) {if (x[2] != x[1]) {1} else {0}})
   group <- c(1,cumsum(transitions)+1)
-  evm@eventMarkers <- rawEvM
-  evm@eventGroups <- group 
-  return(evm)
+  return(list(eventMarkers = rawEvM, eventGroups = group))
 }
 
-IDT <- function(t, x, y, filterMarkers, settings)
+IDT <- function(t, x, y, settings)
 {
+  filterMarkers <- settings$filterMarkers
+
+  filterOkMarker <- 1
+  filterGapMarker <- 2
+  filterArtMarker <- 3
+  fixMarker <- 1
+  sacMarker <- 2
+  gapMarker <- 3
+  artMarker <- 4
   
   dispersionThreshold <- settings$dispersionThreshold # in px or degrees
   durationThreshold <- settings$durationThreshold # in milliseconds
   durationThreshold <- durationThreshold/1000 # now in seconds
-  
   angular <- settings$angular
   screenDist <- settings$screenDistance
   screenResolution <- settings$screenResolution
   screenSize <- settings$screenSize
-  
   if (angular)
   {
     angPositions <- calcAngPos(x = x, y = y, screenDist, screenResolution, screenSize)
     x <- angPositions$xAng
     y <- angPositions$yAng
   }
-  
-  evm <- new(Class = "EventMarkers")
-
   size <- length(t)
   rawEvM <- c()
-  rawEvM[1:(size-1)] <- evm@markerNames$saccade
+  rawEvM[1:(size-1)] <- sacMarker
   coords <- data.frame(x=x[-size], y=y[-size], dur= t[-1]-t[-size])
   left <- 1; right <- 2
   while (right < size) {
@@ -445,42 +465,45 @@ IDT <- function(t, x, y, filterMarkers, settings)
           d <- (max(coords$x[left:right])-min(coords$x[left:right]))+(max(coords$y[left:right])-min(coords$y[left:right]))
         }
         right <- right - 1
-        rawEvM[left:right] <- evm@markerNames$fixation
+        rawEvM[left:right] <- fixMarker
         left <- right + 1
         right <- left + 1
       }
     }
   }
-  rawEvM[which(filterMarkers@filterMarkers != filterMarkers@markerNames$ok)[-size]] <- "Gap"
+  rawEvM[which(filterMarkers != filterOkMarker)[-size]] <- gapMarker
   evmarks <- data.frame(firstEv = rawEvM[-length(rawEvM)], secondEv = rawEvM[-1])
   transitions <- apply(evmarks, MARGIN = 1, function(x) {if (x[2] != x[1]) {1} else {0}})
   group <- c(1,cumsum(transitions)+1)
-  evm@eventMarkers <- rawEvM
-  evm@eventGroups <- group 
-  return(evm)
+  return(list(eventMarkers = rawEvM, eventGroups = group))
 }
 
 ## CORE DETECTOR ##
 # This detector uses specified function (IVT, IDT, Ada-NH, ...) to detect oculomotor events
 coreDetector <- function(DataRecord, settings)
 {
+  eventDetectorID <- settings$detectorID
   t <- DataRecord@eyesDataObject@time@time
   algorithm <- settings$subfun
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "left")
   {
     leftX <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx
     leftY <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory
-    filterMarkers <- DataRecord@eyesDataObject@leftFilterMarkers
-    res <- algorithm(t = t, x = leftX, y = leftY, filterMarkers, settings)
-    DataRecord@eyesDataObject@leftEventMarkers <- res
+    filterMarkers <- DataRecord@eyesDataObject@leftEventsMarkers$filterMarkers@markers
+    settings <- append(settings, list(filterMarkers = filterMarkers))
+    res <- algorithm(t = t, x = leftX, y = leftY, settings)
+    oculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", detectorID = eventDetectorID, markers = res$eventMarkers)
+    DataRecord@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers <- oculomotorEventMarkers
   }
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "right")
   {
     rightX <- DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx
     rightY <- DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory
-    filterMarkers <- DataRecord@eyesDataObject@rightFilterMarkers
-    res <- algorithm(t = t, x = rightX, y = rightY, filterMarkers, settings)
-    DataRecord@eyesDataObject@rightEventMarkers <- res
+    filterMarkers <- DataRecord@eyesDataObject@rightEventsMarkers$filterMarkers@markers
+    settings <- append(settings, list(filterMarkers = filterMarkers))
+    res <- algorithm(t = t, x = rightX, y = rightY, settings)
+    oculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", detectorID = eventDetectorID, markers = res$eventMarkers)
+    DataRecord@eyesDataObject@rightEventsMarkers$oculomotorEventMarkers <- oculomotorEventMarkers
   }
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "both")
   {
@@ -488,12 +511,17 @@ coreDetector <- function(DataRecord, settings)
     leftY <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory
     rightX <- DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx
     rightY <- DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory
-    leftFilterMarkers <- DataRecord@eyesDataObject@leftFilterMarkers
-    rightFilterMarkers <- DataRecord@eyesDataObject@rightFilterMarkers
-    resLeft <- algorithm(t = t, x = leftX, y = leftY, leftFilterMarkers, settings)
-    resRight <- algorithm(t = t, x = rightX, y = rightY, rightFilterMarkers, settings)
-    DataRecord@eyesDataObject@leftEventMarkers <- resLeft
-    DataRecord@eyesDataObject@rightEventMarkers <- resRight
+    
+    leftFilterMarkers <- DataRecord@eyesDataObject@leftEventsMarkers$filterMarkers@markers
+    rightFilterMarkers <- DataRecord@eyesDataObject@rightEventsMarkers$filterMarkers@markers
+    
+    resLeft <- algorithm(t = t, x = leftX, y = leftY, append(settings, list(filterMarkers = leftFilterMarkers)))
+    leftOculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", detectorID = eventDetectorID, markers = resLeft$eventMarkers)
+    resRight <- algorithm(t = t, x = rightX, y = rightY, append(settings, list(filterMarkers = rightFilterMarkers)))
+    rightOculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", detectorID = eventDetectorID, markers = resRight$eventMarkers)
+    
+    DataRecord@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers <- leftOculomotorEventMarkers
+    DataRecord@eyesDataObject@rightEventsMarkers$oculomotorEventMarkers <- rightOculomotorEventMarkers
   }
   return(DataRecord)
 }
