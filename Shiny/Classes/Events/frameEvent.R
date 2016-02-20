@@ -1,11 +1,9 @@
 setClass("FrameEventDetector", 
-         contains = "EventDetector",
-         representation(markersDefinition = "EventMarkersDefinition") 
-         )
+         contains = "EventDetector")
 setClass("FrameEventMarkers", 
          contains = "EventMarkers",
          representation(markers = "numeric"))
 setClass(Class = "FrameEvent", 
          contains = "Event", 
-         representation = representation(frameID = "numeric",
+         representation = representation(eventID = "numeric",
                                          group = "numeric"))

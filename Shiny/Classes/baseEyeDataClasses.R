@@ -23,18 +23,20 @@ setClass("OtherSamples",
          )
 )
 
-setClass("EventMarkers", 
-         representation(detectorID = "numeric"))
+setClass("EventMarkers", representation(eventClass = "character"))
 
 setClass(Class = "Event", 
          representation = representation(data = "data.frame"))
+
 setClass(Class = "EventData", representation(events = "list",
-                                             eventSubClass = "character"))
+                                             eventClass = "character",
+                                             detectorID = "numeric"))
+
 setClass("EyesData",
          representation(fieldNames = "DataFieldNames",
                         conditions = "Conditions",
                         time = "TimeSamples",
-                        frame = "FrameSamples",
+                        frame = "FrameSamples", # should move frame markers to left/rightEventsMarkers
                         leftEyeSamples = "TrajectorySamples",
                         rightEyeSamples = "TrajectorySamples",
                         leftPupilSamples = "PupilSamples",

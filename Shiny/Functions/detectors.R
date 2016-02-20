@@ -1,7 +1,6 @@
-createDetector <- function(id, name, description, fun, settings, markersDefinition)
+createDetector <- function(id, name, description, fun, settings)
 {
-  detector <- new(Class = "OculomotorEventDetector", id = id, name = name, fun = fun, description = description,
-                  settings = settings, markersDefinition = markersDefinition)
+  detector <- new(Class = "OculomotorEventDetector", id = id, name = name, fun = fun, description = description, settings = settings)
   return(detector)
 }
 
@@ -15,8 +14,10 @@ IVT <- function(t, x, y, settings)
   
   fixMarker <- 1
   sacMarker <- 2
-  gapMarker <- 3
-  artMarker <- 4
+  gliMarker <- 3
+  smpMarker <- 4
+  gapMarker <- 5
+  artMarker <- 6
   
   VT <- settings$VT
   angular <- settings$angular
@@ -312,11 +313,13 @@ ANH <- function(t, x, y, settings)
   filterOkMarker <- 1
   filterGapMarker <- 2
   filterArtMarker <- 3
+  
   fixMarker <- 1
   sacMarker <- 2
   gliMarker <- 3
-  gapMarker <- 4
-  artMarker <- 5
+  smpMarker <- 4
+  gapMarker <- 5
+  artMarker <- 6
   
   angular <- settings$angular
   screenDist <- settings$screenDistance
@@ -427,10 +430,13 @@ IDT <- function(t, x, y, settings)
   filterOkMarker <- 1
   filterGapMarker <- 2
   filterArtMarker <- 3
+  
   fixMarker <- 1
   sacMarker <- 2
-  gapMarker <- 3
-  artMarker <- 4
+  gliMarker <- 3
+  smpMarker <- 4
+  gapMarker <- 5
+  artMarker <- 6
   
   dispersionThreshold <- settings$dispersionThreshold # in px or degrees
   durationThreshold <- settings$durationThreshold # in milliseconds
@@ -475,7 +481,9 @@ IDT <- function(t, x, y, settings)
   evmarks <- data.frame(firstEv = rawEvM[-length(rawEvM)], secondEv = rawEvM[-1])
   transitions <- apply(evmarks, MARGIN = 1, function(x) {if (x[2] != x[1]) {1} else {0}})
   group <- c(1,cumsum(transitions)+1)
-  return(list(eventMarkers = rawEvM, eventGroups = group))
+  print(length(rawEvM))
+  print(length(group))
+  return(list(eventMarkers = c(rawEvM, tail(rawEvM,1)), eventGroups = c(group, tail(group,1))))
 }
 
 ## CORE DETECTOR ##
@@ -492,7 +500,11 @@ coreDetector <- function(DataRecord, settings)
     filterMarkers <- DataRecord@eyesDataObject@leftEventsMarkers$filterMarkers@markers
     settings <- append(settings, list(filterMarkers = filterMarkers))
     res <- algorithm(t = t, x = leftX, y = leftY, settings)
-    oculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", detectorID = eventDetectorID, markers = res$eventMarkers)
+    oculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", 
+                                  detectorID = eventDetectorID, 
+                                  markers = res$eventMarkers,
+                                  groups = res$eventGroups,
+                                  eventClass = "OculomotorEvent")
     DataRecord@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers <- oculomotorEventMarkers
   }
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "right")
@@ -502,7 +514,11 @@ coreDetector <- function(DataRecord, settings)
     filterMarkers <- DataRecord@eyesDataObject@rightEventsMarkers$filterMarkers@markers
     settings <- append(settings, list(filterMarkers = filterMarkers))
     res <- algorithm(t = t, x = rightX, y = rightY, settings)
-    oculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", detectorID = eventDetectorID, markers = res$eventMarkers)
+    oculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", 
+                                  detectorID = eventDetectorID, 
+                                  markers = res$eventMarkers,
+                                  groups = res$eventGroups,
+                                  eventClass = "OculomotorEvent")
     DataRecord@eyesDataObject@rightEventsMarkers$oculomotorEventMarkers <- oculomotorEventMarkers
   }
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "both")
@@ -516,9 +532,17 @@ coreDetector <- function(DataRecord, settings)
     rightFilterMarkers <- DataRecord@eyesDataObject@rightEventsMarkers$filterMarkers@markers
     
     resLeft <- algorithm(t = t, x = leftX, y = leftY, append(settings, list(filterMarkers = leftFilterMarkers)))
-    leftOculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", detectorID = eventDetectorID, markers = resLeft$eventMarkers)
+    leftOculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", 
+                                      detectorID = eventDetectorID, 
+                                      markers = resLeft$eventMarkers,
+                                      groups = resLeft$eventGroups,
+                                      eventClass = "OculomotorEvent")
     resRight <- algorithm(t = t, x = rightX, y = rightY, append(settings, list(filterMarkers = rightFilterMarkers)))
-    rightOculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", detectorID = eventDetectorID, markers = resRight$eventMarkers)
+    rightOculomotorEventMarkers <- new(Class = "OculomotorEventMarkers", 
+                                       detectorID = eventDetectorID, 
+                                       markers = resRight$eventMarkers,
+                                       groups = resRight$eventGroups,
+                                       eventClass = "OculomotorEvent")
     
     DataRecord@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers <- leftOculomotorEventMarkers
     DataRecord@eyesDataObject@rightEventsMarkers$oculomotorEventMarkers <- rightOculomotorEventMarkers

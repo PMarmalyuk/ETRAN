@@ -1,12 +1,18 @@
 # OCULOMOTOR EVENTS' ANALYSIS FUNCTIONS DEFINITIONS SECTION
 
+
+getRepresentation <- function(data, settings)
+{
+  return(list(vals = list(AOISeq1 = new(Class = "AOISequence", sequence = data.frame(seq = c("A", "B", "C")), AOISetID = 1),
+                          AOISeq1 = new(Class = "AOISequence", sequence = data.frame(seq = c("C", "B", "A")), AOISetID = 2)),
+              info = list(AOISeq1 = "First Test AOI Sequence", AOISeq2 = "First Test AOI Sequence")))
+}
+
 ## Validity code of all events except gap
 ## no settings
-## CHANGE LOGICAL EXPRESSION TO THAT IS USING FILTER MARKERS (?)
 getValCode <- function(data, settings)
 {
-  evmn <- settings$evmn
-  if (any(data$filterMarkers == evmn$gap)) 
+  if (any(data$filterMarkers == 2)) 
   {
     valCode <- "Invalid"
   }

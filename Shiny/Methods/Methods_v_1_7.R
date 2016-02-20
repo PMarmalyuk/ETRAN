@@ -978,15 +978,26 @@ setMethod("getDataFrame", "EyesData",
                {
                  data <- append(data, list(pupysize = self@leftPupilSamples@pupilData$pupysize))
                }
-               if (length(self@leftFilterMarkers@filterMarkers) != 0)
+               if (length(self@leftEventsMarkers) != 0)
                {
-                 data <- append(data, list(filterMarkers = self@leftFilterMarkers@filterMarkers))
+                 allEventsMarkers <- lapply(self@leftEventsMarkers, FUN = function(x) 
+                 {
+                   if (class(x) != "WindowEventMarkers")
+                   {
+                     x@markers
+                   }
+                 })
+                 data <- append(data, allEventsMarkers)
                }
-               if (length(self@leftEventMarkers@eventMarkers) != 0)
-               {
-                 data <- append(data, list(eventMarkers = c(self@leftEventMarkers@eventMarkers)))
-                 data <- append(data, list(eventGroups = c(self@leftEventMarkers@eventGroups)))
-               }
+#                if (length(self@leftFilterMarkers@filterMarkers) != 0)
+#                {
+#                  data <- append(data, list(filterMarkers = self@leftFilterMarkers@filterMarkers))
+#                }
+#                if (length(self@leftEventMarkers@eventMarkers) != 0)
+#                {
+#                  data <- append(data, list(eventMarkers = c(self@leftEventMarkers@eventMarkers)))
+#                  data <- append(data, list(eventGroups = c(self@leftEventMarkers@eventGroups)))
+#                }
                return(as.data.frame(data))
               }
               else

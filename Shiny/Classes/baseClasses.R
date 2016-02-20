@@ -30,11 +30,11 @@ setClass("Subject",
 )
 
 setClass("Factor",
-         representation(varName = "character",
+         representation(name = "character",
                         description = "character",
-                        type = "character", # numeric, integer, factor, ordFactor
+                        valueClass = "character", # numeric, integer, factor, ordFactor
                         levels = "character", #list of factor levels, order is important for ordFactor, NULL for numeric and integer
-                        owner = "character" # "Subject", "Trial". "Stimulus", "Record", "Observation", "EventGroup", ...
+                        owners = "list" # "Subject", "Trial". "Stimulus", "Record", "Observation", "EventGroup", ...
          ),
          prototype(
          )
@@ -81,7 +81,8 @@ setClass("DataRecord",
                         subjectID = "numeric",
                         trialID = "numeric",
                         eyesDataObject = "EyesData",
-                        analysisResults = "list" #list of FactorsData (EventData, FrameData, AOIData, SyncData factors), AOISequence, AOITransMatrix and AOIStatsVector objects
+                        # analysisResults = "FactorsAndRepresentations",
+                        analysisResults = "list" # FactorsAndRepresentationsData object
          ),
          prototype(
          )
@@ -109,8 +110,11 @@ setClass("Smoother",
 
 setClass("EventDetectors", representation(ids = "numeric", detectors = "list"))
 
+setClass("EventMarkersDefinitions", representation(definitions = "list"))
+
 setClass("EventMarkersDefinition",
-         representation(eventTypesIDs = "numeric", # a vector of IDs of event types
+         representation(eventClass = "character", # FilterEvent, OculomotorEvent, etc.
+                        eventTypesIDs = "numeric", # a vector of IDs of event types
                         typesMarkers = "character" # a vector of markers for corresponding event type IDs
          )
 )

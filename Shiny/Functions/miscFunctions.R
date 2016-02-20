@@ -16,12 +16,6 @@ createSmoother <- function(name, fun, settings)
   return(smoother)
 }
 
-createAnalyzer <- function(name, fun, settings)
-{
-  analyzer <- new(Class = "EventAnalyzer", name = name, fun = fun, settings = settings)
-  return(analyzer)
-}
-
 createEstimator <- function(name, fun, applyTo, settings)
 {
   estimator <- new(Class = "ParamEstimator", name = name, fun = fun, settings = settings)
@@ -117,34 +111,6 @@ calcVel <- function(t, x, y, settings)
     }
   }
   return(list(dists = dl, dts = dt, vels = vel, accels = accel))
-}
-
-createFactorFromReturnedValue <- function(x)
-{
-  factor_new <- new(Class = "Factor")
-  x <- unlist(x)
-  cls <- class(x)[1]
-  if (cls == "integer")
-  {
-    factor_new@type <- "integer"
-    factor_new@levels <- as.character(NA)
-  }
-  if (cls == "numeric")
-  {
-    factor_new@type <- "numeric"
-    factor_new@levels <- as.character(NA)
-  }
-  if (cls == "factor")
-  {
-    factor_new@type <- "factor"
-    factor_new@levels <- levels(x)
-  }
-  if (cls == "ordered")
-  {
-    factor_new@type <- "ordFactor"
-    factor_new@levels <- levels(x)
-  }
-  return(factor_new)
 }
 
 

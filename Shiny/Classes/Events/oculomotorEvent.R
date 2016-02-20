@@ -1,10 +1,11 @@
 setClass("OculomotorEventDetector", 
-         contains = "EventDetector",
-         representation(markersDefinition = "EventMarkersDefinition"))
+         contains = "EventDetector")
 setClass("OculomotorEventMarkers", 
          contains = "EventMarkers",
-         representation(markers = "numeric"))
+         representation(markers = "numeric", groups = "numeric", detectorID = "numeric"))
 setClass(Class = "OculomotorEvent", 
          contains = "Event", 
-         representation = representation(oculomotorEventID = "numeric",
+         representation = representation(eye = "character",
+                                         eventID = "numeric",
+                                         detectorID = "numeric",
                                          group = "numeric"))

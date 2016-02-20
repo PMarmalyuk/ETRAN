@@ -1,10 +1,9 @@
 setClass("AOIEventDetector", 
-         contains = "EventDetector",
-         representation(markersDefinition = "EventMarkersDefinition"))
+         contains = "EventDetector")
 setClass("AOIEventMarkers", 
          contains = "EventMarkers",
          representation(markers = "numeric"))
 setClass(Class = "AOIEvent", 
          contains = "Event", 
-         representation = representation(AOIEventID = "numeric",
+         representation = representation(eventID = "numeric",
                                          group = "numeric"))

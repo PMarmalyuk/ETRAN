@@ -1,15 +1,13 @@
-createFilter <- function(id, name, description, fun, settings, markersDefinition)
+createFilter <- function(id, name, description, fun, settings)
 {
-  filter <- new(Class = "FilterEventDetector", id = id, name = name, fun = fun, description = description,
-                settings = settings, markersDefinition = markersDefinition)
+  filter <- new(Class = "FilterEventDetector", id = id, name = name, fun = fun, description = description, settings = settings)
   return(filter)
 }
 
 # noFilter INDEPENDENT OF ETRAN CLASSES
 noFilter <- function(t,x,y,settings)
 {
-  okMarker <- 1
-  
+  okMarker <- 1; gapMarker <- 2; artMarker <- 3
   markers <- rep(okMarker, length(t))
   res <- list(t = t, x = x, y = y, eventMarkers = markers)
   return(res)
@@ -99,7 +97,7 @@ coreFilter <- function(DataRecord, settings)
     leftX <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx
     leftY <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory
     res <- filter(t, leftX, leftY, settings)
-    filterEventMarkers <- new(Class = "FilterEventMarkers", detectorID = filterID, markers = res$eventMarkers)
+    filterEventMarkers <- new(Class = "FilterEventMarkers", markers = res$eventMarkers, eventClass = "FilterEvent")
     if (interpolate)
     {
       DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx <- res$x
@@ -117,7 +115,7 @@ coreFilter <- function(DataRecord, settings)
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx <- res$x
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory <- res$y
     }
-    filterEventMarkers <- new(Class = "FilterEventMarkers", detectorID = filterID, markers = res$eventMarkers)
+    filterEventMarkers <- new(Class = "FilterEventMarkers", markers = res$eventMarkers, eventClass = "FilterEvent")
     DataRecord@eyesDataObject@rightEventsMarkers$filterMarkers <- filterEventMarkers
   }
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "both")
@@ -135,8 +133,8 @@ coreFilter <- function(DataRecord, settings)
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx <- resRight$x
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory <- resRight$y
     }
-    leftFilterEventMarkers <- new(Class = "FilterEventMarkers", detectorID = filterID, markers = resLeft$eventMarkers)
-    rightFilterEventMarkers <- new(Class = "FilterEventMarkers", detectorID = filterID, markers = resRight$eventMarkers)
+    leftFilterEventMarkers <- new(Class = "FilterEventMarkers", markers = resLeft$eventMarkers, eventClass = "FilterEvent")
+    rightFilterEventMarkers <- new(Class = "FilterEventMarkers", markers = resRight$eventMarkers, eventClass = "FilterEvent")
     DataRecord@eyesDataObject@leftEventsMarkers$filterMarkers <- leftFilterEventMarkers
     DataRecord@eyesDataObject@leftEventsMarkers$filterMarkers <- rightFilterEventMarkers
   }

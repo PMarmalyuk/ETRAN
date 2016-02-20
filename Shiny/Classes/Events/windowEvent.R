@@ -1,14 +1,14 @@
 setClass("WindowEventDetector",
-         contains = "EventDetector",
-         representation(markersDefinition = "EventMarkersDefinition")
-         )
-## 
+         contains = "EventDetector")
 setClass("WindowEventMarkers", 
          contains = "EventMarkers",
-         representation(markers = "numeric"))
+         representation(windows = "list")) # list of SlidingWindow objects
+
 setClass("SlidingWindow", 
          representation(startIdx = "numeric", 
                         width = "numeric"))
+
 setClass(Class = "WindowEvent", 
          contains = "Event", 
-         representation = representation(window = "SlidingWindow"))
+         representation = representation(window = "SlidingWindow",
+                                         group = "numeric"))

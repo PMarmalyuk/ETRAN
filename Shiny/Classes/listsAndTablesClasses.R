@@ -48,8 +48,9 @@ setClass("TAS",
          )
 )
 
-setClass("AvailableFactors",
-         representation(availableFactors = "data.frame" #df of factor id, factor name, description, type, levels and owner
+setClass("FactorsAndRepresentationsDefinitions",
+         representation(ids = "numeric",
+                        factorsDef = "list" #df of factor id, factor name, description, class, levels and owner
          ),
          prototype(
          )
@@ -83,7 +84,7 @@ setClass("AvailableFactors",
 ## We will have several tables with EyesDataObjects FactorsData: one table per DataRecord
 
 setClass("FactorsData",
-         representation(factorsDataList = "data.frame") # data.frame of factorID, eye, value, owner_id and value
+         representation(factorsData = "data.frame") # data.frame of factorID, eye, value, owner_id
          ,
          prototype(
          )

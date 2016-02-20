@@ -1,11 +1,9 @@
 setClass("SyncEventDetector",
-         contains = "EventDetector",
-         representation(markersDefinition = "EventMarkersDefinition")
-         )
+         contains = "EventDetector")
 setClass("SyncEventMarkers", 
          contains = "EventMarkers",
          representation(markers = "numeric"))
 setClass(Class = "SyncEvent", 
          contains = "Event", 
-         representation = representation(syncEventID = "numeric",
+         representation = representation(eventID = "numeric",
                                          group = "numeric"))
