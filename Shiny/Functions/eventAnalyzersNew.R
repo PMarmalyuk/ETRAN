@@ -172,6 +172,10 @@ generalEventAnalyzer <- function(data, settings)
                                detectorID = detectorID)
         res <- append(res, lapply(events@events, FUN = calculateSubFunResultsForEvent, subFun = subFuns[[i]]))
       }
+      if (subFuns[[i]]@classes[[j]]$mainClass == "EyesData")
+      {
+        
+      }
     }
   }
   res <- as.data.frame(do.call("rbind", res))
@@ -226,7 +230,7 @@ coreEventAnalyzer <- function(DataRecord, settings)
     analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
     analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
     DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", 
-                                                           factorsDataList = as.data.frame(analyzerResults$analyzerResults))
+                                                       factorsData = as.data.frame(analyzerResults$analyzerResults))
     factorsDef <- analyzerResults$factorsDef
   }
   if (conditions$eye == "right")
@@ -236,7 +240,7 @@ coreEventAnalyzer <- function(DataRecord, settings)
     analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
     analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
     DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", 
-                                                       factorsDataList = as.data.frame(analyzerResults$analyzerResults))
+                                                       factorsData = as.data.frame(analyzerResults$analyzerResults))
     factorsDef <- analyzerResults$factorsDef
   }
   if (conditions$eye == "both")
@@ -246,13 +250,13 @@ coreEventAnalyzer <- function(DataRecord, settings)
     analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
     analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
     DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", 
-                                                       factorsDataList = as.data.frame(analyzerResults$analyzerResults))
+                                                       factorsData = as.data.frame(analyzerResults$analyzerResults))
     factorsDef <- analyzerResults$factorsDef
     eventMarkersAndData <- getEventMarkersAndData(DataRecord, "right")
     settings <- append(settings, list(conditions = conditions))
     analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
     analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
-    DataRecord@analysisResults$eventFactorsData@factorsDataList <- rbind(DataRecord@analysisResults$eventFactorsData@factorsDataList,
+    DataRecord@analysisResults$eventFactorsData <- rbind(DataRecord@analysisResults$eventFactorsData,
                                                                          as.data.frame(analyzerResults$analyzerResults))
   }
   return(list(dataRec = DataRecord, factorsDef = factorsDef))

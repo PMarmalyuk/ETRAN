@@ -59,10 +59,10 @@ evMarksDefs@definitions <- append(evMarksDefs@definitions, new(Class = "EventMar
                                                                typesMarkers = c("OK", "GAP", "ARTIFACT")))
 evMarksDefs@definitions <- append(evMarksDefs@definitions, new(Class = "EventMarkersDefinition",
                                                                eventClass = "OculomotorEvent",
-                                                               eventTypesIDs = c(1,2,3,4,5,6),
+                                                               eventTypesIDs = c(1,2,3,4,5,6,7),
                                                                typesMarkers = c("FIXATION", "SACCADE", 
-                                                                                "GLISSADE", "SMOOTH_PURSUIT", 
-                                                                                "GAP", "ARTIFACT")))
+                                                                                "GLISSADE", "SMOOTH_PURSUIT",
+                                                                                "GAP", "ARTIFACT", "BLINK")))
 
 detectors <- list(ids = c(1, 2, 3), 
                   detectors = list(noFilt = createFilter(id = 1, name = "Standard", fun = coreFilter, description = "Test Filter",
@@ -103,7 +103,7 @@ table(dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers@markers)
 
 res <- getEventMarkersAndData(dataRec, "left")
 res$data[1:10,]
-rrr <- getEventData(res, eventClass = "OculomotorEvent", eventTypesIDs = 1, detectorID = 3)
+rrr <- getEventData(res, eventClass = "OculomotorEvent",eye = "left", eventTypesIDs = 1, detectorID = 3)
 
 rrr@events[1]
 
@@ -123,7 +123,7 @@ analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
                                            subFunctions = subFunctionsBodies, 
                                            factorsDef = factorsDef))
 eventAnalysisResult <- eventAnalyzer(dataRec, analyzer)
-eventAnalysisResult$dataRec@analysisResults$eventFactorsData@factorsDataList
+eventAnalysisResult$dataRec@analysisResults$eventFactorsData@factorsData
 eventAnalysisResult$factorsDef
 
 # Estimators test
