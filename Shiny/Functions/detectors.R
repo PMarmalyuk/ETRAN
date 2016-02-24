@@ -18,6 +18,7 @@ IVT <- function(t, x, y, settings)
   smpMarker <- 4
   gapMarker <- 5
   artMarker <- 6
+  bliMarker <- 7
   
   VT <- settings$VT
   angular <- settings$angular
