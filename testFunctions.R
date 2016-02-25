@@ -101,6 +101,11 @@ table(dataRec@eyesDataObject@leftEventsMarkers$filterMarkers@markers)
 dataRec <- detectEvents(dataRec, filter = detectors$detectors[[2]], smoother, detector = detectors$detectors[[3]])
 table(dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers@markers)
 
+dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers
+
+
+
+
 res <- getEventMarkersAndData(dataRec, "left")
 res$data[1:10,]
 rrr <- getEventData(res, eventClass = "OculomotorEvent",eye = "left", eventTypesIDs = 1, detectorID = 3)
@@ -123,8 +128,11 @@ analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
                                            subFunctions = subFunctionsBodies, 
                                            factorsDef = factorsDef))
 eventAnalysisResult <- eventAnalyzer(dataRec, analyzer)
-eventAnalysisResult$dataRec@analysisResults$eventFactorsData@factorsData
+dataRec <- eventAnalysisResult$dataRec
+dataRec@analysisResults$eventFactorsData@factorsData
 eventAnalysisResult$factorsDef
+
+eventAnalysisResult$dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers
 
 # Estimators test
 source('Functions\\DataRecordSubFunctions.R', local = T)

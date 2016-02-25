@@ -9,7 +9,8 @@ noFilter <- function(t,x,y,settings)
 {
   okMarker <- 1; gapMarker <- 2; artMarker <- 3
   markers <- rep(okMarker, length(t))
-  res <- list(t = t, x = x, y = y, eventMarkers = markers)
+  groups <- rep(1, length(t))
+  res <- list(t = t, x = x, y = y, eventMarkers = markers, eventGroups = groups)
   return(res)
 }
 
@@ -79,7 +80,10 @@ standardFilter <- function(t, x, y, settings)
       t <- data$t; x <- data$x; y <- data$y
     }
   }
-  res <- list(t = t, x = x, y = y, eventMarkers = markers)
+  markersDF <- cbind(markers[-length(markers)], markers[-1])
+  transitions <- apply(markersDF, MARGIN = 1, function(x) {if (x[2] != x[1]) {1} else {0}})
+  groups <- c(1,cumsum(transitions)+1)
+  res <- list(t = t, x = x, y = y, eventMarkers = markers, eventGroups = groups)
   return(res)
 }
 
@@ -97,7 +101,10 @@ coreFilter <- function(DataRecord, settings)
     leftX <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx
     leftY <- DataRecord@eyesDataObject@leftEyeSamples@eyeData$pory
     res <- filter(t, leftX, leftY, settings)
-    filterEventMarkers <- new(Class = "FilterEventMarkers", markers = res$eventMarkers, eventClass = "FilterEvent")
+    filterEventMarkers <- new(Class = "FilterEventMarkers", 
+                              markers = res$eventMarkers, 
+                              groups = res$eventGroups,
+                              eventClass = "FilterEvent")
     if (interpolate)
     {
       DataRecord@eyesDataObject@leftEyeSamples@eyeData$porx <- res$x
@@ -115,7 +122,10 @@ coreFilter <- function(DataRecord, settings)
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx <- res$x
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory <- res$y
     }
-    filterEventMarkers <- new(Class = "FilterEventMarkers", markers = res$eventMarkers, eventClass = "FilterEvent")
+    filterEventMarkers <- new(Class = "FilterEventMarkers", 
+                              markers = res$eventMarkers, 
+                              groups = res$eventGroups,
+                              eventClass = "FilterEvent")
     DataRecord@eyesDataObject@rightEventsMarkers$filterMarkers <- filterEventMarkers
   }
   if (DataRecord@eyesDataObject@conditions@conditions$eye == "both")
@@ -133,8 +143,14 @@ coreFilter <- function(DataRecord, settings)
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$porx <- resRight$x
       DataRecord@eyesDataObject@rightEyeSamples@eyeData$pory <- resRight$y
     }
-    leftFilterEventMarkers <- new(Class = "FilterEventMarkers", markers = resLeft$eventMarkers, eventClass = "FilterEvent")
-    rightFilterEventMarkers <- new(Class = "FilterEventMarkers", markers = resRight$eventMarkers, eventClass = "FilterEvent")
+    leftFilterEventMarkers <- new(Class = "FilterEventMarkers", 
+                                  markers = resLeft$eventMarkers, 
+                                  groups = resLeft$eventGroups,
+                                  eventClass = "FilterEvent")
+    rightFilterEventMarkers <- new(Class = "FilterEventMarkers", 
+                                   markers = resRight$eventMarkers, 
+                                   groups = resRight$eventGroups,
+                                   eventClass = "FilterEvent")
     DataRecord@eyesDataObject@leftEventsMarkers$filterMarkers <- leftFilterEventMarkers
     DataRecord@eyesDataObject@leftEventsMarkers$filterMarkers <- rightFilterEventMarkers
   }

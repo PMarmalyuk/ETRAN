@@ -2,7 +2,7 @@ setClass("FilterEventDetector",
          contains = "EventDetector")
 setClass("FilterEventMarkers", 
          contains = "EventMarkers",
-         representation(markers = "numeric"))
+         representation(markers = "numeric", groups = "numeric"))
 setClass(Class = "FilterEvent", 
          contains = "Event", 
          representation = representation(eventID = "numeric",

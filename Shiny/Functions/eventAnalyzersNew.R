@@ -84,20 +84,22 @@ createEvent <- function(groupData, eye, eventClass, detectorID)
 # getEventData function is used in generalEventAnalyzer function
 getEventData <- function(eventMarkersAndData, eye, eventClass, eventTypesIDs, detectorID = NA)
 {
-  idx <- sapply(eventMarkersAndData$eventMarkers, FUN = function(x) {x@eventClass == eventClass})
-  eventMarkers <- eventMarkersAndData$eventMarkers[idx]
   data <- eventMarkersAndData$data
   
+  ## conditions on eventClass are not needed any more due to they are checked in eventMarkersSelector (?)
   if (eventClass == "FilterEvent")
   {
     
   }
   if (eventClass == "OculomotorEvent") 
   {
-    idxsForSpecifiedDetectorID <- sapply(eventMarkers, FUN = function(x) {x@detectorID == detectorID})
-    eventMarkers <- eventMarkers[[idxsForSpecifiedDetectorID]]
-    allData <- cbind(data, data.frame(markers = eventMarkers@markers, groups = eventMarkers@groups))
-    allData <- allData[allData$markers %in% eventTypesIDs,]
+    selector <- createEventSelector(type = "all", 
+                                    event = list(eventClass = eventClass, 
+                                                 eventTypeIDs = eventTypesIDs,
+                                                 detectorID = detectorID))
+    selected <- eventsSelector(eventMarkersList = eventMarkersAndData$eventMarkers, selector = selector)
+    allData <- cbind(data, data.frame(markers = selected$eventMarkers@markers, groups = selected$eventMarkers@groups))
+    allData <- allData[allData$groups %in% selected$selectedGroups,]
     splittedData <- split(allData, f = allData$groups)
     createdEvents <- lapply(X = splittedData, FUN = createEvent, eye = eye, eventClass = eventClass, detectorID = detectorID)
   }

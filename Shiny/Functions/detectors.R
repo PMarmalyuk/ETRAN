@@ -321,6 +321,7 @@ ANH <- function(t, x, y, settings)
   smpMarker <- 4
   gapMarker <- 5
   artMarker <- 6
+  bliMarker <- 7
   
   angular <- settings$angular
   screenDist <- settings$screenDistance
@@ -438,6 +439,7 @@ IDT <- function(t, x, y, settings)
   smpMarker <- 4
   gapMarker <- 5
   artMarker <- 6
+  bliMarker <- 7
   
   dispersionThreshold <- settings$dispersionThreshold # in px or degrees
   durationThreshold <- settings$durationThreshold # in milliseconds
