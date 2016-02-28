@@ -58,13 +58,18 @@ setGeneric("addFactorDefinition", function(self, factor){standardGeneric("addFac
 setGeneric("factorExists", function(self, factor){standardGeneric("factorExists")})
 setGeneric("deleteFactorDefinition", function(self, factorID){standardGeneric("deleteFactorDefinition")})
 setGeneric("updateFactorDefinition", function(self, factorID, factor, FactorsData){standardGeneric("updateFactorDefinition")})
-setGeneric("getFactorIDByName", function(self, factorName){standardGeneric("getFactorIDByName")})
+setGeneric("getFactorByID", function(self, factorID){standardGeneric("getFactorByID")})
+setGeneric("getFactorIDsByName", function(self, factorName){standardGeneric("getFactorIDsByName")})
 setGeneric("getNameByFactorID", function(self, factorID){standardGeneric("getNameByFactorID")})
+setGeneric("getDescriptionByFactorID", function(self, factorID){standardGeneric("getDescriptionByFactorID")})
+setGeneric("getValueClassByFactorID", function(self, factorID){standardGeneric("getValueClassByFactorID")})
+setGeneric("getLevelsByFactorID", function(self, factorID){standardGeneric("getLevelsByFactorID")})
+setGeneric("getOwnersByFactorID", function(self, factorID){standardGeneric("getOwnersByFactorID")})
+
 setGeneric("getTypeByFactorID", function(self, factorID){standardGeneric("getTypeByFactorID")})
 setGeneric("getLevelsByFactorID", function(self, factorID){standardGeneric("getLevelsByFactorID")})
 
 setGeneric("factorValueIsCorrect", function(self, factorID, value){standardGeneric("factorValueIsCorrect")})
-
 setGeneric("addFactorValue", function(self, availableFactors, owner, ownerID, factorID, eye, value, replace){standardGeneric("addFactorValue")})
 setGeneric("deleteFactorValue", function(self, owner, ownerID, factorID, eye){standardGeneric("deleteFactorValue")})
 setGeneric("deleteAllFactorValuesForOwner", function(self, owner){standardGeneric("deleteAllFactorValuesForOwner")})
@@ -521,100 +526,159 @@ setMethod("filterDataSample", "DataSample",
           }
 )
 
-# Method adds a factor definition (object of the class Factor) into the availableFactors data frame
-## Method prevents adding factors with duplicate names
-setMethod("factorExists", "AvailableFactors",
+
+setMethod("factorExists", "FactorsDefinitions",
           function(self, factor)
           {
-            if (nrow(self@availableFactors) == 0) {return(list(exists = FALSE, id = NA))}
-            varName <- factor@varName
-            owner <- factor@owner
-            
-            identical(list("a", "b"),list("a", "b"))
-            
-            varNames <- self@availableFactors$varName[self@availableFactors$owner == owner]
-            if (any(varNames == varName)) 
+            exists <- F; factorID <- NA
+            if (length(self@ids) != 0) 
             {
-              factorID <- self@availableFactors$id[which(varNames == varName)]
-              return(list(exists = TRUE, id = factorID))
+              factorExists <- sapply(self@factorsDef, FUN = identical, factor)
+              if (any(factorExists))
+              {
+                exists <- T
+                factorID <- self@ids[[which(factorExists)]]
+              }
             }
-            return(list(exists = FALSE, id = NA))
+            return(list(exists = exists, factorID = factorID))
           }
 )
 
-setMethod("addFactorDefinition",  "AvailableFactors",                                   
+# Method adds a factor definition (object of the class Factor) into the factorsDef list inside FactorsDefinitions object
+## Method prevents adding identical factors
+setMethod("addFactorDefinition",  "FactorsDefinitions",                                   
           function(self, factor)
-          {             
-            if (factorExists(self, factor)$exists)
+          { 
+            fctrExists <- factorExists(self, factor)
+            # check if a factor already exists
+            if (fctrExists$exists)
             {
-              warning(paste("A factor with name", factor@varName, "already exists for owner", factor@owner))
-              return(self)
+              warning(paste("A factor with name", factor@varName, "already exists for the following owners:", factor@owners))
+              newFactorID <- fctrExists$id
             } else
             {
-              varName <- factor@varName
-              description <- factor@description
-              type <- factor@type
-              owner <- factor@owner
-              if (length(factor@levels) == 0) {levels = NA} else {levels <- factor@levels}
-              facCnt <- nrow(self@availableFactors)
-              if (facCnt == 0)
+              if (length(self@ids) > 0)
               {
-                self@availableFactors <- data.frame(id = 1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = I(list(owner)), stringsAsFactors = F)
-                # colnames(self@availableFactors) <- c("id", "varName", "description", "type", "levels", "owner")
-              }
-              else
-              {
-                newFactorDef <- list(id = self@availableFactors[facCnt,1]+1, varName = varName, description = description, type = type, levels = I(list(levels)), owner = I(list(owner)))
-                self@availableFactors <- rbind(self@availableFactors, newFactorDef)
-              }
+                newFactorID <- tail(self@ids, 1) + 1
+              } else newFactorID <- 1
+              self@factorsDef <- append(self@factorsDef, factor)
+              self@ids <- c(self@ids, newFactorID)
             }
-            return(self)
-          }
-)
-
-setMethod("getFactorIDByName",  "AvailableFactors",                                   
+            return(list(factorsDef = self, factorID = newFactorID))
+          })
+setMethod("getFactorByID",  "FactorsDefinitions",                                   
+          function(self, factorID)
+          {           
+            if (length(self@ids) == 0) 
+            {
+              warning("There are no factors!")
+              factor <- NA
+            }
+            else
+            {
+              factor <- self@factorsDef[[which(self@ids == factorID)]]
+            }
+            return(factor)
+          })
+setMethod("getFactorIDsByName",  "FactorsDefinitions",                                   
           function(self, factorName)
           {           
-            factorRecNum <- which(self@availableFactors$varName == factorName)
-            return(self@availableFactors$id[factorRecNum])
-          }
-)
-
-setMethod("getNameByFactorID",  "AvailableFactors",                                   
+            if (length(self@ids) == 0) 
+            {
+              warning("There are no factors!")
+              factorIDs <- NA
+            }
+            else
+            {
+              idxs <- sapply(self@factorsDef, FUN = function(x)
+              {
+                return(x@name == factorName)
+              })
+              
+              factorIDs <- self@ids[idxs]
+            }
+            return(factorIDs)
+          })
+setMethod("getNameByFactorID",  "FactorsDefinitions",                                   
           function(self, factorID)
-          {           
-            factorRecNum <- which(self@availableFactors$id == factorID)
-            return(self@availableFactors$varName[factorRecNum])
-          }
-)
-
-setMethod("getTypeByFactorID",  "AvailableFactors",                                   
+          {    
+            factor <- getFactorByID(self, factorID)
+            if (is.na(factor))
+            {
+              factorName <- NA
+            }
+            else
+            {
+              factorName <- factor@name
+            }
+            return(factorName)
+          })
+setMethod("getDescriptionByFactorID",  "FactorsDefinitions",                                   
           function(self, factorID)
-          {           
-            factorRecNum <- which(self@availableFactors$id == factorID)
-            return(self@availableFactors$type[factorRecNum])
-          }
-)
-
-setMethod("getLevelsByFactorID",  "AvailableFactors",                                   
+          {    
+            factor <- getFactorByID(self, factorID)
+            if (is.na(factor))
+            {
+              factorDescription <- NA
+            }
+            else
+            {
+              factorDescription <- factor@description
+            }
+            return(factorDescription)
+          })
+setMethod("getValueClassByFactorID", "FactorsDefinitions",                                   
           function(self, factorID)
-          {           
-            factorRecNum <- which(self@availableFactors$id == factorID)
-            return(self@availableFactors$levels[factorRecNum])
-          }
-)
-
-## May be we need to drop factor's values after deletion (but in app's logic, not in methods)
-setMethod("deleteFactorDefinition",  "AvailableFactors",                                   
+          {    
+            factor <- getFactorByID(self, factorID)
+            if (is.na(factor))
+            {
+              factorValueClass <- NA
+            }
+            else
+            {
+              factorValueClass <- factor@valueClass
+            }
+            return(factorValueClass)
+          })
+setMethod("getLevelsByFactorID",  "FactorsDefinitions",                                   
+          function(self, factorID)
+          {    
+            factor <- getFactorByID(self, factorID)
+            if (is.na(factor))
+            {
+              factorLevels <- NA
+            }
+            else
+            {
+              factorLevels <- factor@levels
+            }
+            return(factorLevels)
+          })
+setMethod("getOwnersByFactorID",  "FactorsDefinitions",                                   
+          function(self, factorID)
+          {    
+            factor <- getFactorByID(self, factorID)
+            if (is.na(factor))
+            {
+              factorOwners <- NA
+            }
+            else
+            {
+              factorOwners <- factor@owners
+            }
+            return(factorOwners)
+          })
+## NOTE: We need to drop factor's values after deletion (but in app's logic, not in methods)
+setMethod("deleteFactorDefinition",  "FactorsDefinitions",                                   
           function(self, factorID)
           {             
-            self@availableFactors <- self@availableFactors[-which(self@availableFactors$id == factorID)]
+            self@factorsDef <- self@factorsDef[-which(self@ids == factorID)]
             return(self)
-          }
-)
+          })
 
 ## TO DO: 
-## Method updates data of a factor defined in AvailableFactors object by factorID
+## Method updates data of a factor defined in FactorsDefinitions object by factorID
 ## varName and description can be updated without any consistensy checking
 ## if owner changed then we need to drop ownerID data in FactorsData object in app's code
 ## type can be changed with corresponding transformations: 
@@ -623,17 +687,15 @@ setMethod("deleteFactorDefinition",  "AvailableFactors",
 ## levels names can be changed without any checking
 ## if a level is deleted then drop corresponding values in FactorsData object
 ## if a level is added then nothing to check
-setMethod("updateFactorDefinition",  "AvailableFactors",                                   
+setMethod("updateFactorDefinition",  "FactorsDefinitions",                                   
           function(self, factorID, factor, FactorsData)
           {             
             oldFactorDef <- self@availableFactors[which(self@availableFactors$id == factorID)]
             return(self)
-          }
-)
+          })
 
 # Method adds the factor id and value into Factors list
 ## Method prevents adding values for factors which have already been set
-
 setMethod("factorValueIsCorrect", "AvailableFactors",
           function(self, factorID, value)
           {
@@ -660,9 +722,9 @@ setMethod("factorValueIsCorrect", "AvailableFactors",
               }
             }
             return(T)
-          }
-)
+          })
 
+## TO DO: review methods for FactorsData
 setMethod("addFactorValue",  "FactorsData",                                   
           function(self, availableFactors, owner, ownerID, factorID, eye, value, replace)
           {                         
@@ -701,8 +763,6 @@ setMethod("addFactorValue",  "FactorsData",
             }
             else return(self)
 })
-
-
 setMethod("deleteFactorValue",  "FactorsData",                                   
           function(self, owner, ownerID, factorID, eye)
           {                        
@@ -723,10 +783,7 @@ setMethod("deleteFactorValue",  "FactorsData",
               print("There is no such value!")
             }
             return(self)
-          }
-         
-)
-
+          })
 setMethod("deleteAllFactorValuesForOwner",  "FactorsData",                                   
           function(self, owner)
           {                         
@@ -740,10 +797,7 @@ setMethod("deleteAllFactorValuesForOwner",  "FactorsData",
               print("There is no such owner!")
             }
             return(self)
-          }
-          
-)
-
+          })
 setMethod("deleteAllFactorValuesForOwnerID",  "FactorsData",                                   
           function(self, ownerID)
           {                         
@@ -757,10 +811,7 @@ setMethod("deleteAllFactorValuesForOwnerID",  "FactorsData",
               print("There is no such owner ID!")
             }
             return(self)
-          }
-          
-)
-
+          })
 setMethod("deleteAllFactorValuesForFactorID",  "FactorsData",                                   
           function(self, factorID)
           {                         
@@ -775,11 +826,7 @@ setMethod("deleteAllFactorValuesForFactorID",  "FactorsData",
               print("There is no such factor ID!")
             }
             return(self)
-          }
-          
-)
-
-
+          })
 setMethod("asDataFrame",  "FactorsData",                                   
           function(self, owner)
           {
@@ -803,8 +850,10 @@ setMethod("asDataFrame",  "FactorsData",
             df <- append(list(ownerID = ownerIDs), df)
             names(df) <- c("ownerID", uniqueFactorsNames)
             return(data.frame(df, stringsAsFactors = F))
-          }
-)
+          })
+
+
+
 
 setMethod("addLoader",  "Loaders",                                   
           function(self, loaderObject)

@@ -48,9 +48,9 @@ setClass("TAS",
          )
 )
 
-setClass("FactorsAndRepresentationsDefinitions",
+setClass("FactorsDefinitions",
          representation(ids = "numeric",
-                        factorsDef = "list" #df of factor id, factor name, description, class, levels and owner
+                        factorsDef = "list" #df of factor name, description, valueClass, levels and owners
          ),
          prototype(
          )

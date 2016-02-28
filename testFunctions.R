@@ -16,6 +16,7 @@ source("Functions\\dataParsers.R", local = T)
 source("Functions\\filters.R", local = T)
 source("Functions\\smoothers.R", local = T)
 source("Functions\\detectors.R", local = T)
+source("Functions\\eventSelector.R", local = T)
 source("Functions\\eventAnalyzersNew.R", local = T)
 source("Functions\\estimatorsNew.R", local = T)
 source("Methods\\Methods_v_1_7.R", local = T)
@@ -101,16 +102,15 @@ table(dataRec@eyesDataObject@leftEventsMarkers$filterMarkers@markers)
 dataRec <- detectEvents(dataRec, filter = detectors$detectors[[2]], smoother, detector = detectors$detectors[[3]])
 table(dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers@markers)
 
-dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers
+summary(factor(dataRec@eyesDataObject@leftEventsMarkers$filterMarkers@markers))
 
-
-
-
-res <- getEventMarkersAndData(dataRec, "left")
-res$data[1:10,]
-rrr <- getEventData(res, eventClass = "OculomotorEvent",eye = "left", eventTypesIDs = 1, detectorID = 3)
-
-rrr@events[1]
+shannon.entropy <- function(p)
+{
+  if (min(p) < 0 || sum(p) <= 0)
+    return(NA)
+  p.norm <- p[p>0]/sum(p)
+  -sum(log2(p.norm)*p.norm)
+}
 
 # Event Analysis test
 # subFuns <- getSubfunctions(self = subFunctions, operation = "Event Analysis")
@@ -120,7 +120,7 @@ source('Functions\\GeneralEventSubFunctions.R', local = T)
 source('CoreSubFunctionsInit.R', local = T)
 source("Functions\\eventAnalyzersNew.R", local = T)
 subFunctionsBodies <- subFunctions@subFunctionsList$subFunctions
-factorsDef <- new(Class = "FactorsAndRepresentationsDefinitions", 
+factorsDef <- new(Class = "FactorsDefinitions", 
                     factorsDef = list(),
                     ids = numeric())
 analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
@@ -129,11 +129,11 @@ analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
                                            factorsDef = factorsDef))
 eventAnalysisResult <- eventAnalyzer(dataRec, analyzer)
 dataRec <- eventAnalysisResult$dataRec
-dataRec@analysisResults$eventFactorsData@factorsData
+fd <- dataRec@analysisResults$eventFactorsData@factorsData
+shannon.entropy(table(unlist(fd$value[fd$factorID == 1])))
 eventAnalysisResult$factorsDef
-
 eventAnalysisResult$dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers
-
+fd$owner[1:10]
 # Estimators test
 source('Functions\\DataRecordSubFunctions.R', local = T)
 source('CoreSubFunctionsInit.R', local = T)

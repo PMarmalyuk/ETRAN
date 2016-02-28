@@ -193,24 +193,23 @@ createFactorsDataList <- function(analyzerResults, factorsDef)
   factorIDs <- rep(NA, nrow(analyzerResults))
   for (i in 1:length(uniqueFactors))
   {
-    factorExists <- sapply(factorsDef@factorsDef, FUN = identical, uniqueFactors[[i]])
-    if (any(factorExists))
+    fctrExists <- factorExists(self = factorsDef, factor = uniqueFactors[[i]])
+    if (fctrExists$exists)
     {
-      factorID <- factorsDef@ids[[which(factorExists)]]
+      factorID <- fctrExists$id
     }
     else
     {
-      if (length(factorsDef@ids) > 0)
-      {
-        newFactorID <- tail(factorsDef@ids, 1)+1
-      } else newFactorID <- 1
-      factorsDef@factorsDef <- append(factorsDef@factorsDef, uniqueFactors[[i]])
-      factorsDef@ids <- c(factorsDef@ids, newFactorID)
-      factorID <- newFactorID
+      # add factor definition
+      fctrsDefAdded <- addFactorDefinition(self = factorsDef, factor = uniqueFactors[[i]])
+      factorsDef <- fctrsDefAdded$factorsDef
+      factorID <- fctrsDefAdded$factorID
     }
     factorIDs[sapply(analyzerResults$factors, FUN = identical, uniqueFactors[[i]])] <- factorID
   }
+  # creating a new column with factor IDs to data frame with analysis results
   analyzerResults$factorID <- factorIDs
+  # deleting temporary "factors" column
   analyzerResults <- analyzerResults[,-which(names(analyzerResults) == "factors")]
   return(list(analyzerResults = analyzerResults, factorsDef = factorsDef))
 }
