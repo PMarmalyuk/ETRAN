@@ -81,10 +81,7 @@ setClass("DataRecord",
                         subjectID = "numeric",
                         trialID = "numeric",
                         eyesDataObject = "EyesData",
-                        # analysisResults = "FactorsAndRepresentations",
-                        analysisResults = "list" # FactorsAndRepresentationsData object
-         ),
-         prototype(
+                        analysisResults = "list" # FactorsData object
          )
 )
 
@@ -123,7 +120,8 @@ setClass("EventDetector", representation(id = "numeric",
                                          name = "character",
                                          description = "character",
                                          fun = "function",
-                                         settings = "list"))
+                                         settings = "list")
+)
 
 setClass("EventAnalyzer",
          representation(fun = "function",

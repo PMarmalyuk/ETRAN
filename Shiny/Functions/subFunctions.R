@@ -1,6 +1,6 @@
+# EVENTS DATA SUB FUNCTIONS
+
 # OCULOMOTOR EVENTS' ANALYSIS FUNCTIONS DEFINITIONS SECTION
-
-
 getRepresentation <- function(data, settings)
 {
   return(list(vals = list(AOISeq1 = new(Class = "AOISequence", sequence = data.frame(seq = c("A", "B", "C")), AOISetID = 1),
@@ -262,3 +262,41 @@ getXAxisOrientation <- function(data, settings)
 # AOI EVENTS' ANALYSIS FUNCTIONS DEFINITIONS SECTION
 
 # FRAME EVENTS' ANALYSIS FUNCTIONS DEFINITIONS SECTION
+
+# EYES DATA SUB FUNCTIONS
+trajDurationEstimator <- function(data, settings)
+{
+  t <- data$time
+  return(list(vals = list(trajDur = as.numeric(tail(t, 1) - t[1])),
+              info = list(trajDur = "Trajectory duration")))
+}
+
+trajLengthEstimator <- function(data, settings)
+{
+  x <- data$porx
+  y <- data$pory
+  angular <- settings$angular
+  conditions <- settings$conditions
+  if (angular)
+  {
+    screenDist <- settings$screenDist
+    screenDim <- settings$screenDim
+    screenSize <- settings$screenSize
+    pos <- calcAngPos(x = x, y = y, 
+                      screenDist = settings$conditions$screenDistance, 
+                      screenResolution = settings$conditions$screenResolution, 
+                      screenSize = settings$conditions$screenSize)
+    xAng <- pos$xAng
+    yAng <- pos$yAng
+    dxs <- xAng[-1] - xAng[-length(xAng)]
+    dys <- yAng[-1] - yAng[-length(yAng)]
+  } else
+  {
+    dxs <- x[-1] - x[-length(x)]
+    dys <- y[-1] - y[-length(y)]
+  }
+  return(list(vals = list(trajLen = as.numeric(sum(sqrt(dxs^2 + dys^2)))),
+              info = list(trajLen = "Trajectory length")))
+}
+
+# REPRESENTATIONS DATA SUB FUNCTIONS

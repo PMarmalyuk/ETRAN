@@ -25,13 +25,13 @@ subFunctions <- addSubFunction(subFunctions, subFunction = new(Class = "SubFunct
                                                                description = "Test AOI Sequence",
                                                                classes = list(list(mainClass = "EventData", subClass = "OculomotorEvent", eventTypeIDs = c(1,2,3,4,5,6,7)))))
 
-subFunctions <- addSubFunction(subFunctions, subFunction = new(Class = "SubFunction", 
-                                                               fun = pointsArea, 
-                                                               name = "pointsArea", 
-                                                               description = "pointsArea",
-                                                               classes = list(list(mainClass = "EventData", subClass = "OculomotorEvent", eventTypeIDs = c(1,2)),
-                                                                              list(mainClass = "EyesData", subClass = "TrajectorySamples", eventTypeIDs = c(1,2)))))
-### Onset, offset and duration of an event
+# subFunctions <- addSubFunction(subFunctions, subFunction = new(Class = "SubFunction", 
+#                                                                fun = pointsArea, 
+#                                                                name = "pointsArea", 
+#                                                                description = "pointsArea",
+#                                                                classes = list(list(mainClass = "EventData", subClass = "OculomotorEvent", eventTypeIDs = c(1,2)),
+#                                                                               list(mainClass = "EyesData", subClass = "TrajectorySamples", eventTypeIDs = c(1,2)))))
+# ### Onset, offset and duration of an event
 
 # ### Start and end positions of an event
 # subFunctions <- addSubFunction(subFunctions, subFunction = new(Class = "SubFunction", 

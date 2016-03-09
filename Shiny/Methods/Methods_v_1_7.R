@@ -76,6 +76,14 @@ setGeneric("deleteAllFactorValuesForOwner", function(self, owner){standardGeneri
 setGeneric("deleteAllFactorValuesForOwnerID", function(self, ownerID){standardGeneric("deleteAllFactorValuesForOwnerID")})
 setGeneric("deleteAllFactorValuesForFactorID", function(self, factorID){standardGeneric("deleteAllFactorValuesForFactorID")})
 
+# Methods for selection of specific factors data
+setGeneric("getFactorsDataByEye", function(self, eye){standardGeneric("getFactorsDataByEye")})
+setGeneric("getFactorsDataByOwner", function(self, owner){standardGeneric("getFactorsDataByOwner")})
+setGeneric("getFactorsDataByOwnerID", function(self, ownerID){standardGeneric("getFactorsDataByOwnerID")})
+setGeneric("getFactorsDataByFactorID", function(self, factorID){standardGeneric("getFactorsDataByFactorID")})
+setGeneric("getFactorsDataByFactorClass", function(self, factorClass){standardGeneric("getFactorsDataByFactorClass")})
+
+
 setGeneric("asDataFrame", function(self, owner){standardGeneric("asDataFrame")})
 
 setGeneric("addDataRecord", function(self, dataRecord){standardGeneric("addDataRecord")})
@@ -93,7 +101,7 @@ setGeneric("delRawDataRecordsById", function(self, ids){standardGeneric("delRawD
 setGeneric("parseDataRecord", function(self, parser){standardGeneric("parseDataRecord")})
 
 ## EyesData extractor from DataRecord object for specified eye
-setGeneric("getDataFrame", function(self, eye){standardGeneric("getDataFrame")})
+setGeneric("getEyeDataFrame", function(self, eye){standardGeneric("getEyeDataFrame")})
 
 ## data filter
 setGeneric("dataFilter", function(self, filter){standardGeneric("dataFilter")})
@@ -677,6 +685,51 @@ setMethod("deleteFactorDefinition",  "FactorsDefinitions",
             return(self)
           })
 
+
+setMethod("getFactorsDataByEye",  "FactorsData",                                   
+          function(self, eye)
+          {             
+            idxs <- which(apply(self@factorsData, MARGIN = 1, FUN = function(x) {identical(x$eye, eye)}))
+            factorsData <- new(Class = "FactorsData", factorsData = self@factorsData[idxs, ])
+            return(factorsData)
+          })
+
+setMethod("getFactorsDataByOwner",  "FactorsData",                                   
+          function(self, owner)
+          {             
+            idxs <- which(apply(self@factorsData, MARGIN = 1, FUN = function(x) {identical(x$owner, owner)}))
+            factorsData <- new(Class = "FactorsData", factorsData = self@factorsData[idxs, ])
+            return(factorsData)
+          })
+
+setMethod("getFactorsDataByOwnerID",  "FactorsData",                                   
+          function(self, ownerID)
+          {             
+            idxs <- which(apply(self@factorsData, MARGIN = 1, FUN = function(x) {identical(x$ownerID, ownerID)}))
+            factorsData <- new(Class = "FactorsData", factorsData = self@factorsData[idxs, ])
+            return(factorsData)
+          })
+
+setMethod("getFactorsDataByFactorID",  "FactorsData",                                   
+          function(self, factorID)
+          {             
+            idxs <- which(apply(self@factorsData, MARGIN = 1, FUN = function(x) {identical(x$factorID, factorID)}))
+            factorsData <- new(Class = "FactorsData", factorsData = self@factorsData[idxs, ])
+            return(factorsData)
+          })
+
+setMethod("getFactorsDataByFactorClass",  "FactorsData",                                   
+          function(self, factorClass)
+          {             
+            idxs <- which(apply(self@factorsData, MARGIN = 1, FUN = function(x) 
+            {
+              identical(as.character(class(x$value))[1], factorClass)
+            }))
+            factorsData <- new(Class = "FactorsData", factorsData = self@factorsData[idxs, ])
+            return(factorsData)
+          })
+
+
 ## TO DO: 
 ## Method updates data of a factor defined in FactorsDefinitions object by factorID
 ## varName and description can be updated without any consistensy checking
@@ -1001,35 +1054,40 @@ setMethod("parseDataRecord",  "RawDataRecord",
 )
 
 # TO DO: return additional fields also
-setMethod("getDataFrame", "EyesData",
+setMethod("getEyeDataFrame", "DataRecord",
           function(self, eye)
           {
             data <- list()
+            dataRecIdentifier <- list(expID = self@expID, 
+                                      subjectID = self@subjectID, 
+                                      trialID = self@trialID)
+            eyesData <- self@eyesDataObject
+            conditions <- eyesData@conditions@conditions
             if (eye == "left")
             {
-             if (self@conditions@conditions$eye == "left" | self@conditions@conditions$eye == "both")
+             if (conditions$eye == "left" | conditions$eye == "both")
              {
-               if (length(self@time@time) != 0)
+               if (length(eyesData@time@time) != 0)
                {
-                 data <- append(data, list(time = self@time@time))
+                 data <- append(data, list(time = eyesData@time@time))
                }
-               if (length(self@frame@frame) != 0)
+               if (length(eyesData@frame@frame) != 0)
                {
-                 data <- append(data, list(frame = self@frame@frame))
+                 data <- append(data, list(frame = eyesData@frame@frame))
                }
-               data <- append(data, list(porx = self@leftEyeSamples@eyeData$porx))
-               data <- append(data, list(pory = self@leftEyeSamples@eyeData$pory))
-               if (length(self@leftPupilSamples@pupilData$pupxsize) != 0)
+               data <- append(data, list(porx = eyesData@leftEyeSamples@eyeData$porx))
+               data <- append(data, list(pory = eyesData@leftEyeSamples@eyeData$pory))
+               if (length(eyesData@leftPupilSamples@pupilData$pupxsize) != 0)
                {
-                 data <- append(data, list(pupxsize = self@leftPupilSamples@pupilData$pupxsize))
+                 data <- append(data, list(pupxsize = eyesData@leftPupilSamples@pupilData$pupxsize))
                }
-               if (length(self@leftPupilSamples@pupilData$pupysize) != 0)
+               if (length(eyesData@leftPupilSamples@pupilData$pupysize) != 0)
                {
-                 data <- append(data, list(pupysize = self@leftPupilSamples@pupilData$pupysize))
+                 data <- append(data, list(pupysize = eyesData@leftPupilSamples@pupilData$pupysize))
                }
-               if (length(self@leftEventsMarkers) != 0)
+               if (length(eyesData@leftEventsMarkers) != 0)
                {
-                 allEventsMarkers <- lapply(self@leftEventsMarkers, FUN = function(x) 
+                 allEventsMarkers <- lapply(eyesData@leftEventsMarkers, FUN = function(x) 
                  {
                    if (class(x) != "WindowEventMarkers")
                    {
@@ -1038,16 +1096,11 @@ setMethod("getDataFrame", "EyesData",
                  })
                  data <- append(data, allEventsMarkers)
                }
-#                if (length(self@leftFilterMarkers@filterMarkers) != 0)
-#                {
-#                  data <- append(data, list(filterMarkers = self@leftFilterMarkers@filterMarkers))
-#                }
-#                if (length(self@leftEventMarkers@eventMarkers) != 0)
-#                {
-#                  data <- append(data, list(eventMarkers = c(self@leftEventMarkers@eventMarkers)))
-#                  data <- append(data, list(eventGroups = c(self@leftEventMarkers@eventGroups)))
-#                }
-               return(as.data.frame(data))
+               data <- new(Class = "EyeData", 
+                           eye = eye, 
+                           dataRecIdentifier = dataRecIdentifier, 
+                           eyeDataFrame = as.data.frame(data))
+               return(data)
               }
               else
               {
@@ -1057,36 +1110,40 @@ setMethod("getDataFrame", "EyesData",
             }
             if (eye == "right")
             {
-              if (self@conditions@conditions$eye == "right" | self@conditions@conditions$eye == "both")
+              if (conditions$eye == "right" | conditions$eye == "both")
               {
-                if (length(self@time@time) != 0)
+                if (length(eyesData@time@time) != 0)
                 {
-                  data <- append(data, list(time = self@time@time))
+                  data <- append(data, list(time = eyesData@time@time))
                 }
-                if (length(self@frame@frame) != 0)
+                if (length(eyesData@frame@frame) != 0)
                 {
-                  data <- append(data, list(frame = self@frame@frame))
+                  data <- append(data, list(frame = eyesData@frame@frame))
                 }
-                data <- append(data, list(porx = self@rightEyeSamples@eyeData$porx))
-                data <- append(data, list(pory = self@rightEyeSamples@eyeData$pory))
-                if (length(self@rightPupilSamples@pupilData$pupxsize) != 0)
+                data <- append(data, list(porx = eyesData@rightEyeSamples@eyeData$porx))
+                data <- append(data, list(pory = eyesData@rightEyeSamples@eyeData$pory))
+                if (length(eyesData@rightPupilSamples@pupilData$pupxsize) != 0)
                 {
-                  data <- append(data, list(pupxsize = self@rightPupilSamples@pupilData$pupxsize))
+                  data <- append(data, list(pupxsize = eyesData@rightPupilSamples@pupilData$pupxsize))
                 }
-                if (length(self@rightPupilSamples@pupilData$pupysize) != 0)
+                if (length(eyesData@rightPupilSamples@pupilData$pupysize) != 0)
                 {
-                  data <- append(data, list(pupysize = self@rightPupilSamples@pupilData$pupysize))
+                  data <- append(data, list(pupysize = eyesData@rightPupilSamples@pupilData$pupysize))
                 }
-                if (length(self@rightFilterMarkers@filterMarkers) != 0)
+                if (length(eyesData@rightFilterMarkers@filterMarkers) != 0)
                 {
-                  data <- append(data, list(filterMarkers = self@rightFilterMarkers@filterMarkers))
+                  data <- append(data, list(filterMarkers = eyesData@rightFilterMarkers@filterMarkers))
                 }
-                if (length(self@rightEventMarkers@eventMarkers) != 0)
+                if (length(eyesData@rightEventMarkers@eventMarkers) != 0)
                 {
-                  data <- append(data, list(eventMarkers = c(self@rightEventMarkers@eventMarkers, NA)))
-                  data <- append(data, list(eventGroups = c(self@rightEventMarkers@eventGroups, NA)))
+                  data <- append(data, list(eventMarkers = c(eyesData@rightEventMarkers@eventMarkers, NA)))
+                  data <- append(data, list(eventGroups = c(eyesData@rightEventMarkers@eventGroups, NA)))
                 }
-                return(as.data.frame(data))
+                data <- new(Class = "EyeData", 
+                            eye = eye, 
+                            dataRecIdentifier = dataRecIdentifier, 
+                            eyeDataFrame = as.data.frame(data))
+                return(data)
               }
               else
               {
@@ -1249,9 +1306,7 @@ setMethod("plotXY", "DataRecord",
 setMethod("plotXt", "DataRecord",
           function(self, settings)
           {
-            eyesData <- self@eyesDataObject
-            conditions <- eyesData@conditions@conditions
-            
+            conditions <- self@eyesDataObject@conditions@conditions
             screenDist <- conditions$screenDist
             screenResolution <- conditions$screenResolution
             screenSize <- conditions$screenSize
@@ -1274,14 +1329,14 @@ setMethod("plotXt", "DataRecord",
             
             if (conditions$eye == "both")
             {
-              dataLeft <- getDataFrame(eyesData, "left")
-              dataRight <- getDataFrame(eyesData, "right")
+              dataLeft <- getEyeDataFrame(self, eye = "left")
+              dataRight <- getEyeDataFrame(self, eye = "right")
               pointsToShowLeft <- which(dataLeft$time >= period[1] & dataLeft$time <= period[2])
               pointsToShowRight <- which(dataRight$time >= period[1] & dataRight$time <= period[2])
             }
             else
             {
-              data <- getDataFrame(eyesData, conditions$eye)
+              data <- getEyeDataFrame(self, eye = conditions$eye)
               pointsToShow <- which(data$time >= period[1] & data$time <= period[2])
               markers <- switch(markerType,
                                 "No markers" = pointsColor,

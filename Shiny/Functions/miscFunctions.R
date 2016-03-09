@@ -1,3 +1,13 @@
+shannon.entropy <- function(p)
+{
+  if (min(p) < 0 || sum(p) <= 0)
+    return(NA)
+  p.norm <- p[p>0]/sum(p)
+  -sum(log2(p.norm)*p.norm)
+}
+
+
+
 createLoader <- function(name, fun, settings)
 {
   loader <- new(Class = "Loader", name = name, fun = fun, settings = settings)

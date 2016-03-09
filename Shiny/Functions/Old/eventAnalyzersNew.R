@@ -6,54 +6,6 @@ createAnalyzer <- function(name, fun, settings)
   return(analyzer)
 }
 
-# createFactorFromReturnedValue function creates and returns an object of Factor class
-# Factor object is a definition of any factor OR REPRESENTATION returned by a subFunction or specified by a user
-createFactorFromReturnedValue <- function(x)
-{
-  factor_new <- new(Class = "Factor")
-  cls <- class(x$value)
-  val <- x$value
-  factor_new@name <- x$name
-  factor_new@description <- x$description
-  factor_new@owners <- x$owners
-  if (cls == "integer")
-  {
-    factor_new@valueClass <- "integer"
-    factor_new@levels <- as.character(NA)
-  }
-  if (cls == "numeric")
-  {
-    factor_new@valueClass <- "numeric"
-    factor_new@levels <- as.character(NA)
-  }
-  if (cls == "factor")
-  {
-    factor_new@valueClass <- "factor"
-    factor_new@levels <- levels(val)
-  }
-  if (cls == "ordered")
-  {
-    factor_new@valueClass <- "ordFactor"
-    factor_new@levels <- levels(val)
-  }
-  if (extends(cls, "Representation"))
-  {
-    factor_new@valueClass <- cls
-    factor_new@levels <- as.character(NA)
-  }
-  return(factor_new)
-}
-
-# getEventMarkersAndData function just reads and returns eventMarkers and data samples from DataRecord as a list
-# returned list of eventMarkers and data for specified eye is to be used by generalEventAnalyzer function
-getEventMarkersAndData <- function(dataRecord, eye)
-{
-  if (eye == "left") {return(list(eventMarkers = dataRecord@eyesDataObject@leftEventsMarkers,
-                                  data = getDataFrame(dataRecord@eyesDataObject, eye)))}
-  if (eye == "right") {return(list(eventMarkers = dataRecord@eyesDataObject@rightEventsMarkers,
-                                   data = getDataFrame(dataRecord@eyesDataObject, eye)))}
-}
-
 # createEvent function creates an object of Event class from given part of DataRecord data samples
 # createEvent function is used in getEventData function
 createEvent <- function(groupData, eye, eventClass, detectorID)
@@ -84,7 +36,7 @@ createEvent <- function(groupData, eye, eventClass, detectorID)
 # getEventData function is used in generalEventAnalyzer function
 getEventData <- function(eventMarkersAndData, eye, eventClass, eventTypesIDs, detectorID = NA)
 {
-  data <- eventMarkersAndData$data
+  data <- eventMarkersAndData$eyeDataFrame@eyeDataFrame
   
   ## conditions on eventClass are not needed any more due to they are checked in eventMarkersSelector (?)
   if (eventClass == "FilterEvent")
@@ -119,36 +71,6 @@ getEventData <- function(eventMarkersAndData, eye, eventClass, eventTypesIDs, de
   return(events)
 }
 
-# calculateSubFunResultsForEvent function applies specified sub function, evaluates its value(s)/representation(s) and then
-# creates and returns a data frame with following columns:
-# 1. value - value(s)/representation(s) of all sub functions that have been applied
-# 2. description - descriptions of factors/representations for corresponding values
-# 3. name - names of factors/representations for corresponding values
-# 4. owners - classes slot of a sub function (it defines potential owners of a factor/representation)
-# 5. owner - class of an event and event type ID for which value(s)/representation(s) have been calculated
-# 6. ownerID - event ordinal number (ID of group of samples) and detectorID (it is important in case of using several detectors: IVT, IDT, etc.)
-# 7. eye - eye ("left" or "right") for which value(s)/representation(s) have been calculated
-# 8. factors - factors definitions for corresponding value(s)/representation(s)
-# calculateSubFunResultsForEvent function is used in generalEventAnalyzer function
-# resulted data frame is to be attached to another similar data frames returned after applying another sub functions
-calculateSubFunResultsForEvent <- function(event, subFun)
-{
-  valsAndInfo <- subFun@fun(event@data, subFun)
-  owner <- list(eventClass = class(event), eventTypeID = event@eventID)
-  ownerID <- list(detectorID = event@detectorID, eventGroup = event@group)
-  eye = event@eye
-  res <- data.frame(value = I(valsAndInfo$vals), 
-             description = I(valsAndInfo$info), 
-             name = names(valsAndInfo$info),
-             owners = I(rep(subFun@classes, length(valsAndInfo$vals))),
-             owner = I(rep(list(owner), length(valsAndInfo$vals))),
-             ownerID = I(rep(list(ownerID), length(valsAndInfo$vals))),
-             eye = I(rep(eye, length(valsAndInfo$vals))))
-  factors <- apply(res, MARGIN = 1, FUN = createFactorFromReturnedValue)
-  res$factors <- factors
-  return(res)
-}
-
 # generalEventAnalyzer function figures out which sub functions are present,
 # uses getEventData function to select events that are needed for a specific sub function,
 # calculates sub functions results and binds them together into "res" data frame
@@ -172,12 +94,13 @@ generalEventAnalyzer <- function(data, settings)
                                eventClass = eventClass, 
                                eventTypesIDs = eventTypesIDs,
                                detectorID = detectorID)
-        res <- append(res, lapply(events@events, FUN = calculateSubFunResultsForEvent, subFun = subFuns[[i]]))
+        res <- append(res, lapply(events@events, FUN = calculateSubFunResults, subFun = subFuns[[i]]))
       }
-      if (subFuns[[i]]@classes[[j]]$mainClass == "EyesData")
-      {
-        
-      }
+      # Eyes Data factors are calculated by estimator!
+#       if (subFuns[[i]]@classes[[j]]$mainClass == "EyesData")
+#       {
+#         
+#       }
     }
   }
   res <- as.data.frame(do.call("rbind", res))
@@ -185,80 +108,51 @@ generalEventAnalyzer <- function(data, settings)
   return(res)
 }
 
-# createFactorsDataList function gets results of calculations made by analyzer and creates factors definitions 
-# which are not present in factorsDef dictionary
-createFactorsDataList <- function(analyzerResults, factorsDef)
-{
-  uniqueFactors <- unique(analyzerResults$factor)
-  factorIDs <- rep(NA, nrow(analyzerResults))
-  for (i in 1:length(uniqueFactors))
-  {
-    fctrExists <- factorExists(self = factorsDef, factor = uniqueFactors[[i]])
-    if (fctrExists$exists)
-    {
-      factorID <- fctrExists$id
-    }
-    else
-    {
-      # add factor definition
-      fctrsDefAdded <- addFactorDefinition(self = factorsDef, factor = uniqueFactors[[i]])
-      factorsDef <- fctrsDefAdded$factorsDef
-      factorID <- fctrsDefAdded$factorID
-    }
-    factorIDs[sapply(analyzerResults$factors, FUN = identical, uniqueFactors[[i]])] <- factorID
-  }
-  # creating a new column with factor IDs to data frame with analysis results
-  analyzerResults$factorID <- factorIDs
-  # deleting temporary "factors" column
-  analyzerResults <- analyzerResults[,-which(names(analyzerResults) == "factors")]
-  return(list(analyzerResults = analyzerResults, factorsDef = factorsDef))
-}
-
 ## CORE ANALYZER ##
 # coreEventAnalyzer function selects data for a specific eye,
 # passes all settings and data to generalEventAnalyzer,
 # It returns a list with dataRec and factorsDef
 # DataRecord@analysisResults is filled with calculated eventFactorsData
-### TO DO: append analysisResults, not replace!!!
+### TO DO: append analysisResults with replacement, not whole replace!!!
 coreEventAnalyzer <- function(DataRecord, settings)
 {
   factorsDef <- settings$factorsDef
   conditions <- DataRecord@eyesDataObject@conditions@conditions
   if (conditions$eye == "left")
   {
-    eventMarkersAndData <- getEventMarkersAndData(DataRecord, "left")
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "left", getFactorsData = F)
     settings <- append(settings, list(conditions = conditions))
     analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
     analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
     DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", 
-                                                       factorsData = as.data.frame(analyzerResults$analyzerResults))
+                                                       factorsData = as.data.frame(analyzerResults$calculationResults))
     factorsDef <- analyzerResults$factorsDef
   }
   if (conditions$eye == "right")
   {
-    eventMarkersAndData <- getEventMarkersAndData(DataRecord, "right")
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "right", getFactorsData = F)
     settings <- append(settings, list(conditions = conditions))
     analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
     analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
     DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", 
-                                                       factorsData = as.data.frame(analyzerResults$analyzerResults))
+                                                       factorsData = as.data.frame(analyzerResults$calculationResults))
     factorsDef <- analyzerResults$factorsDef
   }
   if (conditions$eye == "both")
   {
-    eventMarkersAndData <- getEventMarkersAndData(DataRecord, "left")
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "left", getFactorsData = F)
     settings <- append(settings, list(conditions = conditions))
     analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
     analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
     DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", 
-                                                       factorsData = as.data.frame(analyzerResults$analyzerResults))
+                                                       factorsData = as.data.frame(analyzerResults$calculationResults))
     factorsDef <- analyzerResults$factorsDef
-    eventMarkersAndData <- getEventMarkersAndData(DataRecord, "right")
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "right", getFactorsData = F)
     settings <- append(settings, list(conditions = conditions))
     analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
     analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
     DataRecord@analysisResults$eventFactorsData <- rbind(DataRecord@analysisResults$eventFactorsData,
-                                                                         as.data.frame(analyzerResults$analyzerResults))
+                                                                         as.data.frame(analyzerResults$calculationResults))
   }
   return(list(dataRec = DataRecord, factorsDef = factorsDef))
 }

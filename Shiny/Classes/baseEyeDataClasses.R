@@ -24,14 +24,6 @@ setClass("OtherSamples",
 )
 
 setClass("EventMarkers", representation(eventClass = "character"))
-
-setClass(Class = "Event", 
-         representation = representation(data = "data.frame"))
-
-setClass(Class = "EventData", representation(events = "list",
-                                             eventClass = "character",
-                                             detectorID = "numeric"))
-
 setClass("EyesData",
          representation(fieldNames = "DataFieldNames",
                         conditions = "Conditions",
@@ -47,3 +39,13 @@ setClass("EyesData",
                         rightEventsMarkers = "list" # list of EventMarkers objects
          )
 )
+
+# Classes of objects derived from eventMarkers, eyesData, etc.
+setClass("EyeData", representation(eye = "character",
+                                   dataRecIdentifier = "list",
+                                   eyeDataFrame = "data.frame"))
+setClass(Class = "Event", 
+         representation = representation(data = "data.frame"))
+setClass(Class = "EventData", representation(events = "list",
+                                             eventClass = "character",
+                                             detectorID = "numeric"))

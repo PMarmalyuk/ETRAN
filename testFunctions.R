@@ -102,23 +102,12 @@ table(dataRec@eyesDataObject@leftEventsMarkers$filterMarkers@markers)
 dataRec <- detectEvents(dataRec, filter = detectors$detectors[[2]], smoother, detector = detectors$detectors[[3]])
 table(dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers@markers)
 
-summary(factor(dataRec@eyesDataObject@leftEventsMarkers$filterMarkers@markers))
-
-shannon.entropy <- function(p)
-{
-  if (min(p) < 0 || sum(p) <= 0)
-    return(NA)
-  p.norm <- p[p>0]/sum(p)
-  -sum(log2(p.norm)*p.norm)
-}
-
 # Event Analysis test
 # subFuns <- getSubfunctions(self = subFunctions, operation = "Event Analysis")
 # sfToApply <- subFuns@subFunctionsList$subFunctions
-source('Functions\\DataRecordSubFunctions.R', local = T)
-source('Functions\\GeneralEventSubFunctions.R', local = T)
-source('CoreSubFunctionsInit.R', local = T)
-source("Functions\\eventAnalyzersNew.R", local = T)
+source('Functions\\subFunctions.R', local = T)
+source('Functions\\subFunctionsInit.R', local = T)
+source("Functions\\eventAnalyzers.R", local = T)
 subFunctionsBodies <- subFunctions@subFunctionsList$subFunctions
 factorsDef <- new(Class = "FactorsDefinitions", 
                     factorsDef = list(),
@@ -128,8 +117,27 @@ analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
                                            subFunctions = subFunctionsBodies, 
                                            factorsDef = factorsDef))
 eventAnalysisResult <- eventAnalyzer(dataRec, analyzer)
+
+rrr <- getEventMarkersAndData(dataRec, "left", F)
+class(rrr$eyeDataFrame)
 dataRec <- eventAnalysisResult$dataRec
-fd <- dataRec@analysisResults$eventFactorsData@factorsData
+factorsDef <- eventAnalysisResult$factorsDef
+factorsData <- dataRec@analysisResults$eventFactorsData@factorsData
+
+rrr <- getFactorsDataByEye(dataRec@analysisResults$eventFactorsData, eye = "right")
+rrr <- getFactorsDataByOwner(dataRec@analysisResults$eventFactorsData, owner = list(eventClass = "OculomotorEvent", eventTypeID = 1))
+rrr <- getFactorsDataByOwnerID(dataRec@analysisResults$eventFactorsData, ownerID = list(detectorID = 3, eventGroup = 1))
+rrr <- getFactorsDataByFactorID(dataRec@analysisResults$eventFactorsData, factorID = 1)
+rrr <- getFactorsDataByFactorClass(dataRec@analysisResults$eventFactorsData, factorClass = "factor")
+
+dataRec@analysisResults$eventFactorsData@factorsData
+identical(dataRec@analysisResults$eventFactorsData@factorsData$ownerID[[1]], list(eventClass = "OculomotorEvent", eventTypeID = 1))
+
+dataRec@analysisResults$eventFactorsData@factorsData$value
+# owner: list(class = "EyesData")
+# ownerID: list(expID, subjectID, trialID)
+
+
 shannon.entropy(table(unlist(fd$value[fd$factorID == 1])))
 eventAnalysisResult$factorsDef
 eventAnalysisResult$dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers
@@ -145,7 +153,7 @@ dataRec <- estimateParams(self = dataRec, estimator = estimator)
 # Scanpath try
 fix <- res@analysisResults$leftEventData@fixations@fixations
 sac <- resEvents@analysisResults$leftEventData$s
-df <- getDataFrame(resEvents@eyesDataObject, eye = "left")
+df <- getEyeDataFrame(resEvents, eye = "left")
 sac$length[which(is.nan(sac$asymmetry))]
 sac$peakAcceleration[which(is.nan(sac$asymmetry))]
 df[df$eventGroup == sac$eventGroup[which(is.nan(sac$asymmetry))][15],]
