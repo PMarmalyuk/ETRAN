@@ -1,19 +1,19 @@
 setClass("EventSelector",
          representation(type = "character", # "all", "insideEvent", "byFactorExpression" or c("insideEvent", "byFactorExpression")
-                        events = "list", # list of eventClass, eventTypeIDs and [detectorID]
-                        framingEvents = "list", # list of eventClass and eventTypeIDs
+                        event = "list", # list of eventClass, eventTypeID and [detectorID]
+                        framingEvent = "list", # list of eventClass and eventTypeID
                         factorIDs = "numeric", # IDs of factors for which expressions should be checked
                         factorExpressions = "list")) # expressions to check for corresponding factors
 
-createEventSelector <- function(type, events, 
-                                framingEvents = list(NA), 
+createEventSelector <- function(type, event, 
+                                framingEvent = list(NA), 
                                 factorIDs = as.numeric(NA), 
                                 factorExpressions = list(NA))
 {
   selector <- new(Class = "EventSelector",
                   type = type, 
-                  events = events, 
-                  framingEvents = framingEvents, 
+                  event = event, 
+                  framingEvent = framingEvent, 
                   factorIDs = factorIDs, 
                   factorExpressions = factorExpressions)
   return(selector)
@@ -43,85 +43,150 @@ expressionEvaluator <- function(expression, varName, varValue)
   
 }
 
-# TO DO: rename to selectEvents
 eventsSelector <- function(eventMarkersList, factorsData = NA, factorsDef = NA, selector)
 {
   type <- selector@type
-  events <- selector@events
-  if (type == "all")
+  event <- selector@event
+  if ("all" %in% type)
   {
-    if (events$eventClass != "OculomotorEvent")
+    if (event$eventClass != "OculomotorEvent")
     {
-      eventTypeIDs <- events$eventTypeIDs
-      flag <- sapply(eventMarkersList, FUN = function(x) {x@eventClass == events$eventClass})
-      allEventMarkers <- eventMarkersList[[which(flag)]]
-      selectedGroups <- unique(allEventMarkers@groups[allEventMarkers@markers %in% eventTypeIDs])
-      selectedEvents <- list(eventMarkers = allEventMarkers, selectedGroups = selectedGroups)
+      eventTypeID <- event$eventTypeID
+      flag <- sapply(eventMarkersList, FUN = function(x) {x@eventClass == event$eventClass})
+      if (all(flag == FALSE)) 
+      {
+        warning("There are no markers of events of specified class!")
+        selectedEvents <- NA
+      }
+      else
+      {
+        allEventMarkers <- eventMarkersList[[which(flag)]]
+        selectedGroups <- lapply(eventTypeID, FUN = function(x) 
+        {
+          groups <- unique(allEventMarkers@groups[allEventMarkers@markers == x])
+          return(list(eventTypeID = x, eventGroups = groups))
+        })
+        selectedEvents <- list(eventMarkers = allEventMarkers, selectedGroups = selectedGroups)
+      }
     }
-    if (events$eventClass == "OculomotorEvent")
+    if (event$eventClass == "OculomotorEvent")
     {
-      eventTypeIDs <- events$eventTypeIDs
-      detectorID <- events$detectorID
-      flags <- sapply(eventMarkersList, FUN = function(x) {x@eventClass == events$eventClass})
-      eventMarkersList <- eventMarkersList[flags]
-      idxsForSpecifiedDetectorID <- sapply(eventMarkersList, FUN = function(x) {x@detectorID == detectorID})
-      allEventMarkers <- eventMarkersList[[idxsForSpecifiedDetectorID]]
-      selectedGroups <- unique(allEventMarkers@groups[allEventMarkers@markers %in% eventTypeIDs])
-      selectedEvents <- list(eventMarkers = allEventMarkers, selectedGroups = selectedGroups)
+      eventTypeID <- event$eventTypeID
+      detectorID <- event$detectorID
+      flags <- sapply(eventMarkersList, FUN = function(x) {x@eventClass == event$eventClass})
+      if (all(flags == FALSE)) 
+      {
+        warning("There are no markers of events of specified class!")
+        selectedEvents <- NA
+      }
+      else
+      {
+        eventMarkersForEventClass <- eventMarkersList[flags]
+        idxsForSpecifiedDetectorID <- sapply(eventMarkersForEventClass, FUN = function(x) {x@detectorID == detectorID})
+        if (all(idxsForSpecifiedDetectorID == FALSE)) 
+        {
+          warning("There are no events detected by specified detector!")
+          selectedEvents <- NA
+        }
+        else
+        {
+          allEventMarkers <- eventMarkersForEventClass[[idxsForSpecifiedDetectorID]]
+          selectedGroups <- lapply(eventTypeID, FUN = function(x) 
+          {
+            groups <- unique(allEventMarkers@groups[allEventMarkers@markers == x])
+            return(list(eventTypeID = x, eventGroups = groups))
+          })
+          selectedEvents <- list(eventMarkers = allEventMarkers, selectedGroups = selectedGroups)
+        }
+      }
     }
   }
-  else
+  if ("insideEvents" %in% type)
   {
-    if (type == "insideEvents")
+    framingEvent <- selector@framingEvent
+    selectorOfExternalEvents <- createEventSelector(type = "all", event = framingEvent)
+    selectedExternalEventMarkers <- eventsSelector(eventMarkersList = eventMarkersList, selector = selectorOfExternalEvents)
+    if (!is.na(selectedExternalEventMarkers[1]))
     {
-      framingEvents <- selector@framingEvents
-      selectorOfExternalEvents <- createEventSelector(type = "all", events = framingEvents)
-      selectedExternalEventMarkers <- eventsSelector(eventMarkersList = eventMarkersList, selector = selectorOfExternalEvents)
-      selectorOfInternalEvents <- createEventSelector(type = "all", events = events)
-      selectedInternalEventMarkers <- eventsSelector(eventMarkersList = eventMarkersList, selector = selectorOfInternalEvents)
-      extEventsLocations <- getEventsLocations(eventMarkers = selectedExternalEventMarkers$eventMarkers)
-      intEventsLocations <- getEventsLocations(eventMarkers = selectedInternalEventMarkers$eventMarkers)
-      selExtEvLocs <- extEventsLocations[extEventsLocations$typeID %in% framingEvents$eventTypeIDs,]
-      selIntEvLocs <- intEventsLocations[intEventsLocations$typeID %in% events$eventTypeIDs,]
-      hits <- apply(selIntEvLocs, MARGIN = 1, FUN = function(x)
+      selectedInternalEventMarkers <- selectedEvents
+      if (!is.na(selectedInternalEventMarkers[1]))
       {
-        res <- apply(selExtEvLocs, MARGIN = 1, FUN = function(y)
+        extEventsLocations <- getEventsLocations(eventMarkers = selectedExternalEventMarkers$eventMarkers)
+        intEventsLocations <- getEventsLocations(eventMarkers = selectedInternalEventMarkers$eventMarkers)
+        selExtEvLocs <- extEventsLocations[extEventsLocations$typeID %in% framingEvent$eventTypeID,]
+        selIntEvLocs <- intEventsLocations[intEventsLocations$typeID %in% event$eventTypeID,]
+        hits <- apply(selIntEvLocs, MARGIN = 1, FUN = function(x)
         {
-          hit <- between(x = x$startIdx, lower = y$startIdx, upper = y$endIdx, incbounds = T) &
-                  between(x = x$endIdx, lower = y$startIdx, upper = y$endIdx, incbounds = T)
-          return(data.frame(extEventID = y$typeID, extEventGroup = y$group, 
-                            intEventID = x$typeID, intEventGroup = x$group, hit = hit))
+          res <- apply(selExtEvLocs, MARGIN = 1, FUN = function(y)
+          {
+            hit <- between(x = x$startIdx, lower = y$startIdx, upper = y$endIdx, incbounds = T) &
+                   between(x = x$endIdx, lower = y$startIdx, upper = y$endIdx, incbounds = T)
+            return(data.frame(extEventTypeID = y$typeID, extEventGroup = y$group, 
+                              eventTypeID = x$typeID, eventGroup = x$group, hit = hit))
+          })
+          return(do.call("rbind", res))
         })
-        return(do.call("rbind", res))
-      })
-      res <- do.call("rbind", hits)
-      res <- res[res$hit,-5]
-      selectedEvents <- res
+        res <- do.call("rbind", hits)
+        
+        if ("byGroups" %in% type)
+        {
+          selectedGroupsUnlabeled <- split(res, list(extEventTypeID = res$extEventTypeID, 
+                                                     extEventGroup = res$extEventGroup, 
+                                                     eventTypeID = res$eventTypeID),
+                                           drop = T)
+          selectedGroups <- lapply(selectedGroupsUnlabeled, FUN = function(x)
+          {
+            return(list(extEventTypeID = unique(x$extEventTypeID), 
+                        extEventGroup = unique(x$extEventGroup),
+                        eventTypeID = unique(x$eventTypeID),
+                        eventGroups = x$eventGroup[x$hit]))
+          })
+        }
+        else
+        {
+          selectedGroupsUnlabeled <- split(res, list(extEventTypeID = res$extEventTypeID,
+                                                     eventTypeID = res$eventTypeID),
+                                           drop = F)
+          selectedGroups <- lapply(selectedGroupsUnlabeled, FUN = function(x)
+          {
+            
+            return(list(extEventTypeID = unique(x$extEventTypeID),
+                        eventTypeID = unique(x$eventTypeID),
+                        eventGroups = x$eventGroup[x$hit]))
+          })
+        }
+        names(selectedGroups) <- NULL
+        selectedEvents <- list(eventMarkers = allEventMarkers, selectedGroups = selectedGroups)
+      }
     }
-    if (type == "byFactorExpression")
-    {
-      # OUTSIDE of selector user should:
-      ## 1. Select class of events
-      ## 2. Select _EVENTTYPEID_
-      ## 3. Select all _SCALAR_ factors defined for events of specified class and _EVENTTYPEID_
-      ## 4. Choose factors to be used in expression
-      ## 3. Construct expression for (some of) the factors ### OUTSIDE SELECTOR ###
-      factorIDs <- selector@factorIDs #factor IDs which names are used in expressions
-      factorExpressions <- selector@factorExpressions # expressions (varName, operation, operand) for corresponding factors
-      # 1. Select all events of specified class and _EVENTTYPEID_ from eventMarkersList
-      # 4. Select values of factors which correspond to the events
-      # e.g. create data frame with factor ID, factor value, event group [and detectorID]
-      # 5. Evaluate expression for each event and select events which agree with expression
-      # 6. Return groups of the events
-      
-      
-      ## typical routine with expression:
-      varName <- "v"
-      varValue <- 5
-      varExpr <- "v >= 10"
-      assign(varName, varValue)
-      eval(parse(text = varExpr))
-    }
+  }
+  if ("firstOccurence" %in% type)
+  {
+    # this is needed to select events that occur for a first time inside AOI, etc.
+  }
+  if ("byFactorExpression" %in% type)
+  {
+    # OUTSIDE of selector user should:
+    ## 1. Select class of events
+    ## 2. Select _EVENTTYPEID_
+    ## 3. Select all _SCALAR_ factors defined for events of specified class and _EVENTTYPEID_
+    ## 4. Choose factors to be used in expression
+    ## 3. Construct expression for (some of) the factors ### OUTSIDE SELECTOR ###
+    factorIDs <- selector@factorIDs #factor IDs which names are used in expressions
+    factorExpressions <- selector@factorExpressions # expressions (varName, operation, operand) for corresponding factors
+    # 1. Select all events of specified class and _EVENTTYPEID_ from eventMarkersList
+    # 4. Select values of factors which correspond to the events
+    # e.g. create data frame with factor ID, factor value, event group [and detectorID]
+    # 5. Evaluate expression for each event and select events which agree with expression
+    # 6. Return groups of the events
+    
+    
+    ## typical routine with expression:
+    varName <- "v"
+    varValue <- 5
+    varExpr <- "v >= 10"
+    assign(varName, varValue)
+    eval(parse(text = varExpr))
   }
   return(selectedEvents)
 }
@@ -129,16 +194,25 @@ eventsSelector <- function(eventMarkersList, factorsData = NA, factorsDef = NA, 
 
 
 
-sel <- createEventSelector(type = "all", events = list(eventClass = "OculomotorEvent", eventTypeIDs = 1, detectorID = 3))
-eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
-sel <- createEventSelector(type = "all", events = list(eventClass = "FilterEvent", eventTypeIDs = 1))
-eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
-sel <- createEventSelector(type = "insideEvents", 
-                           events = list(eventClass = "OculomotorEvent", eventTypeIDs = c(1,2), detectorID = 3),
-                           framingEvents = list(eventClass = "FilterEvent", eventTypeIDs = c(1)))
+sel <- createEventSelector(type = "all", event = list(eventClass = "OculomotorEvent", eventTypeID = c(1,2,3), detectorID = 3))
+selEv <- eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
+
+
+# sel <- createEventSelector(type = "all", events = list(eventClass = "FilterEvent", eventTypeIDs = 1))
+# eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
+
+newMarkers <- rbinom(n = length(dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers@markers), size = 1, prob = 0.999)
+transitions <- newMarkers[-1] != newMarkers[-length(newMarkers)]
+groups <- c(1,cumsum(transitions)+1)
+myMarkers <- new(Class = "SyncEventMarkers", 
+    markers = newMarkers, 
+    eventClass = "SyncEvent",
+    groups = groups)
+dataRec@eyesDataObject@leftEventsMarkers$myMarkers <- myMarkers
+  
+
+sel <- createEventSelector(type = c("all", "insideEvents", "byGroups"), 
+                           event = list(eventClass = "OculomotorEvent", eventTypeID = c(1,2), detectorID = 3),
+                           framingEvent = list(eventClass = "SyncEvent", eventTypeID = c(0,1)))
 r <- eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
-
-f <- factor(c(1,2,3,1,1,2,3,3,3,3), levels = c(1,2,3))
-f
-
-sapply(split(r[r$extEventID == 1,], r[r$extEventID == 1,2]), FUN = function(x) {table(x$intEventID)})
+which(sapply(r$selectedGroups, FUN = function(x) {length(x$eventGroups) > 1}))

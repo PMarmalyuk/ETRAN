@@ -17,8 +17,8 @@ source("Functions\\filters.R", local = T)
 source("Functions\\smoothers.R", local = T)
 source("Functions\\detectors.R", local = T)
 source("Functions\\eventSelector.R", local = T)
-source("Functions\\eventAnalyzersNew.R", local = T)
-source("Functions\\estimatorsNew.R", local = T)
+source("Functions\\analyzers.R", local = T)
+# source("Functions\\estimatorsNew.R", local = T)
 source("Methods\\Methods_v_1_7.R", local = T)
 library(data.table)
 library(signal)
@@ -107,7 +107,7 @@ table(dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers@markers)
 # sfToApply <- subFuns@subFunctionsList$subFunctions
 source('Functions\\subFunctions.R', local = T)
 source('Functions\\subFunctionsInit.R', local = T)
-source("Functions\\eventAnalyzers.R", local = T)
+source("Functions\\analyzers.R", local = T)
 subFunctionsBodies <- subFunctions@subFunctionsList$subFunctions
 factorsDef <- new(Class = "FactorsDefinitions", 
                     factorsDef = list(),
@@ -117,6 +117,9 @@ analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
                                            subFunctions = subFunctionsBodies, 
                                            factorsDef = factorsDef))
 eventAnalysisResult <- eventAnalyzer(dataRec, analyzer)
+dataRec <- eventAnalysisResult$dataRec
+eventAnalysisResult$factorsDef
+dataRec@analysisResults$eventFactorsData@factorsData[1:5,]
 
 rrr <- getEventMarkersAndData(dataRec, "left", F)
 class(rrr$eyeDataFrame)

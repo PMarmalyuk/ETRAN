@@ -123,7 +123,7 @@ createEvent <- function(groupData, eye, eventClass, detectorID)
 # which is a list consisted of event objects that correspond to eventMarkers for
 # specified eye, eventClass, eventTypesIDs and detectorID (in case of eventClass == OculomotorEvent)
 # getEventData function is used in generalEventAnalyzer function
-getEventData <- function(eventMarkersAndData, eye, eventClass, eventTypesIDs, detectorID = NA)
+getEventData <- function(eventMarkersAndData, eye, eventClass, eventTypeID, detectorID = NA)
 {
   data <- eventMarkersAndData$eyeDataFrame@eyeDataFrame
   
@@ -134,13 +134,14 @@ getEventData <- function(eventMarkersAndData, eye, eventClass, eventTypesIDs, de
   }
   if (eventClass == "OculomotorEvent") 
   {
-    selector <- createEventSelector(type = "all", 
+    selector <- createEventSelector(type = "all",
                                     event = list(eventClass = eventClass, 
-                                                 eventTypeIDs = eventTypesIDs,
+                                                 eventTypeID = eventTypeID,
                                                  detectorID = detectorID))
     selected <- eventsSelector(eventMarkersList = eventMarkersAndData$eventMarkers, selector = selector)
+    allSelectedGroups <- unlist(lapply(selected$selectedGroups, FUN = function(x) {x$eventGroups}))
     allData <- cbind(data, data.frame(markers = selected$eventMarkers@markers, groups = selected$eventMarkers@groups))
-    allData <- allData[allData$groups %in% selected$selectedGroups,]
+    allData <- allData[allData$groups %in% allSelectedGroups,]
     splittedData <- split(allData, f = allData$groups)
     createdEvents <- lapply(X = splittedData, FUN = createEvent, eye = eye, eventClass = eventClass, detectorID = detectorID)
   }
@@ -211,6 +212,7 @@ calculateSubFunResults <- function(data, subFun)
                       owner = I(rep(list(owner), length(valsAndInfo$vals))),
                       ownerID = I(rep(list(ownerID), length(valsAndInfo$vals))),
                       eye = I(rep(event@eye, length(valsAndInfo$vals))))
+    factors <- apply(res, MARGIN = 1, FUN = createFactorFromReturnedValue)
   }
   if (dataClass == "EyeData")
   {
@@ -226,6 +228,7 @@ calculateSubFunResults <- function(data, subFun)
                       owner = I(rep(list(owner), length(valsAndInfo$vals))),
                       ownerID = I(rep(list(ownerID), length(valsAndInfo$vals))),
                       eye = I(rep(event@eye, length(valsAndInfo$vals))))
+    factors <- apply(res, MARGIN = 1, FUN = createFactorFromReturnedValue)
   }
   res$factors <- factors
   return(res)
@@ -248,11 +251,11 @@ generalEventAnalyzer <- function(data, settings)
       if (subFuns[[i]]@classes[[j]]$mainClass == "EventData")
       {
         eventClass <- subFuns[[i]]@classes[[j]]$subClass
-        eventTypesIDs <- subFuns[[i]]@classes[[j]]$eventTypeIDs
+        eventTypeID <- subFuns[[i]]@classes[[j]]$eventTypeID
         events <- getEventData(eventMarkersAndData = data, 
                                eye = eye,
                                eventClass = eventClass, 
-                               eventTypesIDs = eventTypesIDs,
+                               eventTypeID = eventTypeID,
                                detectorID = detectorID)
         res <- append(res, lapply(events@events, FUN = calculateSubFunResults, subFun = subFuns[[i]]))
       }
