@@ -1,3 +1,30 @@
+readRawCSVData <- function(filePath, settings)
+{
+  if (!file.exists(filePath))
+  {
+    warning("Datafile not found!")
+    return(NULL)
+  }
+  else
+  {
+    headerLines <- readLines(con = filePath, 
+                             n = settings$skip, 
+                             encoding = settings$encoding)
+    asIsData <- read.csv(file = filePath, 
+                         sep = settings$sep, 
+                         dec = settings$dec,   
+                         skip = settings$skip, 
+                         comment.char = settings$comment.char, 
+                         header = settings$header,
+                         blank.lines.skip = T, 
+                         check.names = F,
+                         stringsAsFactors = F)
+
+  }
+  rawData <- list(filePath = filePath, headerLines = headerLines, data = asIsData)
+  return(rawData)
+}
+
 # Searching for a string with a key specified and extracting everything after a colon considering specified separator
 findKeyValue <- function(key, sep, headerLines)
 {
@@ -34,7 +61,7 @@ createEyesDataObject <- function(data, dataFields, fieldNames, conditions)
     frames <- new(Class = "FrameSamples", frame = as.numeric(data[,dataFields@availableFields$frame]))
     eyeDataObject@frame <- frames
   }
-  if (conditions@conditions$eye == "left")
+  if (conditions@conditions$eye == "left" | conditions@conditions$eye == "both")
   {
     porx <- data[,dataFields@availableFields$lporx]
     pory <- data[,dataFields@availableFields$lpory]
@@ -55,7 +82,7 @@ createEyesDataObject <- function(data, dataFields, fieldNames, conditions)
       eyeDataObject@leftPupilSamples <- pupSamples
     }
   }
-  if (conditions@conditions$eye == "right")
+  if (conditions@conditions$eye == "right" | conditions@conditions$eye == "both")
   {
     porx <- data[,dataFields@availableFields$rporx]
     pory <- data[,dataFields@availableFields$rpory]
@@ -76,59 +103,19 @@ createEyesDataObject <- function(data, dataFields, fieldNames, conditions)
       eyeDataObject@rightPupilSamples <- pupSamples
     }
   }
-  if (conditions@conditions$eye == "both")
+  if (!all(is.na(dataFields@availableFields$leftAdditionalFields)) & 
+      conditions@conditions$eye == "left" | conditions@conditions$eye == "both")
   {
-    lporx <- data[,dataFields@availableFields$lporx]
-    lpory <- data[,dataFields@availableFields$lpory]
-    smpCnt <- length(lporx)
-    rporx <- data[,dataFields@availableFields$rporx]
-    rpory <- data[,dataFields@availableFields$rpory]
-    leftEyeSamples <- new(Class = "TrajectorySamples", eyeData = data.frame(lporx, lpory))
-    rightEyeSamples <- new(Class = "TrajectorySamples", eyeData = data.frame(rporx, rpory))
-    eyeDataObject@leftEyeSamples <- leftEyeSamples
-    eyeDataObject@rightEyeSamples <- rightEyeSamples
-    if (conditions@conditions$pupilShape == "circle")
-    {
-      lpupxsize <- data[,dataFields@availableFields$lpupxsize]
-      rpupxsize <- data[,dataFields@availableFields$rpupxsize]
-      leftPupSamples <- new(Class = "PupilSamples", pupilData = data.frame(lpupxsize))
-      rightPupSamples <- new(Class = "PupilSamples", pupilData = data.frame(rpupxsize))
-      eyeDataObject@leftPupilSamples <- leftPupSamples
-      eyeDataObject@rightPupilSamples <- rightPupSamples
-    }
-    if (conditions@conditions$pupilShape == "ellipse")
-    {
-      lpupxsize <- data[,dataFields@availableFields$lpupxsize]
-      rpupxsize <- data[,dataFields@availableFields$rpupxsize]
-      lpupysize <- data[,dataFields@availableFields$lpupysize]
-      rpupysize <- data[,dataFields@availableFields$rpupysize]
-      leftPupSamples <- new(Class = "PupilSamples", pupilData = data.frame(lpupxsize, lpupysize))
-      rightPupSamples <- new(Class = "PupilSamples", pupilData = data.frame(rpupxsize, rpupysize))
-      eyeDataObject@leftPupilSamples <- leftPupSamples
-      eyeDataObject@rightPupilSamples <- rightPupSamples
-    }
-  }
-  if (!is.na(dataFields@availableFields$leftAdditionalFields[1]) & conditions@conditions$eye == "left")
-  {
-    leftAddSmp <- lapply(dataFields@availableFields$leftAdditionalFields, FUN = function(x) {data[,x]})
+    leftAddSmp <- lapply(dataFields@availableFields$leftAdditionalFields, FUN = function(x) {data[,x[[1]]]})
     leftAddSmp <- new(Class = "OtherSamples", otherData = as.data.frame(leftAddSmp))
     eyeDataObject@leftAdditionalSamples <- leftAddSmp
   }
-  if (!is.na(dataFields@availableFields$rightAdditionalFields[1]) & conditions@conditions$eye == "right")
+  if (!all(is.na(dataFields@availableFields$rightAdditionalFields)) & 
+      conditions@conditions$eye == "right" | conditions@conditions$eye == "both")
   {
-    rightAddSmp <- lapply(dataFields@availableFields$rightAdditionalFields, FUN = function(x) {data[,x]})
+    rightAddSmp <- lapply(dataFields@availableFields$rightAdditionalFields, FUN = function(x) {data[,x[[1]]]})
     rightAddSmp <- new(Class = "OtherSamples", otherData = as.data.frame(rightAddSmp))
     eyeDataObject@rightAdditionalSamples <- rightAddSmp
-  }
-  if (!is.na(dataFields@availableFields$leftAdditionalFields[1]) &
-      !is.na(dataFields@availableFields$rightAdditionalFields[1]) & conditions@conditions$eye == "both")
-  {
-    leftAddSmp <- lapply(dataFields@availableFields$leftAdditionalFields, FUN = function(x) {data[,x]})
-    leftAddSmp <- new(Class = "OtherSamples", otherData = as.data.frame(leftAddSmp))
-    rightAddSmp <- lapply(dataFields@availableFields$rightAdditionalFields, FUN = function(x) {data[,x]})
-    rightAddSmp <- new(Class = "OtherSamples", otherData = as.data.frame(rightAddSmp))
-    eyeDataObject@leftAdditionalSamples = leftAddSmp
-    eyeDataObject@rightAdditionalSamples = rightAddSmp
   }
   if (!is.na(dataFields@availableFields$time))
   {
@@ -167,64 +154,76 @@ createEyesDataObject <- function(data, dataFields, fieldNames, conditions)
 
 ## CORE PARSER ##
 # raw data record parsing
-coreParser <- function(RawDataRecord, settings)
+parseRawCSVData <- function(filePath, settings)
 {
-  self <- RawDataRecord
   conditions <- settings$conditions
-  filePath <- self@filePath
   dataFields <- settings$dataFields
   sampleKey <- settings$sampleKey
   headerKeys <- settings$headerKeys
   sep <- settings$sep
+  rawData <- readRawCSVData(filePath = filePath, settings = settings)
+  if (is.null(rawData)) {return(NULL)}
   
-  ## Deleting all samples with sample type other than sampleKey
+  ## Deleting all samples with sample type other than specified sampleKey
   if (!is.na(dataFields@availableFields$smptype))
   {
-    self@data <- self@data[self@data[, dataFields@availableFields$smptype] == sampleKey,]
+    rawData$data <- rawData$data[rawData$data[, dataFields@availableFields$smptype] == sampleKey,]
   }
   
   ## Reading trial number samples
   trials <- NA
   if (!is.na(dataFields@availableFields$trial))
   {
-    trialColumn <- self@data[,dataFields@availableFields$trial]
+    trialColumn <- rawData$data[,dataFields@availableFields$trial]
     trials <- unique(trialColumn)
   }
   ## Reading stimuli name samples as trials indicators
   if (is.na(dataFields@availableFields$trial) & !is.na(dataFields@availableFields$stimname))
   {
-    trialColumn <- self@data[,dataFields@availableFields$stimname]
+    trialColumn <- rawData$data[,dataFields@availableFields$stimname]
     trials <- unique(trialColumn)
   }
   ## Splitting data by trials
   if (!is.na(trials[1]))
   {
-    trialsData <- split(self@data, f = trials)
+    trialsData <- split(rawData$data, f = trials)
   }
   else
   {
-    trialsData <- list(self@data)
+    trialsData <- list(rawData$data)
   }
   
-  ## Getting field names using self@data column names
-  fNames <- lapply(dataFields@availableFields[-c(14,15)], FUN = function(x) {if (!is.na(x)) {colnames(self@data)[x]} else {"NA"} })
+  ## Getting field names using rawData$data column names
+  fNames <- lapply(head(dataFields@availableFields, length(dataFields@availableFields)-2), 
+                   FUN = function(x) {if (!is.na(x)) {colnames(rawData$data)[x]} else {"NA"} })
   leftAddFNames <- NA
   rightAddFNames <- NA
-  if (!is.na(dataFields@availableFields[[14]][1]))
+  leftAddFields <- tail(dataFields@availableFields, 2)[[1]]
+  if (!all(is.na(leftAddFields)))
   {
-    leftAddFNames <- lapply(dataFields@availableFields[[14]], FUN = function(x) {if (!is.na(x)) {colnames(self@data)[x]} else {"NA"} })  
+    leftAddFNames <- lapply(leftAddFields, 
+                            FUN = function(x) 
+                            {
+                              if (!is.na(x[[1]])) {colnames(rawData$data)[x[[1]]]} else {"NA"} 
+                            })  
   }
-  if (!is.na(dataFields@availableFields[[15]][1]))
+  rightAddFields <- tail(dataFields@availableFields, 1)
+  if (!all(is.na(rightAddFields)))
   {
-    rightAddFNames <- lapply(dataFields@availableFields[[15]], FUN = function(x) {if (!is.na(x)) {colnames(self@data)[x]} else {"NA"} })
+    rightAddFNames <- lapply(rightAddFields, 
+                             FUN = function(x) 
+                             {
+                               if (!is.na(x[[1]])) {colnames(rawData$data)[x[[1]]]} else {"NA"} 
+                             })  
   }
+  
   fieldNames <- new(Class = "DataFieldNames", 
                     fieldNames = list(fNames, 
                                       leftAdditionalFields = leftAddFNames, 
                                       rightAdditionalFields = rightAddFNames))
   
   ## Figuring out conditions
-  ### Recording mode (monocular: left or right,- or binocular)
+  ### Recording mode (monocular: left, right or both - binocular)
   if (is.na(conditions@conditions$eye))
   {
     eyeLeft <- F
@@ -237,7 +236,8 @@ coreParser <- function(RawDataRecord, settings)
     {
       eyeRight <- T
     }
-    if (!eyeLeft & !eyeRight) {warning("You must specify eye samples disposition in your dataset!"); return(NULL)}
+    # TO DO: RETURN SOMETHING IF NO GAZE DATA IS PRESENT
+    if (!eyeLeft & !eyeRight) {warning("You have not specified gaze samples columns!")}
     if (eyeLeft & eyeRight) {eye = "both"}
     if (eyeLeft & !eyeRight) {eye = "left"}
     if (!eyeLeft & eyeRight) {eye = "right"}
@@ -270,31 +270,31 @@ coreParser <- function(RawDataRecord, settings)
   
   subjectCode <- NA  
   ## Reading keys from header lines
-  if (length(self@headerLines) != 0)
+  if (length(rawData$headerLines) != 0)
   {
-    keyValues <- lapply(headerKeys@keys, FUN = findKeyValue, headerLines = self@headerLines, sep = sep)
+    keyValues <- lapply(headerKeys@keys, FUN = findKeyValue, headerLines = rawData$headerLines, sep = sep)
     subjectCode <- keyValues$subjectCode
-    #     stimDim <- as.numeric(keyValues$stimDim)
-    #     conditions@conditions$sampleRate <- as.numeric(keyValues$sampleRate)
-    #     conditions@conditions$screenDistance <- as.numeric(keyValues$headDist)
+    if (is.na(conditions@conditions$sampleRate))
+    {
+      conditions@conditions$sampleRate <- as.numeric(keyValues$sampleRate)
+    }
+    if (is.na(conditions@conditions$screenDistance))
+    {
+      conditions@conditions$screenDistance <- as.numeric(keyValues$screenDistance)
+    }
   }
-  
-  ## Deterimining frames count
-  #   framesCnt <- NA
-  #   if (!is.na(dataFields@availableFields$frame))
-  #   {
-  #     frameColumn <- self@data[,dataFields@availableFields$frame]
-  #     samplesNum <- length(frameColumn)
-  #     framesCnt <- frameColumn[samplesNum] 
-  #   }
-  
-  ## Creating list of data to be disassembled in application layer
-  eyesDataObjects <- lapply(trialsData, FUN = createEyesDataObject, dataFields = dataFields, fieldNames = fieldNames, conditions = conditions)
   filePath <- rep(filePath, length(trials))
   subjectCode <- rep(subjectCode, length(trials))
-  res <- list(filePath = filePath, subjectCode = subjectCode, trials = trials, eyesDataObjects = eyesDataObjects)
+  eyesDataObjects <- lapply(trialsData, 
+                            FUN = createEyesDataObject, 
+                            dataFields = dataFields,
+                            fieldNames = fieldNames,
+                            conditions = conditions)
+  res <- list(filePath = filePath, 
+              subjectCode = subjectCode, 
+              trials = trials, 
+              eyesDataObjects = eyesDataObjects)
   return(res)
 }
-
 
 

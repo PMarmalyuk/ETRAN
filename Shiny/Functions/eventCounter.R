@@ -25,7 +25,8 @@ generalEventCounter <- function(selectedEvents, settings)
                       ownerID = I(list(ownerID)),
                       eye = eye)
     factors <- apply(res, MARGIN = 1, FUN = createFactorFromReturnedValue)
-    res$factors <- I(list(factors))
+    names(factors) <- NULL
+    res$factors <- factors
     return(res)
   })
   res <- do.call("rbind", eventCounts)
@@ -38,46 +39,95 @@ coreEventCounter <- function(DataRecord, settings)
 {
   conditions <- DataRecord@eyesDataObject@conditions@conditions
   eye <- conditions$eye
+  
   factorsDef <- settings$factorsDef
+  if (is.null(factorsDef))
+  {
+    factorsDef <- new(Class = "FactorsDefinitions")
+  }
   mainFactorsData <- settings$mainFactorsData
+  if (is.null(mainFactorsData))
+  {
+    mainFactorsData <- new(Class = "FactorsData")
+  }
+  mainFactorsDef <- settings$mainFactorsDef
+  if (is.null(mainFactorsDef))
+  {
+    mainFactorsDef <- new(Class = "FactorsDefinitions")
+  }
   
   dataRecIdentifier <- list(expID = DataRecord@expID, subjectID = DataRecord@subjectID, trialID = DataRecord@trialID)
-  if (eye == "left")
+  settings <- append(settings, list(dataRecIdentifier = dataRecIdentifier, eye = eye))
+  
+  if (eye != "both")
   {
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = eye, getFactorsData = T)
+    selectedEvents <- eventsSelector(eventMarkersList = eventMarkersAndData$eventMarkers, 
+                                     factorsData = eventMarkersAndData$factorsData,
+                                     factorsDef = factorsDef, selector = settings$selector)
+    counterResults <- generalEventCounter(selectedEvents, settings)
+    counterResults <- createFactorsDataList(calculationResults = counterResults, factorsDef = mainFactorsDef)
+    for (i in 1:nrow(counterResults$calculationResults))
+    {
+      mainFactorsData <- addFactorValue(self = mainFactorsData,
+                                        owner = counterResults$calculationResults[i,]$owner,
+                                        ownerID = counterResults$calculationResults[i,]$ownerID,
+                                        factorID = counterResults$calculationResults[i,]$factorID,
+                                        eye = counterResults$calculationResults[i,]$eye,
+                                        value = counterResults$calculationResults[i,]$value,
+                                        replace = T)
+    }
+    mainFactorsDef <- counterResults$factorsDef
+  }
+  if (eye == "both")
+  {
+    settings$eye <- "left"
     eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "left", getFactorsData = T)
     selectedEvents <- eventsSelector(eventMarkersList = eventMarkersAndData$eventMarkers, 
                                      factorsData = eventMarkersAndData$factorsData,
                                      factorsDef = factorsDef, selector = settings$selector)
-    settings <- append(settings, list(dataRecIdentifier = dataRecIdentifier, eye = eye))
     counterResults <- generalEventCounter(selectedEvents, settings)
     counterResults <- createFactorsDataList(counterResults, factorsDef)
-    mainFactorsData <- new(Class = "FactorsData", factorsData = as.data.frame(counterResults$calculationResults))
-    factorsDef <- counterResults$factorsDef
-  }
+    for (i in 1:nrow(counterResults$calculationResults))
+    {
+      mainFactorsData <- addFactorValue(self = mainFactorsData,
+                                        owner = counterResults$calculationResults[i,]$owner,
+                                        ownerID = counterResults$calculationResults[i,]$ownerID,
+                                        factorID = counterResults$calculationResults[i,]$factorID,
+                                        eye = counterResults$calculationResults[i,]$eye,
+                                        value = counterResults$calculationResults[i,]$value,
+                                        replace = T)
+    }
+    mainFactorsDef <- counterResults$factorsDef
     
-#     settings$mainFactorsData <- selectedMainFactorsData
-#     settings <- append(settings, list(conditions = conditions, dataRecIdentifier = dataRecIdentifier))
-#     analyzerResults <- generalDataRecordAnalyzer(eventMarkersAndData, settings)
-#     factorsData <- createFactorsDataList(analyzerResults, mainFactorsDef)
-#     mainFactorsDef <- factorsData$mainFactorsDef
-#     mainFactorsData <- new(Class = "FactorsData", factorsDataList = as.data.frame(factorsData$mainFactorsData))
-#   }
-  if (eye == "right")
-  {
-    
+    settings$eye <- "right"
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "right", getFactorsData = T)
+    selectedEvents <- eventsSelector(eventMarkersList = eventMarkersAndData$eventMarkers, 
+                                     factorsData = eventMarkersAndData$factorsData,
+                                     factorsDef = factorsDef, selector = settings$selector)
+    counterResults <- generalEventCounter(selectedEvents, settings)
+    counterResults <- createFactorsDataList(counterResults, factorsDef)
+    for (i in 1:nrow(counterResults$calculationResults))
+    {
+      mainFactorsData <- addFactorValue(self = mainFactorsData,
+                                        owner = counterResults$calculationResults[i,]$owner,
+                                        ownerID = counterResults$calculationResults[i,]$ownerID,
+                                        factorID = counterResults$calculationResults[i,]$factorID,
+                                        eye = counterResults$calculationResults[i,]$eye,
+                                        value = counterResults$calculationResults[i,]$value,
+                                        replace = T)
+    }
+    mainFactorsDef <- counterResults$factorsDef
   }
-  if (eye == "both")
-  {
-    
-  }
-  #return(list(dataRec = DataRecord, mainFactorsData = mainFactorsData, mainFactorsDef = mainFactorsDef))
-  return(list(dataRec = DataRecord, mainFactorsData = mainFactorsData, factorsDef = factorsDef))
+  return(list(dataRec = DataRecord, mainFactorsData = mainFactorsData, mainFactorsDef = mainFactorsDef))
 }
 
-sel <- createEventSelector(type = c("all"), 
-                           event = list(eventClass = "OculomotorEvent", eventTypeID = c(1,2), detectorID = 3),
-                           framingEvent = list(eventClass = "FilterEvent", eventTypeID = c(1)))
-eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
-res <- coreEventCounter(DataRecord = dataRec, settings = list(selector = sel, factorsDef = new(Class = "FactorsDefinitions")))
-res$factorsDef
-res$mainFactorsData@factorsData$value
+# sel <- createEventSelector(type = c("all"), 
+#                            event = list(eventClass = "OculomotorEvent", eventTypeID = c(1,2), detectorID = 3),
+#                            framingEvent = list(eventClass = "FilterEvent", eventTypeID = c(1)))
+# res <- coreEventCounter(DataRecord = dataRec, 
+#                         settings = list(selector = sel, 
+#                                         eventsFactorsDef = new(Class = "FactorsDefinitions"),
+#                                         mainFactorsDef = res$mainFactorsDef,
+#                                         mainFactorsData = res$mainFactorsData))#new(Class = "FactorsData")))
+# res$mainFactorsData@factorsData

@@ -1,0 +1,18 @@
+{
+    "contents" : "setwd(\"D:\\\\RGNF_Repo\\\\AOI_sandbox\")\nlibrary(shiny)\nsource(\"alias.R\")\n\n\nstm<-als$new(als$enm$cln$STIMUL_COLLECTION)\naoi<-als$new(als$enm$cln$AOI_COLLECTION)\naoi_set<-als$new(als$enm$cln$SETS_COLLECTION)\n\nrunApp()\n",
+    "created" : 1459885895860.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "975566747",
+    "id" : "EF217B6C",
+    "lastKnownWriteTime" : 1459885579,
+    "path" : "D:/RGNF_Repo/AOI_sandbox/Globals.R",
+    "project_path" : "Globals.R",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "type" : "r_source"
+}

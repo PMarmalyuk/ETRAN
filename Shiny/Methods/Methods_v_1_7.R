@@ -70,7 +70,7 @@ setGeneric("getTypeByFactorID", function(self, factorID){standardGeneric("getTyp
 setGeneric("getLevelsByFactorID", function(self, factorID){standardGeneric("getLevelsByFactorID")})
 
 setGeneric("factorValueIsCorrect", function(self, factorID, value){standardGeneric("factorValueIsCorrect")})
-setGeneric("addFactorValue", function(self, availableFactors, owner, ownerID, factorID, eye, value, replace){standardGeneric("addFactorValue")})
+setGeneric("addFactorValue", function(self, owner, ownerID, factorID, eye, value, replace){standardGeneric("addFactorValue")})
 setGeneric("deleteFactorValue", function(self, owner, ownerID, factorID, eye){standardGeneric("deleteFactorValue")})
 setGeneric("deleteAllFactorValuesForOwner", function(self, owner){standardGeneric("deleteAllFactorValuesForOwner")})
 setGeneric("deleteAllFactorValuesForOwnerID", function(self, ownerID){standardGeneric("deleteAllFactorValuesForOwnerID")})
@@ -535,6 +535,7 @@ setMethod("filterDataSample", "DataSample",
 )
 
 
+
 setMethod("factorExists", "FactorsDefinitions",
           function(self, factor)
           {
@@ -747,75 +748,74 @@ setMethod("updateFactorDefinition",  "FactorsDefinitions",
             return(self)
           })
 
-# Method adds the factor id and value into Factors list
-## Method prevents adding values for factors which have already been set
-setMethod("factorValueIsCorrect", "AvailableFactors",
-          function(self, factorID, value)
-          {
-            if (is.na(value) | is.null(value))
-            {
-              return(T)
-            }
-            factorDefNum <- which(self@availableFactors$id == factorID)
-            factorType <- self@availableFactors$type[factorDefNum]
-            if (factorType %in% c("factor", "ordFactor"))
-            {
-              if (!(value %in% self@availableFactors$levels[[factorDefNum]]))
-              {
-                warning("Cannot add a value because it is not a level of the selected factor!")
-                return(F)
-              }
-            }
-            if (factorType %in% c("integer", "numeric"))
-            {
-              if (!(is.numeric(value) | is.integer(value)))
-              {
-                warning("Cannot add a value because it is not a number!")
-                return(F)
-              }
-            }
-            return(T)
-          })
+# # Method adds the factor id and value into Factors list
+# ## Method prevents adding values for factors which have already been set
+# setMethod("factorValueIsCorrect", "AvailableFactors",
+#           function(self, factorID, value)
+#           {
+#             if (is.na(value) | is.null(value))
+#             {
+#               return(T)
+#             }
+#             factorDefNum <- which(self@availableFactors$id == factorID)
+#             factorType <- self@availableFactors$type[factorDefNum]
+#             if (factorType %in% c("factor", "ordFactor"))
+#             {
+#               if (!(value %in% self@availableFactors$levels[[factorDefNum]]))
+#               {
+#                 warning("Cannot add a value because it is not a level of the selected factor!")
+#                 return(F)
+#               }
+#             }
+#             if (factorType %in% c("integer", "numeric"))
+#             {
+#               if (!(is.numeric(value) | is.integer(value)))
+#               {
+#                 warning("Cannot add a value because it is not a number!")
+#                 return(F)
+#               }
+#             }
+#             return(T)
+#           })
 
 ## TO DO: review methods for FactorsData
 setMethod("addFactorValue",  "FactorsData",                                   
-          function(self, availableFactors, owner, ownerID, factorID, eye, value, replace)
+          function(self, owner, ownerID, factorID, eye, value, replace)
           {                         
-            if (factorValueIsCorrect(self = availableFactors, factorID = factorID, value = value))
+            recEqual <- F
+            if (nrow(self@factorsData) > 0)
             {
-              recEqual <- F
-              if (length(self@factorsDataList) > 0)
+              recEqual <- (self@factorsData$factorID == factorID) & 
+                (sapply(self@factorsData$ownerID, FUN = identical, ownerID)) &
+                (sapply(self@factorsData$owner, FUN = identical, owner)) &
+                (self@factorsData$eye == eye)
+            }
+            if (any(recEqual))
+            {
+              if (replace)
               {
-                recEqual <- (self@factorsDataList$factorID == factorID) & 
-                  (sapply(self@factorsDataList$ownerID, FUN = identical, ownerID)) &
-                  (sapply(self@factorsDataList$owner, FUN = identical, owner)) &
-                  (self@factorsDataList$eye == eye)
-                
-              }
-              if (any(recEqual))
-              {
-                if (replace)
-                {
-                  recNum <- which(recEqual)
-                  self@factorsDataList$value[recNum] <- I(value)
-                  self@factorsDataList$eye[recNum] <- eye
-                  return(self)
-                }
-                else
-                {
-                  warning("The factor value has been specified already!")
-                  return(self)
-                }
+                recNum <- which(recEqual)
+                self@factorsData$value[recNum] <- value
+                return(self)
               }
               else
               {
-                factorRecord <- data.frame(factorID = factorID, eye = eye, value = I(list(value)), ownerID = I(list(ownerID)), owner = I(list(owner)))
-                self@factorsDataList <- rbind(self@factorsDataList, factorRecord)
+                warning("The factor value has been specified already!")
                 return(self)
               }
             }
-            else return(self)
-})
+            else
+            {
+              factorRecord <- data.frame(value = I(list(value)), 
+                                         owner = I(list(owner)), 
+                                         ownerID = I(list(ownerID)), 
+                                         eye = eye, 
+                                         factorID = factorID)
+              self@factorsData <- rbind(self@factorsData, factorRecord)
+              return(self)
+            }
+          })
+
 setMethod("deleteFactorValue",  "FactorsData",                                   
           function(self, owner, ownerID, factorID, eye)
           {                        
@@ -1041,17 +1041,27 @@ setMethod("asDataFrame",  "DataSample",
           }
 )
 
+
+
+parseDatafile <- function(filepath, parser)
+{
+  fun <- parser@fun
+  settings <- parser@settings
+  res <- fun(self, settings)
+  return(res)
+}
+
 # method returns a list with EyesData objects and additional info:
 # filePaths, subjectCodes, trials
-setMethod("parseDataRecord",  "RawDataRecord",                                   
-          function(self, parser)
-          {
-            fun <- parser@fun
-            settings <- parser@settings
-            res <- fun(self, settings)
-            return(res)
-          }
-)
+# setMethod("parseDataRecord",  "RawDataRecord",                                   
+#           function(self, parser)
+#           {
+#             fun <- parser@fun
+#             settings <- parser@settings
+#             res <- fun(self, settings)
+#             return(res)
+#           }
+# )
 
 # TO DO: return additional fields also
 setMethod("getEyeDataFrame", "DataRecord",

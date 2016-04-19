@@ -8,7 +8,6 @@ setClass("Experiment",
          )
 )
 
-## TO DO: add a slot for ordering information
 setClass("Trial",
          representation(expID = "numeric",
                         name = "character",
@@ -84,66 +83,4 @@ setClass("DataRecord",
                         analysisResults = "list" # FactorsData object
          )
 )
-
-setClass("Loader",
-         representation(name = "character",
-                        fun = "function",
-                        settings = "list")
-)
-
-setClass("Parser",
-         representation(name = "character",
-                        description = "character",
-                        fun = "function",
-                        settings = "list")
-)
-
-setClass("Smoother",
-         representation(name = "character",
-                        description = "character",
-                        fun = "function",
-                        settings = "list")
-)
-
-setClass("EventDetectors", representation(ids = "numeric", detectors = "list"))
-
-setClass("EventMarkersDefinitions", representation(definitions = "list"))
-
-setClass("EventMarkersDefinition",
-         representation(eventClass = "character", # FilterEvent, OculomotorEvent, etc.
-                        eventTypesIDs = "numeric", # a vector of IDs of event types
-                        typesMarkers = "character" # a vector of markers for corresponding event type IDs
-         )
-)
-
-setClass("EventDetector", representation(id = "numeric",
-                                         name = "character",
-                                         description = "character",
-                                         fun = "function",
-                                         settings = "list")
-)
-
-setClass("EventAnalyzer",
-         representation(fun = "function",
-                        name = "character",
-                        settings = "list")
-)
-
-setClass("ParamEstimator",
-         representation(fun = "function",
-                        name = "character",
-                        settings = "list")
-)
-
-setClass("SubFunction",
-         representation(fun = "function",
-                        name = "character", # displayed name of a sub function
-                        description = "character",
-                        classes = "list", # list(mainClass = "EyesData", subClass = "PupilData")
-                                          # list(mainClass = "EventMarkers", subClass = "FilterEventMarkers")
-                                          # list(mainClass = "EventData", subClass = "OculomotorEvent", eventIDs = c(1, 2, 3))
-                                          # list(mainClass = "EventData", subClass = "SyncEvent", eventIDs = c(4, 5, 6))
-                        settings = "list")) # settings of a sub function
-
-
 

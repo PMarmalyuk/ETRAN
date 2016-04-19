@@ -42,7 +42,8 @@ tabItem(tabName = "rawDataImport",
                                                                     "ASCII" = "ascii")),
                                                       checkboxInput('header', "Header", value = T),
                                                       numericInput('skip', "Lines to skip", value = 20, min = 0, step = 1),
-                                                      textInput('commchar', "Comment Char", value = "#")
+                                                      textInput('commchar', "Comment Char", value = "#"),
+                                                      textInput('smpmarker', "Data Sample Marker", value = "SMP")
                                                   ),
                                                   box(title = "Experimental Conditions", status = "primary", solidHeader = TRUE,
                                                       collapsible = T, collapsed = T, width = 12,
@@ -91,7 +92,7 @@ tabItem(tabName = "rawDataImport",
                                                           )
                                                         )
                                                       )
-                                                  ),
+                                                  ), 
                                                   box(title = "Header Keys", status = "primary", solidHeader = TRUE,
                                                       collapsible = T, collapsed = T, width = 12,
                                                       textInput("keyName", "Specify Key Name:", value = NULL),

@@ -1,20 +1,27 @@
 shinyServer(function(input, output, session) {
   ### INITIALISATION ###
-  ## Attach packages
-  # library(devtools)
-  # library(DT)
-  # library(htmlwidgets)
-  # library(D3TableFilter)
-  # library(shinydashboard)
-  
-  ## Creating session objects
-  source('Initialize.R', local = T)
-  source('CoreSubFunctionsInit.R', local = T)
+  source('initialize.R', local = T)
+
   ## Creating reactive values
   
   vals <- reactiveValues(expList = new(Class = "Experiments"),
                          subjectsList = new(Class = "Subjects"),
                          trialsList = new(Class = "Trials"),
+                         stimuli = new(Class = "Stimuli"),
+                         AOIs = NA,
+                         TAS = NA,
+                         dataSample = new(Class = "DataSample", 
+                                          keys = data.frame(expID = numeric(), 
+                                                            subjectID = numeric(), 
+                                                            trialID = numeric()),
+                                          DataRecordsList = list()),
+                         dataSampleFilterFlags = data.frame(Id = numeric(), Flag = logical()),
+                         tempDataRecords = data.frame(Id = numeric(), 
+                                                      File = character(), 
+                                                      Experiment = character(), 
+                                                      Trial = character(), 
+                                                      Subject = character(), 
+                                                      Associated = logical()),
                          fileNames = c(),
                          tempAvFlds = data.frame(Position = c(1, 3, NA, NA, 2, 10, 11, NA, NA, 6, 7, NA, NA),
                                                  row.names = c("Time", "Trial", "Frame", "Stimuli Name", "Sample Type",
@@ -27,25 +34,8 @@ shinyServer(function(input, output, session) {
                          ##
                          avFlds = new(Class = "AvailableDataFields"),
                          hdrKeys = new(Class = "HeaderKeys"),
-                         ## temp constants
-                         smpKey = "SMP",
-                         parserSep = "\t",
-                         ##
-                         defaultFilterMarkersNames = new(Class = "FilterMarkers")@markerNames,
-                         defaultEventMarkersNames = new(Class = "EventMarkers")@markerNames,
-                         tempDataRecords = data.frame(Id = numeric(), File = character(), Experiment = character(), Trial = character(), Subject = character(), Associated = logical()),
-                         dataSample = new(Class = "DataSample", keys = data.frame(expID = numeric(), 
-                                                                                  subjectID = numeric(), 
-                                                                                  trialID = numeric()),
-                                          DataRecordsList = list()),
-                         filteredDataSample = new(Class = "DataSample", keys = data.frame(expID = numeric(), 
-                                                                                          subjectID = numeric(), 
-                                                                                          trialID = numeric()),
-                                                  DataRecordsList = list()),
+                         eventMarkersDefinitions = eventMarkersDefs,
                          
-                         # dataSampleUpdateFlags = data.frame(Id = numeric(), Flag = numeric()),
-                         dataSampleFilterFlags = data.frame(Id = numeric(), Flag = logical()),
-                         #dataSampleFilters = list(ids = numeric(), filters = list(), groups = numeric()),
                          
                          tempExtLoaderFun = NA,
                          tempExtLoaderSettings = NA,
@@ -55,10 +45,9 @@ shinyServer(function(input, output, session) {
                          extSmoothers = new(Class = "Smoothers", smoothersList = list(ids = list(), smoothers = list())), 
                          defaultLoader = new(Class = "Loader", name = "Core Loader", fun = createRawDataRec, 
                                              settings = list(rawSettings = new(Class = "ReadSettings"))),
-                         # factors = factors,
-                         recordsFactorsData = new(Class = "FactorsData"),
-                         subFunctions = subFunctions,
-                         activeSubFunctionsIDs = subFunctions@subFunctionsList$ids
+                         mainFactorsData = new(Class = "FactorsData"),
+                         mainFactorsDefinitions = new(Class = "FactorsDefinitions"),
+                         subFunctions = subFunctions
                          )
   
 #   calcStatsButton <- observeEvent(input$calcStats,
@@ -165,7 +154,6 @@ shinyServer(function(input, output, session) {
       return(selectedRecord)
     } else return(NULL)
   })
-    
   # OBSERVERS #
   observe({
     dataSample <- vals$dataSample
@@ -237,51 +225,11 @@ shinyServer(function(input, output, session) {
   observe({
     updateSelectizeInput(session, 'availableSubjects', choices = getSubjectCodes(vals$subjectsList), server = TRUE)
   })
-  
-  ## updateFlags mechanism
-#   observe({
-#     updateFlags <- vals$dataSampleUpdateFlags
-#     subFuns <- isolate(vals$subFunctions)
-#     if (nrow(updateFlags) == 0) {return(NULL)}
-#     for (i in 1:nrow(updateFlags))
-#     {
-#       dataRecID <- updateFlags$Id[i]
-#       isolate(dataRec <- vals$dataSample@DataRecordsList[[which(vals$dataSample@ids == dataRecID)]])
-#       if (updateFlags$Flag[i] == 1)
-#       {
-#         isolate(subFuns <- getSubfunctions(self = subFuns, operation = "Record Analysis"))
-#         isolate(activeSubFuns <- vals$activeSubFunctionsIDs)
-#         sfToApply <- subFuns@subFunctionsList$subFunctions[subFuns@subFunctionsList$ids %in% activeSubFuns]
-#         estimator <- createEstimator(name = "Standard", fun = coreEstimator,
-#                                      settings = list(subFunctions = sfToApply))
-#         print("Evaluating data record's parameters")
-#         res <- estimateParams(self = dataRec, estimator = estimator)
-#         isolate(vals$recordsFactorsData <- addParamsValues(recordsFactorsData = vals$recordsFactorsData, 
-#                                                            recID = dataRecID, 
-#                                                            availableFactors = vals$factors, 
-#                                                            estimatorResult = res))
-#       }
-#       if (updateFlags$Flag[i] == 2)
-#       {
-#         isolate(subFuns <- getSubfunctions(self = subFuns, operation = "Event Analysis"))
-#         isolate(activeSubFuns <- vals$activeSubFunctionsIDs)
-#         sfToApply <- subFuns@subFunctionsList$subFunctions[subFuns@subFunctionsList$ids %in% activeSubFuns]
-#         isolate(analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer, 
-#                                    settings = list(subFunctions = sfToApply,
-#                                                    availableFactors = vals$factors)))
-#         print("Evaluating events parameters")
-#         dataRec <- eventAnalyzer(dataRec, analyzer)
-#         print("Evaluating events parameters descriptive statistics")
-#       }
-#       isolate(vals$dataSample@DataRecordsList[[which(vals$dataSample@ids == dataRecID)]] <- dataRec)
-#       isolate(vals$dataSampleUpdateFlags$Flag[i] <- 0)
-#     }
-#   })
+
 
   # EVENT HANDLERS #
   expAddEvent <- observeEvent(input$memoryInfo,{
     print(object.size(reactiveValuesToList(vals)))
-    
   })
   
   
@@ -538,26 +486,32 @@ shinyServer(function(input, output, session) {
     x <- c(x, list(leftAdditionalFields = NA, rightAdditionalFields = NA))
     isolate(vals$avFlds@availableFields <- x)
   })
+  
+  
   parseFilesEvent <- observeEvent(input$parseFiles, {
-    if (input$useExtLoader)
+    if (input$useExtLoader) # rename to input$useExtParser
     {
-      if (is.na(input$extLoader)) {return(NULL)}
+      if (is.na(input$extLoader)) {return(NULL)} # rename to input$extParser
       else
       {
-        stop("External loader is not implemented!")
+        warning("External parser is not implemented!")
       }
     }
     else
     {
-      loaderSettings <- isolate(list(rawSettings = new(Class = "ReadSettings", readSettings = list(encoding = input$encoding, 
-                                                                                             sep = input$sep,
-                                                                                             dec = input$dec,
-                                                                                             skip = input$skip,
-                                                                                             comment.char = input$commchar,
-                                                                                             header = input$header))))
-      loader <- new(Class = "Loader", name = "Core Loader", fun = createRawDataRec, settings = loaderSettings)
-      rawDataRecords <- new(Class = "RawDataRecords")
-      rawDataRecords <- addRawDataRecords(rawDataRecords, filesList = vals$fileNames, loader = loader)
+      
+#       loaderSettings <- isolate(list(rawSettings = new(Class = "ReadSettings", readSettings = list(encoding = input$encoding, 
+#                                                                                              sep = input$sep,
+#                                                                                              dec = input$dec,
+#                                                                                              skip = input$skip,
+#                                                                                              comment.char = input$commchar,
+#                                                                                              header = input$header))))
+#       
+#       loader <- new(Class = "Loader", name = "Core Loader", fun = createRawDataRec, settings = loaderSettings)
+#       
+#       rawDataRecords <- new(Class = "RawDataRecords")
+#       
+#       rawDataRecords <- addRawDataRecords(rawDataRecords, filesList = vals$fileNames, loader = loader)
       
       expName <- isolate(input$expNameForParser)
       expID <- isolate(getExperimentIdByName(vals$expList, name = input$expNameForParser))
@@ -585,19 +539,33 @@ shinyServer(function(input, output, session) {
       scrSizeY <- isolate(input$expScreenSizeY)
       scrResX <- isolate(input$expScreenResX)
       scrResY <- isolate(input$expScreenResY)
-      conditions <- new(Class = "Conditions", conditions = list(eye = eye, sampleRate = sampleRate, timeUnits = timeUnits, 
-                                                          pupilSizeUnits = pupSizeUnits, pupilShape = pupShape, screenDistance = screenDist, 
-                                                          screenSize = c(scrSizeX, scrSizeY), screenResolution = c(scrResX, scrResY)))
-      avFields <- vals$avFlds 
-      # vals$avFlds
-      parser <- createParser(name = "Core Parser", fun = coreParser, 
-                             settings = list(dataFields = vals$avFlds, 
+      conditions <- new(Class = "Conditions", 
+                        conditions = list(eye = eye, 
+                                          sampleRate = sampleRate, 
+                                          timeUnits = timeUnits, 
+                                          pupilSizeUnits = pupSizeUnits, 
+                                          pupilShape = pupShape, 
+                                          screenDistance = screenDist, 
+                                          screenSize = c(scrSizeX, scrSizeY), 
+                                          screenResolution = c(scrResX, scrResY)
+                                          )
+                        )
+      parser <- createParser(name = "Core Parser", fun = parseRawCSVData, 
+                             settings = list(dataFields = vals$avFlds,
+                                             encoding = input$encoding,
+                                             sep = input$sep,
+                                             dec = input$dec,
+                                             skip = input$skip,
+                                             comment.char = input$commchar,
+                                             header = input$header,
                                              headerKeys = vals$hdrKeys, 
-                                             sampleKey = vals$smpKey, 
-                                             sep = vals$parserSep,
+                                             sampleKey = input$smpmarker,
                                              conditions = conditions))
+      records <- lapply(vals$fileNames, FUN = parseDatafile, parser = parser))
+      print(records)
+      stop()
       
-      records <- lapply(rawDataRecords@rawDataRecordsList$rawDataRecords, FUN = parseDataRecord, parser = parser)
+      
       eyesDataObjects <- unlist(lapply(records, FUN = function(x) {x$eyesDataObjects}), recursive = F)
       filePaths <- basename(unlist(lapply (records, FUN = function(x) {x$filePath})))
       
@@ -615,8 +583,6 @@ shinyServer(function(input, output, session) {
                      eyesDataObject = eyesDataObjects[[i]])
           vals$dataSample <- addDataRecord(vals$dataSample, rec)
           Id <- tail(vals$dataSample@ids, 1)
-          # Adding flags for the new data record
-          # vals$dataSampleUpdateFlags <- rbind(vals$dataSampleUpdateFlags, data.frame(Id = Id, Flag = 0))
           vals$dataSampleFilterFlags <- rbind(vals$dataSampleFilterFlags, data.frame(Id = Id, Flag = T))
           incProgress(step, detail = paste("Parsing Raw Data Record Number", i))
         }

@@ -44,8 +44,3 @@ setClass("EyesData",
 setClass("EyeData", representation(eye = "character",
                                    dataRecIdentifier = "list",
                                    eyeDataFrame = "data.frame"))
-setClass(Class = "Event", 
-         representation = representation(data = "data.frame"))
-setClass(Class = "EventData", representation(events = "list",
-                                             eventClass = "character",
-                                             detectorID = "numeric"))

@@ -1,28 +1,11 @@
 setwd("F:/Институт/Проекты/EyeTrackingPackage/Git/EyeTrackingProject/Shiny")
-source("Functions\\miscFunctions.R", local = T)
-source("Functions\\dataLoaders.R", local = T)
-source("Classes\\optionsAndSettingsClasses.R", local = T)
-source("Classes\\baseEyeDataClasses.R", local = T)
-source("Classes\\baseClasses.R", local = T)
-source("Classes\\listsAndTablesClasses.R", local = T)
-source("Classes\\Events\\filterEvent.R", local = T)
-source("Classes\\Events\\oculomotorEvent.R", local = T)
-source("Classes\\Events\\AOIEvent.R", local = T)
-source("Classes\\Events\\syncEvent.R", local = T)
-source("Classes\\Events\\frameEvent.R", local = T)
-source("Classes\\Events\\windowEvent.R", local = T)
-source("Classes\\representations.R", local = T)
-source("Functions\\dataParsers.R", local = T)
-source("Functions\\filters.R", local = T)
-source("Functions\\smoothers.R", local = T)
-source("Functions\\detectors.R", local = T)
-source("Functions\\eventSelector.R", local = T)
-source("Functions\\analyzers.R", local = T)
-# source("Functions\\estimatorsNew.R", local = T)
-source("Methods\\Methods_v_1_7.R", local = T)
+source("initialize.R", local = T)
 library(data.table)
 library(signal)
+
 rawSett <- new(Class = "ReadSettings")
+
+
 folder <- "F:/Институт/Проекты/EyeTrackingPackage/Data/TestData"
 records <- new(Class = "RawDataRecords")
 loader <- createLoader(name = "Standard Loader", fun = createRawDataRec, 
@@ -41,13 +24,13 @@ conditions@conditions$screenDistance <- 80
 conditions@conditions$screenResolution <- c(1280, 1024)
 conditions@conditions$screenSize <- c(33.7, 27)
 conditions@conditions$timeUnits <- 1E-6
-parser <- createParser(name = "Core Parser", fun = coreParser, 
+parser <- createParser(name = "Core Parser", fun = rawDataParser, 
                        settings = list(dataFields = dataF, 
                                        headerKeys = hKeys, 
                                        sampleKey = "SMP", 
                                        sep = "\t",
                                        conditions = conditions))
-rec <- parseDataRecord(self = rawRecords@rawDataRecordsList$rawDataRecords[[1]], parser = parser)
+rec <- parseDataRecord(fike, parser = parser)
 dataRec <- new(Class = "DataRecord", expID = 1, subjectID = 1, trialID = 1, eyesDataObject = rec$eyesDataObjects[[1]])
 
 # Event Detection test
@@ -118,15 +101,17 @@ analyzer <- createAnalyzer(name = "Standard", fun = coreEventAnalyzer,
                                            factorsDef = factorsDef))
 eventAnalysisResult <- eventAnalyzer(dataRec, analyzer)
 dataRec <- eventAnalysisResult$dataRec
-eventAnalysisResult$factorsDef
-dataRec@analysisResults$eventFactorsData@factorsData[1:5,]
+factorsDef <- eventAnalysisResult$factorsDef
+dataRec@analysisResults$eventFactorsData@factorsData[1:10,]
+
+
+
 
 rrr <- getEventMarkersAndData(dataRec, "left", F)
 class(rrr$eyeDataFrame)
 dataRec <- eventAnalysisResult$dataRec
 factorsDef <- eventAnalysisResult$factorsDef
 factorsData <- dataRec@analysisResults$eventFactorsData@factorsData
-
 rrr <- getFactorsDataByEye(dataRec@analysisResults$eventFactorsData, eye = "right")
 rrr <- getFactorsDataByOwner(dataRec@analysisResults$eventFactorsData, owner = list(eventClass = "OculomotorEvent", eventTypeID = 1))
 rrr <- getFactorsDataByOwnerID(dataRec@analysisResults$eventFactorsData, ownerID = list(detectorID = 3, eventGroup = 1))

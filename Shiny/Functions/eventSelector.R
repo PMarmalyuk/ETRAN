@@ -5,10 +5,7 @@ setClass("EventSelector",
                         factorIDs = "numeric", # IDs of factors for which expressions should be checked
                         factorExpressions = "list")) # expressions to check for corresponding factors
 
-createEventSelector <- function(type, event, 
-                                framingEvent = list(NA), 
-                                factorIDs = as.numeric(NA), 
-                                factorExpressions = list(NA))
+createEventSelector <- function(type, event, framingEvent = list(NA), factorIDs = as.numeric(NA), factorExpressions = list(NA))
 {
   selector <- new(Class = "EventSelector",
                   type = type, 
@@ -160,10 +157,6 @@ eventsSelector <- function(eventMarkersList, factorsData = NA, factorsDef = NA, 
       }
     }
   }
-  if ("firstOccurence" %in% type)
-  {
-    # this is needed to select events that occur for a first time inside AOI, etc.
-  }
   if ("byFactorExpression" %in% type)
   {
     # OUTSIDE of selector user should:
@@ -191,28 +184,20 @@ eventsSelector <- function(eventMarkersList, factorsData = NA, factorsDef = NA, 
   return(selectedEvents)
 }
 
-
-
-
-sel <- createEventSelector(type = "all", event = list(eventClass = "OculomotorEvent", eventTypeID = c(1,2,3), detectorID = 3))
-selEv <- eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
-
-
-# sel <- createEventSelector(type = "all", events = list(eventClass = "FilterEvent", eventTypeIDs = 1))
+# sel <- createEventSelector(type = "all", event = list(eventClass = "OculomotorEvent", eventTypeID = c(1,2,3), detectorID = 3))
 # eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
+# 
+# sel <- createEventSelector(type = "all", event = list(eventClass = "FilterEvent", eventTypeIDs = 1))
+# eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
+# 
+# newMarkers <- rbinom(n = length(dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers@markers), size = 1, prob = 0.999)
+# transitions <- newMarkers[-1] != newMarkers[-length(newMarkers)]; groups <- c(1,cumsum(transitions)+1)
+# myMarkers <- new(Class = "SyncEventMarkers", markers = newMarkers, eventClass = "SyncEvent", groups = groups)
+# dataRec@eyesDataObject@leftEventsMarkers$myMarkers <- myMarkers
+# 
+# sel <- createEventSelector(type = c("all", "insideEvents", "byGroups"), 
+#                            event = list(eventClass = "OculomotorEvent", eventTypeID = c(1,2), detectorID = 3),
+#                            framingEvent = list(eventClass = "SyncEvent", eventTypeID = c(0,1)))
+# eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
+# 
 
-newMarkers <- rbinom(n = length(dataRec@eyesDataObject@leftEventsMarkers$oculomotorEventMarkers@markers), size = 1, prob = 0.999)
-transitions <- newMarkers[-1] != newMarkers[-length(newMarkers)]
-groups <- c(1,cumsum(transitions)+1)
-myMarkers <- new(Class = "SyncEventMarkers", 
-    markers = newMarkers, 
-    eventClass = "SyncEvent",
-    groups = groups)
-dataRec@eyesDataObject@leftEventsMarkers$myMarkers <- myMarkers
-  
-
-sel <- createEventSelector(type = c("all", "insideEvents", "byGroups"), 
-                           event = list(eventClass = "OculomotorEvent", eventTypeID = c(1,2), detectorID = 3),
-                           framingEvent = list(eventClass = "SyncEvent", eventTypeID = c(0,1)))
-r <- eventsSelector(eventMarkersList = dataRec@eyesDataObject@leftEventsMarkers, selector = sel)
-which(sapply(r$selectedGroups, FUN = function(x) {length(x$eventGroups) > 1}))

@@ -77,7 +77,7 @@ createFactorsDataList <- function(calculationResults, factorsDef)
     fctrExists <- factorExists(self = factorsDef, factor = uniqueFactors[[i]])
     if (fctrExists$exists)
     {
-      factorID <- fctrExists$id
+      factorID <- fctrExists$factorID
     }
     else
     {
@@ -86,7 +86,7 @@ createFactorsDataList <- function(calculationResults, factorsDef)
       factorsDef <- fctrsDefAdded$factorsDef
       factorID <- fctrsDefAdded$factorID
     }
-    factorIDs[sapply(calculationResults$factors, FUN = identical, uniqueFactors[[i]])] <- factorID
+    factorIDs[sapply(calculationResults$factor, FUN = identical, uniqueFactors[[i]])] <- factorID
   }
   # creating a new column with factor IDs to data frame with analysis results
   calculationResults$factorID <- factorIDs
@@ -159,12 +159,6 @@ getEventData <- function(eventMarkersAndData, eye, eventClass, eventTypeID, dete
   }
   events <- new(Class = "EventData", events = createdEvents, eventClass = eventClass, detectorID = detectorID)
   return(events)
-}
-
-# TO DO:
-getRepresentationData <- function(mainFactorsData, eye, representationClass)
-{
-  
 }
 
 # calculateSubFunResultsForEvent function applies specified sub function, evaluates its value(s)/representation(s) and then
@@ -309,46 +303,74 @@ generalDataRecordAnalyzer <- function(data, settings)
 # passes all settings and data to generalAnalyzer
 # It returns a list with dataRec and factorsDef, eventFactorsDef should be reassigned to factorsDef
 # DataRecord@analysisResults is filled with calculated eventFactorsData
-### TO DO: append analysisResults with replacement, not whole replace!!!
 coreEventAnalyzer <- function(DataRecord, settings)
 {
-  factorsDef <- settings$factorsDef
+  
   conditions <- DataRecord@eyesDataObject@conditions@conditions
-  if (conditions$eye == "left")
+  eye <- conditions$eye
+  settings <- append(settings, list(conditions = conditions))
+  
+  factorsDef <- settings$factorsDef
+  if (is.null(eventsFactorsDef))
   {
-    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "left", getFactorsData = F)
-    settings <- append(settings, list(conditions = conditions))
+    factorsDef <- new(Class = "FactorsDefinitions")
+  }
+  if (is.null(DataRecord@analysisResults$eventFactorsData))
+  {
+    DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData")
+  }
+  factorsData <- DataRecord@analysisResults$eventFactorsData
+  
+  if (eye != "both")
+  {
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = eye, getFactorsData = F)
     analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
     analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
-    DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", 
-                                                       factorsData = as.data.frame(analyzerResults$calculationResults))
+    for (i in 1:nrow(analyzerResults$calculationResults))
+    {
+      factorsData <- addFactorValue(self = factorsData,
+                                    owner = analyzerResults$calculationResults[i,]$owner,
+                                    ownerID = analyzerResults$calculationResults[i,]$ownerID,
+                                    factorID = analyzerResults$calculationResults[i,]$factorID,
+                                    eye = analyzerResults$calculationResults[i,]$eye,
+                                    value = analyzerResults$calculationResults[i,]$value,
+                                    replace = T)
+    }
+    DataRecord@analysisResults$eventFactorsData <- factorsData
     factorsDef <- analyzerResults$factorsDef
   }
-  if (conditions$eye == "right")
+  if (eye == "both")
   {
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "left", getFactorsData = F)
+    analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
+    analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
+    for (i in 1:nrow(analyzerResults$calculationResults))
+    {
+      factorsData <- addFactorValue(self = factorsData,
+                                    owner = analyzerResults$calculationResults[i,]$owner,
+                                    ownerID = analyzerResults$calculationResults[i,]$ownerID,
+                                    factorID = analyzerResults$calculationResults[i,]$factorID,
+                                    eye = analyzerResults$calculationResults[i,]$eye,
+                                    value = analyzerResults$calculationResults[i,]$value,
+                                    replace = T)
+    }
+    factorsDef <- analyzerResults$factorsDef
     eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "right", getFactorsData = F)
     settings <- append(settings, list(conditions = conditions))
     analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
     analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
-    DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", 
-                                                       factorsData = as.data.frame(analyzerResults$calculationResults))
+    for (i in 1:nrow(analyzerResults$calculationResults))
+    {
+      factorsData <- addFactorValue(self = factorsData,
+                                    owner = analyzerResults$calculationResults[i,]$owner,
+                                    ownerID = analyzerResults$calculationResults[i,]$ownerID,
+                                    factorID = analyzerResults$calculationResults[i,]$factorID,
+                                    eye = analyzerResults$calculationResults[i,]$eye,
+                                    value = analyzerResults$calculationResults[i,]$value,
+                                    replace = T)
+    }
+    DataRecord@analysisResults$eventFactorsData <- factorsData
     factorsDef <- analyzerResults$factorsDef
-  }
-  if (conditions$eye == "both")
-  {
-    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "left", getFactorsData = F)
-    settings <- append(settings, list(conditions = conditions))
-    analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
-    analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
-    DataRecord@analysisResults$eventFactorsData <- new(Class = "FactorsData", 
-                                                       factorsData = as.data.frame(analyzerResults$calculationResults))
-    factorsDef <- analyzerResults$factorsDef
-    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "right", getFactorsData = F)
-    settings <- append(settings, list(conditions = conditions))
-    analyzerResults <- generalEventAnalyzer(eventMarkersAndData, settings)
-    analyzerResults <- createFactorsDataList(analyzerResults, factorsDef)
-    DataRecord@analysisResults$eventFactorsData <- rbind(DataRecord@analysisResults$eventFactorsData,
-                                                                         as.data.frame(analyzerResults$calculationResults))
   }
   return(list(dataRec = DataRecord, factorsDef = factorsDef))
 }
@@ -356,40 +378,74 @@ coreEventAnalyzer <- function(DataRecord, settings)
 # coreDataRecordAnalyser function selects data for a specific eye,
 # passes all settings and data to generalAnalyzer,
 # It returns a list with factorsData and factorsDef
-# mainFactorsData is filled with calculated mainFactorsData, mainFactorsDef should be reassigned to factorsDef
-### TO DO: append analysisResults to mainFactorsData with replacement, not whole replace!!!
+# mainFactorsData is filled with calculated factorsData
+# mainFactorsDef should be reassigned to factorsDef
 coreDataRecordAnalyser <- function(DataRecord, settings)
 {
-  factorsData <- DataRecord@analysisResults$eventFactorsData
-  mainFactorsDef <- settings$mainFactorsDef
-  mainFactorsData <- settings$mainFactorsData
-  
   conditions <- DataRecord@eyesDataObject@conditions@conditions
   eye <- conditions$eye
-  
-  dataRecIdentifier <- list(expID = DataRecord@expID, subjectID = DataRecord@subjectID, trialID = DataRecord@trialID)
-  
-  if (eye == "left")
+  settings <- append(settings, list(conditions = conditions, dataRecIdentifier = dataRecIdentifier))
+
+  mainFactorsDef <- settings$mainFactorsDef
+  mainFactorsData <- settings$mainFactorsData
+  if (is.null(mainFactorsData))
   {
-    # getting data record's data lying inside of data record
-    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "left", getFactorsData = F)
-    # TO DO: getting data record's data lying inside of mainFactorsData (e.g. representations of EyesData object)
-    # selectedMainFactorsData <- getFactorsDataByOwner(mainFactorsData, owner = list(mainClass = "EyesData"))
-    # selectedMainFactorsData <- getFactorsDataByOwnerID(selectedMainFactorsData, ownerID = dataRecIdentifier)
-    settings$mainFactorsData <- selectedMainFactorsData
-    settings <- append(settings, list(conditions = conditions, dataRecIdentifier = dataRecIdentifier))
-    analyzerResults <- generalDataRecordAnalyzer(eventMarkersAndData, settings)
-    factorsData <- createFactorsDataList(analyzerResults, mainFactorsDef)
-    mainFactorsDef <- factorsData$mainFactorsDef
-    mainFactorsData <- new(Class = "FactorsData", factorsDataList = as.data.frame(factorsData$mainFactorsData))
+    mainFactorsData <- new(Class = "FactorsData")
   }
-  if (eye == "right")
+  if (is.null(mainFactorsDef))
   {
-    
+    mainFactorsDef <- new(Class = "FactorsDefinitions")
+  }
+  dataRecIdentifier <- list(expID = DataRecord@expID, subjectID = DataRecord@subjectID, trialID = DataRecord@trialID)
+
+  if (eye != "both")
+  {
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = eye, getFactorsData = F)
+    analyzerResults <- generalDataRecordAnalyzer(eventMarkersAndData, settings)
+    analyzerResults <- createFactorsDataList(analyzerResults, mainFactorsDef)
+    for (i in 1:nrow(analyzerResults$calculationResults))
+    {
+      mainFactorsData <- addFactorValue(self = mainFactorsData,
+                                        owner = analyzerResults$calculationResults[i,]$owner,
+                                        ownerID = analyzerResults$calculationResults[i,]$ownerID,
+                                        factorID = analyzerResults$calculationResults[i,]$factorID,
+                                        eye = analyzerResults$calculationResults[i,]$eye,
+                                        value = analyzerResults$calculationResults[i,]$value,
+                                        replace = T)
+    }
+    mainFactorsDef <- analyzerResults$factorsDef
   }
   if (eye == "both")
   {
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "left", getFactorsData = F)
+    analyzerResults <- generalDataRecordAnalyzer(eventMarkersAndData, settings)
+    analyzerResults <- createFactorsDataList(analyzerResults, mainFactorsDef)
+    for (i in 1:nrow(analyzerResults$calculationResults))
+    {
+      mainFactorsData <- addFactorValue(self = mainFactorsData,
+                                        owner = analyzerResults$calculationResults[i,]$owner,
+                                        ownerID = analyzerResults$calculationResults[i,]$ownerID,
+                                        factorID = analyzerResults$calculationResults[i,]$factorID,
+                                        eye = analyzerResults$calculationResults[i,]$eye,
+                                        value = analyzerResults$calculationResults[i,]$value,
+                                        replace = T)
+    }
+    mainFactorsDef <- analyzerResults$factorsDef
     
+    eventMarkersAndData <- getEventMarkersAndData(DataRecord, eye = "right", getFactorsData = F)
+    analyzerResults <- generalDataRecordAnalyzer(eventMarkersAndData, settings)
+    analyzerResults <- createFactorsDataList(analyzerResults, mainFactorsDef)
+    for (i in 1:nrow(analyzerResults$calculationResults))
+    {
+      mainFactorsData <- addFactorValue(self = mainFactorsData,
+                                        owner = analyzerResults$calculationResults[i,]$owner,
+                                        ownerID = analyzerResults$calculationResults[i,]$ownerID,
+                                        factorID = analyzerResults$calculationResults[i,]$factorID,
+                                        eye = analyzerResults$calculationResults[i,]$eye,
+                                        value = analyzerResults$calculationResults[i,]$value,
+                                        replace = T)
+    }
+    mainFactorsDef <- analyzerResults$factorsDef
   }
   return(list(dataRec = DataRecord, mainFactorsData = mainFactorsData, mainFactorsDef = mainFactorsDef))
 }
