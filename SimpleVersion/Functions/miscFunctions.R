@@ -1,3 +1,54 @@
+kurtosis <- function (x, na.rm = FALSE) 
+{
+  if (any(ina <- is.na(x))) {
+    if (na.rm) 
+      x <- x[!ina]
+    else return(NA)
+  }
+
+  n <- length(x)
+  x <- x - mean(x)
+  r <- n * sum(x^4)/(sum(x^2)^2)
+  y <- r * (1 - 1/n)^2 - 3
+  y
+}
+
+skewness <- function (x, na.rm = FALSE) 
+{
+  if (any(ina <- is.na(x))) {
+    if (na.rm) 
+      x <- x[!ina]
+    else return(NA)
+  }
+  n <- length(x)
+  x <- x - mean(x)
+  y <- sqrt(n) * sum(x^3)/(sum(x^2)^(3/2))
+  y <- y * ((1 - 1/n))^(3/2)
+  y
+}
+
+pointsArea <- function(x, y) {
+  geron <- function(x,y) {
+    if ((length(x)!=length(y))|(length(x)!=3))
+      stop("Wrong number of vertexes.")
+    a <- sqrt((x[2]-x[1])^2+(y[2]-y[1])^2)
+    b <- sqrt((x[3]-x[2])^2+(y[3]-y[2])^2)
+    c <- sqrt((x[1]-x[3])^2+(y[1]-y[3])^2)
+    p <- (a+b+c)/2
+    return(sqrt(p*(p-a)*(p-b)*(p-c)))
+  }
+  area <- 0
+  shape <- chull(x,y)
+  x <- x[shape]; y <- y[shape]  
+  len <- length(x)
+  if (len<3) area <- NA 
+  else 
+  {
+    for (i in 2:(len-1)) area <- area + geron(x[c(1,i,i+1)],y[c(1,i,i+1)])
+  }
+  return(area)
+}
+
 shannon.entropy <- function(p)
 {
   if (min(p) < 0 || sum(p) <= 0)
@@ -18,21 +69,12 @@ calcAngPos <- function(x, y, settings, refPoint = c(0,0))
   return(list(xAng = xAng, yAng = yAng))
 }
 
-# TO DO: 
-# Calculates horiz. and vert. momentum velocities (px or degrees per timeUnit) of the eye movements given by vectors <t, x, y>
-# calcXYShiftsVel <- function(t, x, y)
-# {
-#   samplesCnt <- length(t)
-#   dts <- t[-1] - t[-samplesCnt]
-#   dxs <- x[-1] - x[-samplesCnt]
-#   dys <- y[-1] - y[-samplesCnt]
-#   xVels <- dxs/dts
-#   yVels <- dys/dts
-#   return(list(xVels = xVels, yVels = yVels))
-# }
-
-calcVel <- function(t, x, y, settings, angular, velType, fs, fl)
+calcVel <- function(t, x, y, settings)
 {
+  angular <- settings$angular
+  velType <- settings$velType
+  fs <- settings$fs 
+  fl <- settings$fl
   screenDist <- settings$headDistance
   screenResolution <- settings$screenResolution
   screenSize <- settings$screenSize
@@ -56,10 +98,7 @@ calcVel <- function(t, x, y, settings, angular, velType, fs, fl)
       y1 <- y[-samplesCnt]; y2 <- y[-1]
       dl <- sqrt((x2-x1)^2 + (y2-y1)^2)
       vel <- dl/dt
-      if (samplesCnt >= 3)
-      {
-        accel <- (vel[-1]-vel[-length(vel)])/dt[-length(dt)]
-      }
+      vel <- c(vel, tail(vel,1))
     }
     if (velType == "analytical")
     {
@@ -71,25 +110,37 @@ calcVel <- function(t, x, y, settings, angular, velType, fs, fl)
           x <- angPositions$xAng
           y <- angPositions$yAng
         }
-        fl <- ceiling(fl*fs) # expressing filter length in samples number
         if (fl %% 2 == 0) fl <- fl + 1 # turn even number to odd number by incrementing it by 1
         xdash <- sgolayfilt(x = x, p = 2, n = fl, m = 1, ts = 1)
-        x2dash <- sgolayfilt(x = x, p = 2, n = fl, m = 2, ts = 1)
+        # x2dash <- sgolayfilt(x = x, p = 2, n = fl, m = 2, ts = 1)
         ydash <- sgolayfilt(x = y, p = 2, n = fl, m = 1, ts = 1)
-        y2dash <- sgolayfilt(x = y, p = 2, n = fl, m = 2, ts = 1)
+        # y2dash <- sgolayfilt(x = y, p = 2, n = fl, m = 2, ts = 1)
         dt <- abs(t[-1] - t[-samplesCnt])
-        dldash <- sqrt(xdash^2+ydash^2); dl <- dldash
-        dl2dash <- sqrt(x2dash^2+y2dash^2)
-        vel <- dldash*fs
-        accel <- dl2dash*fs
+        dl <- sqrt(xdash^2+ydash^2);
+        vel <- dl/c(dt, tail(dt,1))
       }
       else
       {
-        warning("Samples number is greater than filter length! Returning NA for velocities and accelerations")
+        warning("Samples number is less than filter length! Returning NA for velocities and accelerations")
       }
     }
   }
+  if (samplesCnt >= 3)
+  {
+    accel <- (vel[-1]-vel[-length(vel)])/c(dt[-length(dt)],tail(dt[-length(dt)],1))
+  }
   return(list(dists = dl, dts = dt, vels = vel, accels = accel))
 }
-
+# 
+# v1 <- calcVel(t = etd$commonData$time, x = etd$leftEyeData$porx, y = etd$leftEyeData$pory,
+#         settings = list(angular = T, velType = "finDiff",
+#                         headDistance = etd$settings$headDistance,
+#                         screenResolution = etd$settings$screenResolution,
+#                         screenSize = etd$settings$screenSize))
+# 
+# v2 <- calcVel(t = etd$commonData$time, x = etd$leftEyeData$porx, y = etd$leftEyeData$pory,
+#               settings = list(angular = T, velType = "analytical", fl = 5, fs = 500,
+#                               headDistance = etd$settings$headDistance,
+#                               screenResolution = etd$settings$screenResolution,
+#                               screenSize = etd$settings$screenSize))
 

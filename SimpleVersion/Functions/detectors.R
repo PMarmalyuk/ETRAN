@@ -1,7 +1,6 @@
-IVT <- function(t, x, y, settings, filterMarkers, filterMarkerNames, detectorMarkerNames, detectionSettings)
+IVT <- function(t, x, y, settings, filterMarkers = NA, filterMarkerNames = NA, detectorMarkerNames, detectionSettings)
 {
-  
-  screenDist <- settings$headDistance
+  headDistance <- settings$headDistance
   screenResolution <- settings$screenResolution
   screenSize <- settings$screenSize
   fs <- settings$fs
@@ -27,10 +26,9 @@ IVT <- function(t, x, y, settings, filterMarkers, filterMarkerNames, detectorMar
   fixMarker <- detectorMarkerNames$fixMarker
   sacMarker <- detectorMarkerNames$sacMarker
   gapMarker <- detectorMarkerNames$gapMarker
-  artMarker <- detectorMarkerNames$artMarker
   
   # 1. Velocities and accelerations estimation
-  vel <- calcVel(t, x, y, settings, angular, velType, fs, fl)
+  vel <- calcVel(t, x, y, settings)
   accels <- vel$accels
   
   # 2. Classification stage: getting raw event markers
@@ -277,8 +275,7 @@ IVT <- function(t, x, y, settings, filterMarkers, filterMarkerNames, detectorMar
   ## group is a vector with event ordinal numbers (including the case of post processing results)
   markers <- factor(eventMarkersGroups, levels = c(detectorMarkerNames$fixMarker,
                                                    detectorMarkerNames$sacMarker,
-                                                   detectorMarkerNames$gapMarker,
-                                                   detectorMarkerNames$artMarker))
+                                                   detectorMarkerNames$gapMarker))
   evmarks <- data.frame(firstEv = markers[-length(markers)], secondEv = markers[-1])
   transitions <- apply(evmarks, MARGIN = 1, function(x) {if (x[2] != x[1]) {1} else {0}})
   group <- c(1,cumsum(transitions)+1)
@@ -316,7 +313,7 @@ ANH <- function(t, x, y, settings, filterMarkers, filterMarkerNames, detectorMar
     PT
   }
 
-  screenDist <- settings$headDistance
+  headDistance <- settings$headDistance
   screenResolution <- settings$screenResolution
   screenSize <- settings$screenSize
   fs <- settings$fs
@@ -348,7 +345,7 @@ ANH <- function(t, x, y, settings, filterMarkers, filterMarkerNames, detectorMar
   }
 
   # Using Savitsky-Golay filter to get velocities and accelerations using derivatves of approximated x and y signals
-  vel <- calcVel(t, x, y, settings, angular, velType, fs, fl)
+  vel <- calcVel(t, x, y, settings)
   accels <- vel$accels
   rawEvM <- ifelse(filterMarkers != filterOkMarker, filterGapMarker, filterOkMarker)[-size]
   windowSize <- floor(minFixationDur/mean(vel$dts, na.rm = T))
@@ -432,8 +429,7 @@ ANH <- function(t, x, y, settings, filterMarkers, filterMarkerNames, detectorMar
   markers <- factor(rawEvM, levels = c(detectorMarkerNames$fixMarker,
                                        detectorMarkerNames$sacMarker,
                                        detectorMarkerNames$gliMarker,
-                                       detectorMarkerNames$gapMarker,
-                                       detectorMarkerNames$artMarker))
+                                       detectorMarkerNames$gapMarker))
   res <- list(eventMarkers = markers, 
               eventGroups = group,
               eventsClass = "OculomotorEvents", 
@@ -443,17 +439,12 @@ ANH <- function(t, x, y, settings, filterMarkers, filterMarkerNames, detectorMar
 
 IDT <- function(t, x, y, settings, filterMarkers, filterMarkerNames, detectorMarkerNames, detectionSettings)
 {
-  screenDist <- settings$headDistance
-  screenResolution <- settings$screenResolution
-  screenSize <- settings$screenSize
-  
   angular <- detectionSettings$angular
   DT <- detectionSettings$DT
   durT <- detectionSettings$durT
 
   filterOkMarker <- filterMarkerNames$okMarker
   filterGapMarker <- filterMarkerNames$gapMarker
-  filterArtMarker <- filterMarkerNames$artMarker
   filterBliMarker <- filterMarkerNames$bliMarker
   
   fixMarker <- detectorMarkerNames$fixMarker

@@ -1,7 +1,6 @@
 # EVENTS DATA SUB FUNCTIONS
 
 # OCULOMOTOR EVENTS' ANALYSIS FUNCTIONS DEFINITIONS SECTION
-## On/Offset and duration of any event
 
 ### getRepres - TEST FUNCTION ###
 getRepres <- function(data, settings)
@@ -14,56 +13,54 @@ getRepres <- function(data, settings)
                          eventType = settings$eventType)))
 }
 ### END TEST FUNCTION ###
+
 getStartIdx <- function(data, settings)
 {
-  channels <- data$channelsData
-  startIdx <- head(channels$rowNum, 1)
+  startIdx <- data$start
   return(list(vals = list(startIdx = as.numeric(startIdx))))
 }
-
 getEndIdx <- function(data, settings)
 {
-  channels <- data$channelsData
-  endIdx <- tail(channels$rowNum, 1)
+  endIdx <- data$end
   return(list(vals = list(endIdx = as.numeric(endIdx))))
+}
+getSmpCnt <- function(data, settings)
+{
+  startIdx <- getStartIdx(data, settings)$vals$startIdx
+  endIdx <- getEndIdx(data, settings)$vals$endIdx
+  smpCnt <- endIdx - startIdx + 1
+  return(list(vals = list(smpCnt = as.numeric(smpCnt))))
 }
 
 getOnset <- function(data, settings)
 {
-  channels <- data$channelsData
-  onset <- head(channels$time, 1)
+  data <- data$channelsData
+  onset <- head(data$time, 1)
   return(list(vals = list(onset = as.numeric(onset))))
 }
-
 getOffset <- function(data, settings)
 {
-  channels <- data$channelsData
-  offset <- tail(channels$time, 1)
+  data <- data$channelsData
+  offset <- tail(data$time, 1)
   return(list(vals = list(offset = as.numeric(offset))))
 }
-
 getDuration <- function(data, settings)
 {
-  channels <- data$channelsData
   onset <- getOnset(data, settings)$vals$onset
   offset <- getOffset(data, settings)$vals$offset
   duration <- offset - onset
-  return(list(vals = list(offset2 = offset,
-                          onset2 = onset,
-                          duration = as.numeric(duration))))
+  return(list(vals = list(duration = as.numeric(duration))))
 }
 
-## Start/End positions of all events except gap
+## Start/End positions
 ## settings: angular
 getStartEndPositionsXY <- function(data, settings)
 {
+  data <- data$channelsData
   angular <- settings$angular
   if (angular) 
   {
-    position <- calcAngPos(data$porx, data$pory, 
-                           screenDist = settings$conditions$screenDistance, 
-                           screenResolution = settings$conditions$screenResolution, 
-                           screenSize = settings$conditions$screenSize)
+    position <- calcAngPos(data$porx, data$pory, settings)
     startPositionX <- position$xAng[1]
     endPositionX <- position$xAng[length(position$xAng)]
     startPositionY <- position$yAng[1]
@@ -79,24 +76,18 @@ getStartEndPositionsXY <- function(data, settings)
   return(list(vals = list(startPositionX = as.numeric(startPositionX), 
                           startPositionY = as.numeric(startPositionY), 
                           endPositionX = as.numeric(endPositionX), 
-                          endPositionY = as.numeric(endPositionY)),
-              info = list(startPositionX = "Horisontal position of the first sample of an event", 
-                          startPositionY = "Vertical position of the first sample of an event", 
-                          endPositionX = "Horisontal position of the last sample of an event", 
-                          endPositionY = "Vertical position of the last sample of an event")))
+                          endPositionY = as.numeric(endPositionY))))
 }
 
 ## Fixation center of mass
 ## settings: angular
 getCenterOfMassXY <- function(data, settings)
 {
+  data <- data$channelsData
   angular <- settings$angular
   if (angular) 
   {
-    position <- calcAngPos(data$porx, data$pory, 
-                           screenDist = settings$conditions$screenDistance, 
-                           screenResolution = settings$conditions$screenResolution, 
-                           screenSize = settings$conditions$screenSize)
+    position <- calcAngPos(data$porx, data$pory, settings)
     centerX <- mean(position$xAng)
     centerY <- mean(position$yAng)
   }
@@ -106,70 +97,70 @@ getCenterOfMassXY <- function(data, settings)
     centerY <- mean(data$pory)
   }
   return(list(vals = list(centerX = as.numeric(centerX), 
-                          centerY = as.numeric(centerY)),
-              info = list(centerX = "Center of mass of event X coordinates",
-                          centerY = "Center of mass of event Y coordinates")))
+                          centerY = as.numeric(centerY))))
 }
 
 ## Fixation dispersions and radius
 ## settings: angular
 getDispersionXYAndRadius <- function(data, settings)
 {
+  data <- data$channelsData
   angular <- settings$angular
   if (angular) 
   {
-    position <- calcAngPos(data$porx, data$pory, 
-                           screenDist = settings$conditions$screenDistance, 
-                           screenResolution = settings$conditions$screenResolution, 
-                           screenSize = settings$conditions$screenSize)
+    position <- calcAngPos(data$porx, data$pory, settings)
     positionX <- mean(position$xAng)
     positionY <- mean(position$yAng)
-    dispersionX <- sd(position$xAng)
-    dispersionY <- sd(position$yAng)
+    dispersionX <- var(position$xAng)
+    dispersionY <- var(position$yAng)
     radius <- mean(sqrt((positionX - position$xAng)^2 + (positionY- position$yAng)^2))
   }
   else
   {
     positionX <- mean(data$porx)
     positionY <- mean(data$pory)
-    dispersionX <- sd(data$porx)
-    dispersionY <- sd(data$pory)
+    dispersionX <- var(data$porx)
+    dispersionY <- var(data$pory)
     radius <- mean(sqrt((positionX - data$porx)^2 + (positionY - data$pory)^2))
   }
   return(list(vals = list(dispersionX = as.numeric(dispersionX), 
                           dispersionY = as.numeric(dispersionY), 
-                          radius = as.numeric(radius)),
-              info = list(dispersionX = "Dispersion of event X coordinates",
-                          dispersionY = "Dispersion of event Y coordinates",
-                          radius = "Radius of event coordinates (mean distance from event's center of mass)")))
+                          radius = as.numeric(radius))))
 }
 
 ## Mean and sd of pupil size (all events)
 ## no settings
 getPupilMeanAndSD <- function(data, settings)
 {
-  if ("pupxsize" %in% colnames(data))
+  data <- data$channelsData
+  if ("pupx" %in% colnames(data))
   {
-    if ("pupysize" %in% colnames(data))
+    if ("pupy" %in% colnames(data))
     {
-      meanPupilSize <- (mean(data$pupxsize, na.rm = T) + mean(data$pupysize, na.rm = T))/2
-      sdPupilSize <- (sd(data$pupxsize, na.rm = T) + sd(data$pupysize, na.rm = T))/2
+      meanPupilSizeX <- mean(data$pupx, na.rm = T)
+      meanPupilSizeY <- mean(data$pupy, na.rm = T)
+      sdPupilSizeX <- sd(data$pupx, na.rm = T)
+      sdPupilSizeY <- sd(data$pupy, na.rm = T)
+      return(list(vals = list(meanPupilSizeX = as.numeric(meanPupilSizeX), 
+                              sdPupilSizeX = as.numeric(sdPupilSizeX),
+                              meanPupilSizeY = as.numeric(meanPupilSizeY), 
+                              sdPupilSizeY = as.numeric(sdPupilSizeY))))
     }
     else
     {
-      meanPupilSize <- mean(data$pupxsize, na.rm = T)
-      sdPupilSize <- sd(data$pupxsize, na.rm = T)
+      meanPupilSizeX <- mean(data$pupx, na.rm = T)
+      sdPupilSizeX <- sd(data$pupx, na.rm = T)
+      return(list(vals = list(meanPupilSizeX = as.numeric(meanPupilSizeX), 
+                              sdPupilSizeX = as.numeric(sdPupilSizeX))))
     }
   }
   else
   {
-    meanPupilSize <- NA
-    sdPupilSize <- NA
+    meanPupilSizeX <- NA
+    sdPupilSizeX <- NA
+    return(list(vals = list(meanPupilSizeX = as.numeric(meanPupilSizeX), 
+                            sdPupilSizeX = as.numeric(sdPupilSizeX))))
   }
-  return(list(vals = list(meanPupilSize = as.numeric(meanPupilSize), 
-                          sdPupilSize = as.numeric(sdPupilSize)),
-              info = list(meanPupilSize = "Mean size of a pupil",
-                          sdPupilSize = "Standard deviation of a size of a pupil")))
 }
 
 ## Saccades & Glissades amplitude
@@ -186,10 +177,7 @@ getAmplitude <- function(data, settings)
   amplitude <- sqrt(amplitudeX^2 + amplitudeY^2)
   return(list(vals = list(amplitudeX = as.numeric(amplitudeX), 
                           amplitudeY = as.numeric(amplitudeY), 
-                          amplitude = as.numeric(amplitude)),
-              info = list(amplitudeX = "Horisontal amplitude of a saccade/glissade",
-                          amplitudeY = "Vertical amplitude of a saccade/glissade",
-                          amplitude = "Amplitude of a saccade/glissade")))
+                          amplitude = as.numeric(amplitude))))
 }
 
 ## Length and curvature of a path of a part of a trajectory related to a processed event (all events except gaps)
@@ -197,19 +185,56 @@ getAmplitude <- function(data, settings)
 getPathLengthAndCurvature <- function(data, settings)
 {
   amplitude <- getAmplitude(data, settings)$vals$amplitude
+  data <- data$channelsData
   length <- sum(sqrt((data$porx[-1]-data$porx[-length(data$porx)])^2 + (data$pory[-1]-data$pory[-length(data$pory)])^2))
   curvature <- length/amplitude
   return(list(vals = list(length = as.numeric(length), 
-                          curvature = as.numeric(curvature)),
-              info = list(length = "Length of a gaze path during an event",
-                          curvature = "Curvature of a gaze path during an event")))
+                          curvature = as.numeric(curvature))))
 }
 
-## Peak velocity and acceleration during event
-## settings: angular, velType ("finDiff or "analytical"), screenDist, screenResolution, screenSize
-## fs (sampling rate), fl (length of a Savitsky-Golay filter)
+## Mean velocity, acceleration and deceleration during event
+## settings: angular, velType ("finDiff or "analytical"), fl (length of a Savitsky-Golay filter expressed by samples count)
+getMeanVelAcDecel <- function(data, settings)
+{
+  data <- data$channelsData
+  meanVelocity <- as.numeric(NA)
+  meanAcceleration <- as.numeric(NA)
+  meanDeceleration <- as.numeric(NA)
+  smpCnt <- nrow(data)
+  if (smpCnt > 1)
+  {
+    vel <- calcVel(t = data$time, x = data$porx, y = data$pory, settings)
+    vels <- vel$vels
+    if (any(!is.na(vels)))
+    {
+      meanVelocity <- mean(vels, na.rm = T)
+    }
+    if (smpCnt > 2)
+    {
+      accels <- vel$accels[vel$accels >= 0 & !is.na(vel$accels)]
+      accel_dts <- vel$dts[vel$accels >= 0 & !is.na(vel$accels)]
+      decels <- vel$accels[vel$accels < 0 & !is.na(vel$accels)]
+      decel_dts <- vel$dts[vel$accels < 0 & !is.na(vel$accels)]
+      if (length(accels) > 0)
+      {
+        meanAcceleration <- mean(accels)
+      }
+      if (length(decels) > 0)
+      {
+        meanDeceleration <- mean(decels)
+      }
+    }
+  }
+  return(list(vals = list(meanVelocity = as.numeric(meanVelocity), 
+                          meanAcceleration = as.numeric(meanAcceleration), 
+                          meanDeceleration = as.numeric(meanDeceleration))))
+}
+
+## Peak velocity, acceleration, deceleration during event and asymmetry of accel & decel stages
+## settings: angular, velType ("finDiff or "analytical"), fl (length of a Savitsky-Golay filter expressed by samples count)
 getPeakVelAcDecelAndAsymmetry <- function(data, settings)
 {
+  data <- data$channelsData
   peakVelocity <- as.numeric(NA)
   peakAcceleration <- as.numeric(NA)
   peakDeceleration <- as.numeric(NA)
@@ -221,6 +246,7 @@ getPeakVelAcDecelAndAsymmetry <- function(data, settings)
     vels <- vel$vels
     if (any(!is.na(vels)))
     {
+      # if (eventGroup == 3) {print(vels)}
       peakVelocity <- max(vels, na.rm = T)
     }
     if (smpCnt > 2)
@@ -246,17 +272,14 @@ getPeakVelAcDecelAndAsymmetry <- function(data, settings)
   return(list(vals = list(peakVelocity = as.numeric(peakVelocity), 
                           peakAcceleration = as.numeric(peakAcceleration), 
                           peakDeceleration = as.numeric(peakDeceleration),
-                          asymmetry = as.numeric(asymmetry)),
-              info = list(peakVelocity = "Peak velocity of gaze movement during an event",
-                          peakAcceleration = "Peak acceleration of gaze movement during an event",
-                          peakDeceleration = "Peak deceleration of gaze movement during an event",
-                          asymmetry = "Asymmetry of gaze movement during an event (acceleration and deceleration times ratio)")))
+                          asymmetry = as.numeric(asymmetry))))
 }
 
 ## Orientation of a saccade/glissade/smooth pursuit
 ## no settings
 getXAxisOrientation <- function(data, settings)
 {
+  data <- data$channelsData
   samplesCnt <- nrow(data)
   if (samplesCnt < 2)
   {
@@ -269,44 +292,52 @@ getXAxisOrientation <- function(data, settings)
     orientXAxis <- atan2(y = dy, x = dx) * (180/pi)
     if (orientXAxis < 0) {orientXAxis <- 360 + orientXAxis}
   }
-  return(list(vals = list(orientXAxis = as.numeric(orientXAxis)),
-              info = list(orientXAxis = "Orientation of an event (saccade, glissade or smooth pursuit) with respect to X axis")))
+  return(list(vals = list(orientXAxis = as.numeric(orientXAxis))))
+}
+
+## Area covered by gaze points inside event
+## settings: angular
+
+getGazePointsArea <- function(data, settings) {
+  data <- data$channelsData
+  x <- data$porx; y <- data$pory
+  angular <- settings$angular
+  if (angular)
+  {
+    angPos <- calcAngPos(x = x, y = y, settings = setings)
+    x <- angPos$xAng
+    y <- angPos$yAng
+  }
+  area <- pointsArea(x = x, y = y)
+  return(list(vals = list(gazePointsArea = as.numeric(area))))
+}
+
+
+
+## Area covered by fixation points inside event
+## settings: angular
+getFixationPointsArea <- function(data, settings)
+{
+#   
+#   repres <- data$representations
+#   positionsX <- selectRepresentations(repres, varNames = c("posX"), query = createQuery(eye = "left",
+#                                                                                   eventsClass = "OculomotorEvents",
+#                                                                                   detector = "IDT.Detection2",
+#                                                                                   eventType = "Fixation"))
+#   positionsY <- selectRepresentations(repres, varNames = c("posX"), query = createQuery(eye = "left",
+#                                                                                         eventsClass = "OculomotorEvents",
+#                                                                                         detector = "IDT.Detection2",
+#                                                                                         eventType = "Fixation"))
+#   
+#   pointsArea(x = positionsX, y = )
+  
+  data <- data$channelsData
+  angular <- settings$angular
+  fixationsPointsArea <- NA
+  return(list(vals = list(fixationsPointsArea = as.numeric(fixationsPointsArea))))
 }
 
 # AOI EVENTS' ANALYSIS FUNCTIONS DEFINITIONS SECTION
 
-# FRAME EVENTS' ANALYSIS FUNCTIONS DEFINITIONS SECTION
-
-# EYES DATA SUB FUNCTIONS
-trajDurationEstimator <- function(data, settings)
-{
-  t <- data$time
-  return(list(vals = list(trajDur = as.numeric(tail(t, 1) - t[1])),
-              info = list(trajDur = "Trajectory duration")))
-}
-
-trajLengthEstimator <- function(data, settings)
-{
-  x <- data$porx
-  y <- data$pory
-  angular <- settings$angular
-  if (angular)
-  {
-    screenDist <- settings$screenDist
-    screenDim <- settings$screenDim
-    screenSize <- settings$screenSize
-    pos <- calcAngPos(x = x, y = y, settings)
-    xAng <- pos$xAng
-    yAng <- pos$yAng
-    dxs <- xAng[-1] - xAng[-length(xAng)]
-    dys <- yAng[-1] - yAng[-length(yAng)]
-  } else
-  {
-    dxs <- x[-1] - x[-length(x)]
-    dys <- y[-1] - y[-length(y)]
-  }
-  return(list(vals = list(trajLen = as.numeric(sum(sqrt(dxs^2 + dys^2)))),
-              info = list(trajLen = "Trajectory length")))
-}
 
 # REPRESENTATIONS DATA SUB FUNCTIONS

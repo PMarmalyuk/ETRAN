@@ -20,15 +20,14 @@ columnsPositions <- list(commonData = list(time = 1,
                                             rawy = 5,
                                             crx = 8,
                                             cry = 9),
-                         # leftEventsData = NA,
-                         leftEventsData = list(ExtEvent1 = list(column = 12,
-                                               type = "MyArtificialEvents",
-                                               eventsNames = c("Event1", 
-                                                               "Event2", 
-                                                               "Event3",
-                                                               "LastEvent"),
-                                               detector = "ByHandDetector"
-                         )),
+                         leftEventsData = NA,
+#                          leftEventsData = list(ExtEvent1 = list(column = 12,
+#                                                type = "MyArtificialEvents",
+#                                                eventsNames = c("Event1", 
+#                                                                "Event2", 
+#                                                                "Event3",
+#                                                                "LastEvent"),
+#                                                detector = "ByHandDetector"),
                          rightEyeData = NA,
                          rightAddData = NA,
                          rightEventsData = NA,
@@ -36,6 +35,7 @@ columnsPositions <- list(commonData = list(time = 1,
 
 ################## DATA LOADING ################## 
 filePath = "F:\\Институт\\Проекты\\EyeTrackingPackage\\Git\\EyeTrackingProject\\TestData\\dataWithExternalEventsMarkers.txt"
+# A LONG FILE:
 # filePath = "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\TestDataLong\\Ephimov.txt"
 etd <- readCSVData(filePath = filePath, 
                    encoding = "UTF-8",
@@ -45,15 +45,17 @@ etd <- readCSVData(filePath = filePath,
                    tableHeader = T,
                    sep = "\t", dec = ".", commentChar = "#", smpMarker = "SMP",
                    columnsPositions = columnsPositions)
-plot(etd$commonData$time, etd$leftEyeData$porx)
-plot(etd$leftEyeData$porx, etd$leftEyeData$pory, type = "l")
+# plot(etd$commonData$time, etd$leftEyeData$porx)
+# plot(etd$leftEyeData$porx, etd$leftEyeData$pory, type = "l")
+
+etd$settings
+
 ################## DATA PREPARATION ################## 
+etd$commonData$time <- etd$commonData$time/1000000
+etd$commonData$time <- etd$commonData$time - min(etd$commonData$time)
 etd$settings$screenResolution <- c(1280, 1024)
 etd$settings$screenSize <- c(33.7, 27)
 etd$settings$headDistance <- etd$settings$headDistance*0.1
-
-
-
 
 # TO DO:
 # setRecordStartTimeToZero(ETD)
@@ -62,11 +64,16 @@ etd$settings$headDistance <- etd$settings$headDistance*0.1
 ################## DATA FILTERING ################## 
 filterMarkerNames <- list(okMarker = "Ok", 
                           gapMarker = "Gap",
-                          artMarker = "Artifact",
                           bliMarker = "Blink")
-etd <- dataFilter(ETD = etd, interpolate = T, filterMarkerNames = filterMarkerNames)
+
+# SOMETHING WRONG WITH INTERPOLATION:
+# APP IS EATING TOO MUCH MEMORY!
+# RESOLVE THIS ISSUE!
+etd <- dataFilter(ETD = etd, interpolate = F, filterMarkerNames = filterMarkerNames)
+# etd$leftEventsData$filterEventMarkers
 
 ################## DATA SMOOTHING ################## 
+
 smoothingSettings <- list(fl = 13, forder = 2)
 etdSmoothed <- dataSmoother(ETD = etd, smoother = savGolSmoother, smoothingSettings = smoothingSettings)
 plot(etdSmoothed$commonData$time, etd$leftEyeData$porx)
@@ -76,12 +83,10 @@ detectorMarkerNames <- list(fixMarker = "Fixation",
                             sacMarker = "Saccade",
                             gliMarker = "Glissade",
                             smpMarker = "Smooth Pursuit",
-                            gapMarker = "Gap",
-                            artMarker = "Artifact",
-                            bliMarker = "Blink",
-                            verMarker = "Vergence")
+                            gapMarker = "Gap")
+etd$leftEventsData$IDT.Detection2
 
-detectionSettings <- list(resultIdentifier = "Detection2",
+detectionSettings <- list(resultIdentifier = "Detection1",
                           angular = T,
                           VT = 15,
                           DT = 0.5,
@@ -101,9 +106,11 @@ etd <- oculomotorEventDetector(ETD = etd, detector = IDT,
                                filterMarkerNames = filterMarkerNames, 
                                detectorMarkerNames = detectorMarkerNames,
                                detectionSettings = detectionSettings)
+
+
 plot(etd$commonData$time, etd$leftEyeData$porx, col = as.numeric(etd$leftEventsData$IDT.Detection2$eventMarkers))
 plot(etd$leftEyeData$porx, etd$leftEyeData$pory, col = as.numeric(etd$leftEventsData$IDT.Detection2$eventMarkers))
-fixFlags <- etd$leftEventsData$MyDetectionResult$eventMarkers == detectorMarkerNames$fixMarker
+fixFlags <- etd$leftEventsData$IDT.Detection2$eventMarkers == detectorMarkerNames$fixMarker
 plot(etd$leftEyeData$porx[fixFlags], etd$leftEyeData$pory[fixFlags])
 
 ################## EVENTS ANALYSIS ################## 

@@ -1,3 +1,6 @@
+
+
+# INTERPOLATION IS IMPLEMENTED SUCH THAT FILTER EATS MEMORY EXPONENTIALLY!!!!
 standardFilter <- function(t, x, y, settings, filterMarkerNames, interpolate)
 {
   screenResolution <- settings$screenResolution
@@ -86,7 +89,14 @@ dataFilter <- function(ETD, filterMarkerNames, interpolate)
       ETD$leftEyeData$porx <- filtResLeft$x
       ETD$leftEyeData$pory <- filtResLeft$y
     }
-    ETD$leftEventsData <- append(ETD$leftEventsData, list(filterEventMarkers = filtResLeft$filterEventMarkers))
+    if (all(is.na(ETD$leftEventsData)))
+    {
+      ETD$leftEventsData <- list(filterEventMarkers = filtResLeft$filterEventMarkers)
+    }
+    else
+    {
+      ETD$leftEventsData <- append(ETD$leftEventsData, list(filterEventMarkers = filtResLeft$filterEventMarkers))
+    }
   }
   if (mode == "right" | mode == "binocular")
   {
@@ -97,7 +107,14 @@ dataFilter <- function(ETD, filterMarkerNames, interpolate)
       ETD$rightEyeData$porx <- filtResRight$x
       ETD$rightEyeData$pory <- filtResRight$y
     }
-    ETD$rightEventsData <- append(ETD$rightEventsData, list(filterEventMarkers = filtResRight$filterEventMarkers))
+    if (all(is.na(ETD$rightEventsData)))
+    {
+      ETD$rightEventsData <- list(filterEventMarkers = filtResRight$filterEventMarkers)
+    }
+    else
+    {
+      ETD$rightEventsData <- append(ETD$rightEventsData, list(filterEventMarkers = filtResRight$filterEventMarkers))
+    }
   }
   return(ETD)
 }

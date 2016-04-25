@@ -199,9 +199,10 @@ readCSVData <- function(filePath, encoding, infoHeaderLines, infoHeaderParser, h
   settings <- append(settings, list(pupilShape = pupilShape))
   # Reading data columns
   data <- columnsReader(rawDataColumns = rawData$data, columnsPositions = columnsPositions)
+  # TO DO: ADD HEAD DATA BY COLUMNS READER
+  # data <- append(data, list(headData = NA))
   data <- append(data, list(representations = NA))
-  data <- append(data, list(headData = NA))
+  data <- append(data, list(descriptives = NA))
   eyeDataRecord <- append(list(settings = settings), data)
   return(eyeDataRecord)
 }
-

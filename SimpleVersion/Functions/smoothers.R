@@ -25,6 +25,8 @@ movAvgSmoother <- function(x, smoothingSettings)
   xsmoothed
 }
 
+sgolayfilt(x = iris$Sepal.Length, n = 13, )
+
 ## CORE SMOOTHER ##
 dataSmoother <- function(ETD, smoother, smoothingSettings)
 {
