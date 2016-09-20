@@ -1,6 +1,0 @@
-install.packages(c("maps", "mapproj"))
-install.packages("quantmod")
-install.packages("shiny")
-library(shiny)
-setwd("C:/Users/Анастасия/Desktop/РГНФ Павел/EyeTrackingPackage")
-runApp("ui")

@@ -1,0 +1,1 @@
+For more information check out the project's Wiki page: https://github.com/PMarmalyuk/ETRAN/wiki/
