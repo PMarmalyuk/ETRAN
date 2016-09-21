@@ -1,0 +1,1 @@
+Images for Project's GitHub Wiki pages
