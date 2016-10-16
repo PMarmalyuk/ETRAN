@@ -158,8 +158,6 @@ readCSVData <- function(filePath, encoding, columnsPositions,
     return(NA)
   }
   settings <- list(filename = basename(filePath))
-  colNames <- colnames(rawData$data)
-  settings <- append(settings, list(colNames = colNames))
   # Deleting all samples which are marked by specified 
   # syncMarker (e.g. "SMP" in SMI datasets)
   # Creating syncEventMarkers markers indicating locations 

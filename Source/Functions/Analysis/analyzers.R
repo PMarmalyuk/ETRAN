@@ -37,28 +37,3 @@ evaluateSubFunctions <- function(ETD, eye, locations = NA,
   res <- data.frame(locations, res)
   return(res)
 }
-
-eventsCount <- function(locations, drop = T)
-{
-  l <- split(locations, f = locations$eventType, drop = drop)
-  counts <- sapply(l, nrow)
-  return(counts)
-}
-# eventsCount(allFixLocations, F)
-
-
-applyFunToVarValues <- function(paramsTable, var, fun)
-{
-  
-}
-# evhits <- getEventsHits(extEvLocations = allTrialLocations, intEvLocations = allFixLocations)
-# evhitsgroups <- getEventsHitsGroups(evhits)
-# paramsTableSubsets <- getParamsTableSubset(paramsTable, evhitsgroups)
-# trialParams$meanFixDuration <- sapply(paramsTableSubsets, FUN = descriptiveStats, vars = c("duration"), descriptives = "mean")
-
-# further analysis of events parameters can be performed using this function and core's or user's fun
-## e.g. AOISequence, AOIStatsVector, AOIStatsMatrix can be evaluated
-applyFunToParamsTable <- function(paramsTable, fun)
-{
-  
-}

@@ -1,3 +1,22 @@
+getEventsTable <- function(t, event, group) 
+{
+  if (length(t) == length(event) & 
+      length(event) == length(group) & 
+      !is.null(t) & !is.null(event) & !is.null(group)) {
+    df <- data.frame(t = t, event = event, group = group)
+    dfs <- split(df, df$group)
+    locations <- lapply(dfs, FUN = function(x) {
+      list(start = head(x$t, 1),
+           end   = tail(x$t, 1),
+           event = unique(x$event)[1],
+           group = unique(x$group)[1])
+    })
+    locations <- rbindlist(locations)
+  }
+  else locations <- NULL
+  return(locations)
+}
+
 getEventsPositions <- function(eventMarkers)
 {
   if (all(!is.null(eventMarkers)))
@@ -23,267 +42,195 @@ getEventsPositions <- function(eventMarkers)
   return(locations)
 }
 
-
-IVT <- function(data, settings, filterMarkers, 
-                filterMarkerNames, detectorMarkerNames)
+IVT <- function(t, vel, VT) 
 {
-  t <- data$t
-  x <- data$x
-  y <- data$y
-  vel <- data$vel
-  accel <- data$accel
-
-  #Detection settings
-  VT <- settings$VT
-  postProcess <- settings$postProcess
-  classifyGaps <- settings$classifyGaps
-  MaxTBetFix <- settings$MaxTBetFix
-  MaxDistBetFix <- settings$MaxDistBetFix
-  minFixLen <- settings$minFixLen
-  maxGapLen <- settings$maxGapLen 
-  maxVel <- settings$maxVel
-  maxAccel <- settings$maxAccel
-  #Filter markers and marker names
-  filterOkMarker <- filterMarkerNames$okMarker
-  #Detector markers  
-  fixMarker <- detectorMarkerNames$fixMarker
-  sacMarker <- detectorMarkerNames$sacMarker
-  gapMarker <- detectorMarkerNames$gapMarker
-  
-  # 2. Classification stage: getting raw event markers
-  rawEventMarkers <- ifelse(vel <= VT, fixMarker, sacMarker)
-  rawEventMarkers[filterMarkers != filterOkMarker] <- gapMarker
-  eventMarkers <- rawEventMarkers
-  group <- markersGroups(eventMarkers)
-
-  markers <- factor(eventMarkers, 
-                    levels = c(detectorMarkerNames$fixMarker,
-                               detectorMarkerNames$sacMarker,
-                               detectorMarkerNames$gapMarker))
-  group <- markersGroups(markers)
-  return(list(eventMarkers = markers, 
-              eventGroups = group,
-              eventsClass = "OculomotorEvents",
-              detector = "IVT"))
+  fixMarker <- "Fixation"; sacMarker <- "Saccade"
+  event <- ifelse(vel <= VT, fixMarker, sacMarker)
+  group <- markersGroups(event)
+  location <- getEventsTable(t, event, group)
+  return(location)
 }
 
-ANH <- function(data, settings, filterMarkers, 
-                filterMarkerNames, detectorMarkerNames) 
+ANH <- function(t, vel, minSac = .01, minFix = .04) 
 {
-  t <- data$t
-  x <- data$x
-  y <- data$y
-  vel <- data$vel
-  accel <- data$accel
-
-  # Detection settings reading
-  maxSaccadeVel  <- settings$maxSaccadeVel
-  maxSaccadeAcc  <- settings$maxSaccadeAcc
-  minSaccadeDur  <- settings$minSaccadeDur
-  minFixationDur <- settings$minFixationDur
-  # Filter markers names
-  filterOkMarker <- filterMarkerNames$okMarker
-  #Detector markers names
-  fixMarker <- detectorMarkerNames$fixMarker
-  sacMarker <- detectorMarkerNames$sacMarker
-  gliMarker <- detectorMarkerNames$gliMarker
-  gapMarker <- detectorMarkerNames$gapMarker
-  
-  size <- length(t)
-  dt <- diff(t)
-  
-  windowSize <- as.integer(minFixationDur/mean(dt))
-  rawEvM <- ifelse(filterMarkers != filterOkMarker, 
-                   gapMarker, filterOkMarker) 
-  #Peak velocity base
-  PT0 <- max(vel)
-  tolerance <- .000001
-  #Peak velocity Threshold. Data-driven algorithm
-  getThreshold <- function(Vel, sigmas) {
-    PT <- PT0
-    repeat {
-      PTcur <- PT; velos <- Vel[which(Vel<PTcur)]
-      if (length(velos) > windowSize) {
-        m <- mean(velos); s <- sd(velos)
-      }
-      else {
-        m <- mean(Vel); s <- sd(Vel)
-      }
-      PT <- m + sigmas*s
-      if (abs(PT - PTcur) < tolerance) break
+  fixMarker <- "Fixation"
+  sacMarker <- "Saccade"
+  gliMarker <- "Glissade"
+  unpMarker <- "Unclassified"
+  #Preprocess
+  size <- length(t); dur <- diff(t); dur <- c(dur, 0)
+  windowSize <- round(minFix/mean(dur), 0)
+  event <- rep(unpMarker, size)
+  peakVel.0 <- max(vel); accur <- 1e-5
+  #Peak velocity threshold estimation
+  getThreshold <- function(Vel, sigmas = 6, PT = peakVel.0, PT.cur = .9 * PT) {
+    while (abs(PT - PT.cur) > accur) {
+      velos <- Vel[Vel < PT.cur]
+      m <- mean(velos); s <- sd(velos)
+      PT.cur <- PT; PT <- m + sigmas * s
     }
     return(PT)
   }
-  
-  PT <- getThreshold(vel[which(rawEvM==filterOkMarker)],6); 
-  
+  peakVel <- getThreshold(vel)
   #Saccade detection
   ##Peaks detection
-  above_Threshold <- (vel > PT)
-  peaks <- which(above_Threshold[-1]!=
-                   above_Threshold[-length(above_Threshold)])
-  if (peaks[1]<=windowSize) peaks <- peaks[-c(1:2)]
-  ##Onsets
-  STon <- getThreshold(vel[which(rawEvM==filterOkMarker)],3)
-  leftmost_peaks <- peaks[seq(1,length(peaks),2)]
-  onsets <- c()
-  for (i in leftmost_peaks){
-    nsample <- i
-    if (nsample <= windowSize) break
-    repeat {
-      if (vel[nsample] < STon) 
-        if ((vel[nsample]-vel[nsample-1]) <= 0) {
-          onsets <- c(onsets, nsample)
-          break 
-        }
-      else if((nsample-1)==0) break
-      else nsample <- nsample - 1
-      else nsample <- nsample - 1
-    }
+  above.Threshold <- (vel > peakVel)
+  peaks <- which(above.Threshold[-1] != above.Threshold[-length(above.Threshold)])
+  if (peaks[1] <= windowSize) peaks <- peaks[-c(1:2)]
+  peaks.size <- length(peaks)
+  if (tail(peaks, 1) >= size - windowSize) peaks <- peaks[-c(peaks.size - 1, peaks.size)]
+  right.peaks <- seq(2, length(peaks), 2)
+  peaks[right.peaks] <- peaks[right.peaks] + 1
+  ##Peaks separation
+  onsets <- c(); offsets <- c()
+  left.peaks <- peaks[seq(1, length(peaks), 2)]
+  right.peaks <- peaks[seq(2, length(peaks), 2)]
+  ##Saccades onsets
+  onset.Threshold <- getThreshold(vel, 3)
+  for (i in left.peaks) {
+    while((i >= onset.Threshold) & (vel[i] >= vel[i - 1]) & (i > 1)) 
+      i <- i - 1
+    onsets <- c(onsets, i)
   }
-  
-  ##Offsets
-  rightmost_peaks <- peaks[seq(2,length(peaks),2)]
-  offsets <- c()
-  offset_Thresholds <- c()
-  alpha <- 0.7; beta <- 0.3
-  for (i in 1:length(rightmost_peaks)) {
-    nsample <- rightmost_peaks[i]
-    from <- (onsets[i]-windowSize)
-    to <- onsets[i]
-    LNT <- getThreshold(vel[from:to],3)
-    
-    SToff <- alpha*STon + beta*LNT
-    
-    offset_Thresholds <- c(offset_Thresholds, SToff)
-    
-    repeat {
-      if (vel[nsample] < SToff) {
-        if ((vel[nsample] - vel[nsample+1]) <=0) {
-          offsets <- c(offsets, nsample)
-          break
-        }
-        else {
-          nsample <- nsample + 1
-        }
-      }
-      else {
-        nsample <- nsample + 1
-      }
-      if (nsample >= size) {
-        break
-      }
-    }
+  ##Saccades offsets
+  offset.Thresholds <- c()
+  for (j in 1:length(right.peaks)) {
+    i <- onsets[j]
+    first <- ifelse(i - windowSize > 0, i - windowSize, 1)
+    last <- i
+    local.Threshold <- getThreshold(vel[first:last], 3)
+    offset.Threshold <- .7 * onset.Threshold + .3 * local.Threshold
+    offset.Thresholds <- c(offset.Thresholds, offset.Threshold)
+    i <- right.peaks[j]
+    while(((i >= offset.Threshold) & (vel[i] >= vel[i + 1])) & (i < size))
+      i <- i + 1
+    offsets <- c(offsets, i)
   }
-  ## Saccades
-  for (i in 1:length(offsets))
-  {
+  ##Glissade onsets
+  gli.onsets <- offsets
+  ##Glissade offsets
+  gli.offsets <- c()
+  for (i in gli.onsets) {
+    while((vel[i] >= vel[i + 1]) & (i < size))
+      i <- i + 1
+    while((vel[i] <= vel[i + 1]) & (i < size))
+      i <- i + 1 
+    gli.offsets <- c(gli.offsets, i)
+  }
+  #Event detection
+  ##Saccades
+  for (i in 1:length(onsets)) {
     indexes <- onsets[i]:offsets[i]
-    correctDuration <- (sum(dt[indexes])>=minSaccadeDur)
-    correctHighestVel <- (max(vel[indexes])<=maxSaccadeVel)
-    correctHighestAcc <- (max(accel[indexes])<=maxSaccadeAcc)
-    if (correctHighestVel & correctHighestAcc)
-      if (correctDuration){
-        rawEvM[indexes] <- sacMarker
-      }
-    else {}
-    else rawEvM[indexes] <- gapMarker
+    if (sum(dur[indexes]) >= minSac)
+      event[indexes] <- sacMarker
   }
-  
-  #Glissade detection
-  for (i in 1:length(offsets)) {
-    n <- ifelse((offsets[i]+windowSize)>=size,size-1,
-                offsets[i]+windowSize)
-    for (j in offsets[i]:n) {
-      if (rawEvM[j]==filterOkMarker) 
-        rawEvM[j] <- ifelse((vel[j] > PT), 
-                            gliMarker, 
-                            ifelse(vel[j] > offset_Thresholds[i], 
-                                   gliMarker, 
-                                   gapMarker))
-    }
+  ##Glissades
+  for (i in 1:length(gli.onsets)) {
+    l <- gli.onsets[i]; r <- gli.offsets[i]
+    #Glissade peak must be greater than previous saccade offset threshold
+    if (!is.na(table(vel[l:r] >= offset.Thresholds[i])["TRUE"]))
+      event[l:r] <- gliMarker
   }
-  #Fixation detection
-  rawEvM <- ifelse(rawEvM == filterOkMarker, fixMarker, rawEvM)
-  #Results
-  group <- markersGroups(rawEvM)
-  markers <- factor(rawEvM, 
-                    levels = c(detectorMarkerNames$fixMarker,
-                               detectorMarkerNames$sacMarker,
-                               detectorMarkerNames$gliMarker,
-                               detectorMarkerNames$gapMarker))
-  return(list(eventMarkers = markers, 
-              eventGroups = group,
-              eventsClass = "OculomotorEvents",
-              detector = "ANH"))
+  ##Fixations
+  event[event == unpMarker] <- fixMarker
+  #Result
+  group <- markersGroups(event)
+  location <- getEventsTable(t, event, group)
+  return(location)
 }
 
-IDT <- function(data, settings, filterMarkers, 
-                filterMarkerNames, detectorMarkerNames) 
+IDT <- function(t, x, y, disp.Threshold, dur.Threshold) 
 {
-  t <- data$t
-  x <- data$x
-  y <- data$y
-
-  #Detection settings reading
-  dispersionThreshold <- settings$DT # in px or degrees
-  durationThreshold <- settings$durT # in seconds
-  #Filter markers names
-  filterOkMarker <- filterMarkerNames$okMarker
-  #Detector markers names
-  fixMarker <- detectorMarkerNames$fixMarker
-  sacMarker <- detectorMarkerNames$sacMarker
-  gapMarker <- detectorMarkerNames$gapMarker
-
+  fixMarker <- "Fixation"
+  sacMarker <- "Saccade"
+  dur <- c(diff(t), 0)
   size <- length(t)
-  rawEvM <- c()
-  rawEvM[1:(size-1)] <- sacMarker
-  coords <- data.frame(x=x[-size], y=y[-size], 
-                       dur= t[-1]-t[-size])
+  event <- rep(sacMarker, size)
+  disp.FUN <- function(x, y) {
+    return((max(x) - min(x)) + (max(y) - max(y)))
+  }
   left <- 1; right <- 2
   while (right < size) {
-    if (sum(coords$dur[left:right]) < durationThreshold) 
+    while (sum(dur[left:right]) < dur.Threshold & right < size) 
       right <- right + 1
-    else 
-    {
-      d <- (max(coords$x[left:right])-min(coords$x[left:right]))
-      +(max(coords$y[left:right])-min(coords$y[left:right]))
-      if (d > dispersionThreshold) {
-        left <- right + 1
-        right <- left + 1
+    d <- disp.FUN(x[left:right], y[left:right])
+    if (d <= disp.Threshold) {
+      while (d <= disp.Threshold & right < size) {
+        right <- right + 1
+        d <- disp.FUN(x[left:right], y[left:right])
       }
-      else {
-        while ((d <= dispersionThreshold) & (right<size)) {
-          right <- right + 1
-          d <- (max(coords$x[left:right])-min(coords$x[left:right]))
-          +(max(coords$y[left:right])-min(coords$y[left:right]))
-        }
-        right <- right - 1
-        rawEvM[left:right] <- fixMarker
-        left <- right + 1
-        right <- left + 1
-      }
+      right <- right - 1
+      event[left:right] <- fixMarker
+    }
+    left <- right + 1
+    right <- left + 1
+  }
+  group <- markersGroups(event)
+  location <- getEventsTable(t, event, group)
+  return(location)
+}
+ 
+closeInSpaceFixations <- function(df, locations, dispersion.Measure) {
+  
+}
+
+shortEvents <- function(locations, minDuration, marker, artMarker = "Artefact") {
+  levs <- levels(locations$event)
+  levels(locations$event) <- c(levs, artMarker)
+  #input check
+  if (length(minDuration) != length(marker))
+    stop("minDuration and marker must be the same length.")
+  for (i in 1:length(marker)) {
+    for (j in which(locations$event == marker[i])) {
+      dur <- diff(as.numeric(locations[j,][c("start", "end")]))
+      if (dur < minDuration[i])
+        locations$event[j] <- artMarker
     }
   }
-  rawEvM[which(filterMarkers != filterOkMarker)[-size]] <- gapMarker
-  rawEvM <- append(rawEvM, gapMarker)
-  group <- markersGroups(rawEvM)
-  markers <- factor(rawEvM, levels = c(detectorMarkerNames$fixMarker,
-                                       detectorMarkerNames$sacMarker,
-                                       detectorMarkerNames$gapMarker))
-  return(list(eventMarkers = markers, 
-              eventGroups = group,
-              eventsClass = "OculomotorEvents",
-              detector = "IDT"))
+  return(locations)
+}
+
+highVelocity <- function(locations, t, vel, maxVel, artMarker = "Artefact") {
+  levs <- levels(locations$event)
+  levels(locations$event) <- c(levs, artMarker)
+  for (i in 1:nrow(locations)) {
+    t0 <- locations$start[i]
+    t1 <- locations$end[i]
+    if (is.element(T, vel[t >= t0 & t <= t1] > maxVel))
+      locations$event[i] <- artMarker
+  }
+  return(locations)
+}
+
+closeInSpaceFixations <- function(locations, t, x, y, maxDist, artMarker = "Artefact") {
+  
+}
+
+postProcessor <- function(df, events) {
+  #Input check
+  
+  #Data preparation
+  
+  #Post processing
+  ##Fixations
+  ###Close in space and time
+  ###Short fixations
+  ##Saccades
+  ###Blink inside saccade
+  ###Extreme velocity
+  ###Short saccade
+  ##Glissades
+  ###Blink inside glissade
+  ###Amplitude greater than previous saccade has
+  ###Glissade without previous saccade
+  
+  
+  return(locations)
 }
 
 ## CORE DETECTOR ##
-# This detector uses specified function (IVT, IDT, Ada-NH, ...) 
-# to detect oculomotor events
-oculomotorEventDetector <- function(ETD, detector, 
-                                    filterMarkerNames, 
-                                    detectorMarkerNames, 
-                                    detectionSettings)
+# This detector uses specified function (IVT, IDT, Ada-NH, ...) to detect oculomotor events
+oculomotorEventDetector <- function(ETD, detector, filterMarkerNames, detectorMarkerNames, detectionSettings)
 {
   getFilterMarkers <- function(filterLocations)
   {
@@ -300,8 +247,7 @@ oculomotorEventDetector <- function(ETD, detector,
   {
     if (detectionSettings$angular)
     {
-      if (is.null(ETD$leftEyeData$xAng) | 
-          is.null(ETD$leftEyeData$yAng))
+      if (is.null(ETD$leftEyeData$xAng) | is.null(ETD$leftEyeData$yAng))
       {
         stop("You should calculate angular gaze positions!")
       }
@@ -310,11 +256,9 @@ oculomotorEventDetector <- function(ETD, detector,
         x <- ETD$leftEyeData$xAng
         y <- ETD$leftEyeData$yAng
       }
-      if (is.null(ETD$leftEyeData$velAng) | 
-          is.null(ETD$leftEyeData$accelAng))
+      if (is.null(ETD$leftEyeData$velAng) | is.null(ETD$leftEyeData$accelAng))
       {
-        stop("You should calculate angular velocities 
-             and accelerations!")
+        stop("You should calculate angular velocities and accelerations!")
       }
       else
       {
@@ -326,11 +270,9 @@ oculomotorEventDetector <- function(ETD, detector,
     {
       x <- ETD$leftEyeData$porx
       y <- ETD$leftEyeData$pory
-      if (is.null(ETD$leftEyeData$vel) | 
-          is.null(ETD$leftEyeData$accel))
+      if (is.null(ETD$leftEyeData$vel) | is.null(ETD$leftEyeData$accel))
       {
-        stop("You should calculate velocities 
-             and accelerations!")
+        stop("You should calculate velocities and accelerations!")
       }
       else
       {
@@ -340,8 +282,7 @@ oculomotorEventDetector <- function(ETD, detector,
     }
     
     filterMarkers <- getFilterMarkers(ETD$leftEvents$filter)
-    data <- data.frame(t = ETD$commonData$time, x = x, y = y, 
-                       vel = vel, accel = accel)
+    data <- data.frame(t = ETD$commonData$time, x = x, y = y, vel = vel, accel = accel)
     detectorResLeft <- detector(data,
                                 settings = detectionSettings, 
                                 filterMarkers = filterMarkers, 
@@ -349,8 +290,7 @@ oculomotorEventDetector <- function(ETD, detector,
                                 detectorMarkerNames = detectorMarkerNames)
     detectorName <- detectorResLeft$detector
     detectorResLeft$detector <- NULL
-    detectorResLeft <- getEventsPositions(append(detectorResLeft,
-                                                 list(eye = "left")))
+    detectorResLeft <- getEventsPositions(append(detectorResLeft, list(eye = "left")))
     eventMarkers <- list(detectorResLeft)
     names(eventMarkers) <- detectorName
     ETD$leftEvents <- modifyList(x = ETD$leftEvents, val = eventMarkers)
@@ -359,8 +299,7 @@ oculomotorEventDetector <- function(ETD, detector,
   {
     if (detectionSettings$angular)
     {
-      if (is.null(ETD$rightEyeData$xAng) | 
-          is.null(ETD$rightEyeData$yAng))
+      if (is.null(ETD$rightEyeData$xAng) | is.null(ETD$rightEyeData$yAng))
       {
         stop("You should calculate angular gaze positions!")
       }
@@ -369,11 +308,9 @@ oculomotorEventDetector <- function(ETD, detector,
         x <- ETD$rightEyeData$xAng
         y <- ETD$rightEyeData$yAng
       }
-      if (is.null(ETD$rightEyeData$velAng) | 
-          is.null(ETD$rightEyeData$accelAng))
+      if (is.null(ETD$rightEyeData$velAng) | is.null(ETD$rightEyeData$accelAng))
       {
-        stop("You should calculate angular velocities 
-             and accelerations!")
+        stop("You should calculate angular velocities and accelerations!")
       }
       else
       {
@@ -385,11 +322,9 @@ oculomotorEventDetector <- function(ETD, detector,
     {
       x <- ETD$rightEyeData$porx
       y <- ETD$rightEyeData$pory
-      if (is.null(ETD$rightEyeData$vel) | 
-          is.null(ETD$rightEyeData$accel))
+      if (is.null(ETD$rightEyeData$vel) | is.null(ETD$rightEyeData$accel))
       {
-        stop("You should calculate velocities 
-             and accelerations!")
+        stop("You should calculate velocities and accelerations!")
       }
       else
       {
@@ -397,8 +332,7 @@ oculomotorEventDetector <- function(ETD, detector,
         accel <- ETD$rightEyeData$accel
       }
     }
-    data <- data.frame(t = ETD$commonData$time, x = x, y = y, 
-                       vel = vel, accel = accel)
+    data <- data.frame(t = ETD$commonData$time, x = x, y = y, vel = vel, accel = accel)
     filterMarkers <- getFilterMarkers(ETD$rightEvents$filter)
     detectorResRight <- detector(data,
                                  settings = detectionSettings, 
@@ -407,8 +341,7 @@ oculomotorEventDetector <- function(ETD, detector,
                                  detectorMarkerNames = detectorMarkerNames) 
     detectorName <- detectorResLeft$detector
     detectorResLeft$detector <- NULL
-    detectorResRight <- getEventsPositions(append(detectorResRight, 
-                                                  list(eye = "right")))
+    detectorResRight <- getEventsPositions(append(detectorResRight, list(eye = "right")))
     eventMarkers <- list(detectorResRight)
     names(eventMarkers) <- detectorName
     ETD$rightEvents <- modifyList(ETD$rightEvents, val = eventMarkers)

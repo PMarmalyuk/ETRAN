@@ -1,4 +1,4 @@
-setwd("F:/Институт/Проекты/EyeTrackingPackage/Git/EyeTrackingProject/SimpleVersion/")
+setwd("F:/Институт/Проекты/EyeTrackingPackage/Git/EyeTrackingProject/Source")
 source("initialisation.R", local = T)
 
 ################## DATA LOADING ################## 
@@ -16,7 +16,7 @@ etd <- readCSVData(filePath = filePath,
                    msgMarker = "MSG",
                    msgFlagColumn = 2, 
                    msgKey = "Message")
-
+etd$settings$colNames
 ################## DATA PREPARATION ################## 
 etd$commonData$time <- etd$commonData$time/1000000
 etd$commonData$time <- etd$commonData$time - min(etd$commonData$time)
