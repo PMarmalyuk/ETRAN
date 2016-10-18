@@ -88,7 +88,7 @@ ANH <- function(t, vel, minSac = .01, minFix = .04)
   ##Saccades onsets
   onset.Threshold <- getThreshold(vel, 3)
   for (i in left.peaks) {
-    while((i >= onset.Threshold) & (vel[i] >= vel[i - 1]) & (i > 1)) 
+    while((vel[i] >= onset.Threshold) & (vel[i] >= vel[i - 1]) & (i > 1)) 
       i <- i - 1
     onsets <- c(onsets, i)
   }
@@ -102,7 +102,7 @@ ANH <- function(t, vel, minSac = .01, minFix = .04)
     offset.Threshold <- .7 * onset.Threshold + .3 * local.Threshold
     offset.Thresholds <- c(offset.Thresholds, offset.Threshold)
     i <- right.peaks[j]
-    while(((i >= offset.Threshold) & (vel[i] >= vel[i + 1])) & (i < size))
+    while(((vel[i] >= offset.Threshold) & (vel[i] >= vel[i + 1])) & (i < size))
       i <- i + 1
     offsets <- c(offsets, i)
   }
