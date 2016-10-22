@@ -14,7 +14,7 @@ IVT <- function(data, settings, filterMarkers, filterMarkerNames, detectorMarker
   y <- data$y
   vel <- data$vel
   accel <- data$accel
-
+  
   #Detection settings
   VT <- settings$VT
   postProcess <- settings$postProcess
@@ -380,13 +380,12 @@ IDT <- function(data, settings, filterMarkers, filterMarkerNames, detectorMarker
 
 ## CORE DETECTOR ##
 # This detector uses specified function (IVT, IDT, Ada-NH, ...) to detect oculomotor events
-oculomotorEventDetector <- function(ETD, detector, filterMarkerNames, detectorMarkerNames, detectionSettings)
+oculomotorEventDetector <- function(ETD, detector, angular, filterOkMarker, ...)
 {
   mode <- etd$settings$mode
-  
   if (mode == "left" | mode == "binocular")
   {
-    if (detectionSettings$angular)
+    if (angular)
     {
       x <- ETD$leftEyeData$xAng
       y <- ETD$leftEyeData$yAng
@@ -395,17 +394,17 @@ oculomotorEventDetector <- function(ETD, detector, filterMarkerNames, detectorMa
     }
     else
     {
+      
+      etd$
+      
       x <- ETD$leftEyeData$porx
       y <- ETD$leftEyeData$pory
       vel <- ETD$leftEyeData$vel
       accel <- ETD$leftEyeData$accel
     }
     data <- data.frame(t = ETD$commonData$time, x = x, y = y, vel = vel, accel = accel)
-    detectorResLeft <- detector(data,
-                                settings = detectionSettings, 
-                                filterMarkers = ETD$leftEventsData$filterMarkers$eventMarkers, 
-                                filterMarkerNames = filterMarkerNames,
-                                detectorMarkerNames = detectorMarkerNames)
+    # TO DO: preprocess data
+    detectorResLeft <- detector(data, ...)
     detectorName <- detectorResLeft$detector
     detectorResLeft$detector <- NULL
     detectorResLeft <- append(detectorResLeft, list(eye = "left"))
@@ -415,7 +414,7 @@ oculomotorEventDetector <- function(ETD, detector, filterMarkerNames, detectorMa
   }
   if (mode == "right" | mode == "binocular")
   {
-    if (detectionSettings$angular)
+    if (angular)
     {
       x <- ETD$rightEyeData$xAng
       y <- ETD$rightEyeData$yAng
@@ -424,23 +423,35 @@ oculomotorEventDetector <- function(ETD, detector, filterMarkerNames, detectorMa
     }
     else
     {
+      etd$commonEvents$trial
+      
       x <- ETD$rightEyeData$porx
       y <- ETD$rightEyeData$pory
       vel <- ETD$rightEyeData$vel
       accel <- ETD$rightEyeData$accel
     }
+    
+
+    
     data <- data.frame(t = ETD$commonData$time, x = x, y = y, vel = vel, accel = accel)
     detectorResRight <- detector(data,
                                  settings = detectionSettings, 
                                  filterMarkers = ETD$rightEventsData$filterMarkers$eventMarkers,
                                  filterMarkerNames = filterMarkerNames,
                                  detectorMarkerNames = detectorMarkerNames) 
-    detectorName <- detectorResLeft$detector
-    detectorResLeft$detector <- NULL
-    detectorResRight <- append(detectorResRight, list(eye = "right"))
-    eventMarkers <- list(detectorResRight)
-    names(eventMarkers) <- detectorName
-    ETD$rightEvents <- modifyList(ETD$rightEvents, val = eventMarkers)
+    res <- detectorResRight
+      # detectorResRight <- list(detector = "AOIDetector", events = c("AOI1", "AOI1","AOI2", "AOI2","AOI3", "AOI3"), group = c(1,1,2,2,3,3))
+    
+    locations <- getEventsTable(event = res$events, res$group)
+    res_final <- list(data.frame(eye = "right", locations))
+    names(res_final) <- res$detector
+#     detectorName <- detectorResLeft$detector
+#     detectorResLeft$detector <- NULL
+#     detectorResRight <- append(detectorResRight, list(eye = "right"))
+#     eventMarkers <- list(detectorResRight)
+#     names(eventMarkers) <- detectorName
+    ETD$rightEvents <- modifyList(ETD$rightEvents, val = res_final)
+
   }
   return(ETD)
 }
