@@ -1,10 +1,9 @@
-source("routines.R")
-source("collections.R")
-source("private.R")
-source("prototype.R")
-source("AOI.R")
-source("AOISet.R")
-source("stimul.R")
+source("routines.R", chdir=T)
+source("collections.R", chdir=T)
+source("private.R", chdir=T)
+source("prototype.R", chdir=T)
+source("AOI.R", chdir=T)
+source("AOISet.R", chdir=T)
 
 als<-list()
 

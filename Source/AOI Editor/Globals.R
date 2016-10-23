@@ -1,6 +1,5 @@
-setwd("D:\\RGNF_Repo\\AOI_sandbox")
 library(shiny)
-source("alias.R")
+source("alias.R", chdir=T)
 
 
 stm<-als$new(als$enm$cln$STIMUL_COLLECTION)

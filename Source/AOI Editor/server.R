@@ -1,5 +1,5 @@
 library(shiny)
-source("SharedData.R")
+source("SharedData.R", chdir=T)
 
 shinyServer(
   

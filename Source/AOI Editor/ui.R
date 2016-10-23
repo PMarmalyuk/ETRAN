@@ -1,5 +1,5 @@
 library(shiny)
-source("SharedData.R")
+source("SharedData.R", chdir=T)
 
 # Define UI for dataset viewer application
 shinyUI(
