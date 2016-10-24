@@ -3,9 +3,9 @@ inAOI<-function(AOI, x, y){
   switch(AOI$shape,
          Rectangle={
            if((options$LTX<x)&
-              ((options$LTX+options$Width)>x)& #точка между левой и правой границей
+              ((options$LTX+options$Width)>x)& #????? ????? ????? ? ?????? ????????
               (options$LTY>y)&
-              ((options$LTY-options$Height)<y) #точка между верхней и нижней границей
+              ((options$LTY-options$Height)<y) #????? ????? ??????? ? ?????? ????????
            ){res<-TRUE} else res<-FALSE
          },
          Circle={
@@ -20,12 +20,22 @@ inAOI<-function(AOI, x, y){
            if((nx/(options$MajAxis^2)+ny/(options$MinAxis^2))<1){res<-TRUE} else res<-FALSE
          },
          Polyhedron={
-           xv<-sapply(options,function(a){return(a[[1]])}) #Все координаты х списком
-           yv<-sapply(options,function(a){return(a[[2]])}) #Все координаты y списком
+           xv<-sapply(options,function(a){return(a[[1]])}) #??? ?????????? ? ???????
+           yv<-sapply(options,function(a){return(a[[2]])}) #??? ?????????? y ???????
            res<-InPolyhedron(xv,yv,x,y)
          }
   )
   return(res)
+}
+
+
+#AOI detector which returns stndart location data
+dAOI<- function(t, x, y, set) {
+  d<-data.frame(x=x,y=y)
+  event<-tag_trajectory(set,d)
+  group <- markersGroups(event)
+  location <- getEventsTable(t, event, group)
+  return(location)
 }
          
 #check if x/y trajectory points belongs to specified AOI, 

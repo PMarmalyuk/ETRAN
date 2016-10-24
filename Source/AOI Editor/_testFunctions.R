@@ -1,4 +1,35 @@
-source("f_alias.R")
+source("alias.R", chdir=T)
+
+
+markersGroups <- function(markers) 
+{
+  transitions <- ifelse(markers[-length(markers)] != markers[-1], 1,0)
+  groups <- c(1,cumsum(transitions)+1)
+  return(groups)
+}
+
+getEventsTable <- function(t, event, group) 
+{
+  if (length(t) == length(event) & 
+      length(event) == length(group) & 
+      !is.null(t) & !is.null(event) & !is.null(group)) {
+    df <- data.frame(t = t, event = event, group = group)
+    dfs <- split(df, df$group)
+    locations <- lapply(dfs, FUN = function(x) {
+      list(start = head(x$t, 1),
+           end   = tail(x$t, 1),
+           event = unique(x$event)[1],
+           group = unique(x$group)[1])
+    })
+    
+    locations<-rbindlist(locations)
+  }
+  else locations <- NULL
+  return(locations)
+}
+
+
+
 
 aoi<-als$new("AOI_COLLECTION")
 aoi<-als$acol(aoi,als$aoio(name="Ellip",shape="Ellipse",
@@ -40,6 +71,11 @@ seq_in_aoi(DataFromAOIset(my_set,aoi)[[1]],trajectory)
 seq_in_aoi(DataFromAOIset(my_set,aoi)[[2]],trajectory)
 seq_in_aoi(DataFromAOIset(my_set,aoi)[[3]],trajectory)
 
+
+dAOI(t=trajectory$t,x=trajectory$x,y=trajectory$y,set=DataFromAOIset(my_set,aoi))
+
+
+tag_trajectory(DataFromAOIset(my_set,aoi),trajectory)
 
 #get frequencies/probability matrixes
 #obtain AOI seq by x/y data (with _milk)
