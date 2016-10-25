@@ -74,7 +74,7 @@ addDrawing = function(fig){
 }
 		
 addFigure = function(e){
-	var fig = e.data.figure.val();
+	var fig = e.data.v;//e.data.figure.val();
 	var commonParam={fill: 'red', opacity: 0.5 , fill: 'red', opacity: 0.5, selectable: true};
 	
 	OwnCanv.getObjects().forEach(function(element){element.hide()})
@@ -243,6 +243,7 @@ $(document).ready(function(){
 	stimDelBTN.prop('disabled',true);
 	stimSaveBTN.prop('disabled',true);
 	//renameAOIBTN.prop('disabled',true);
+	AOIGroup.hide();
 	
 	$.fn.extend({
 		en : function(){
@@ -269,7 +270,12 @@ $(document).ready(function(){
 	stimRepBTN.on('click', sendInputData);
 	stimDelBTN.on('click', sendInputData);
 
-	addAOIBTN.on('click', {figure:AOIGroup}, addFigure);
+
+	
+	// $('#RectAOI').on('click', {figure:AOIGroup.val('rect')}, addFigure);
+	$('#RectAOI').on('click', {figure:AOIGroup,v:"rect"}, addFigure);
+		
+	$('#CircleAOI').on('click', {figure:AOIGroup, v:"circle"}, addFigure);
 
 	stimulEditorPanel.on('click',{el:stimulEditor,itm:$('.clickerItem')},toggleContainer);
 	AOIEditorPanel.on('click',{el:AOIEditor,itm:$('.clickerItem'),isAOI:true},toggleContainer);

@@ -27,17 +27,17 @@ shinyUI(
       #Stimul editor container  
       tags$div(id='LoadImgContainerClicker',HTML(paste("<h4>Image collection editor</h4>"))),
       tags$div(id = 'LoadImgContainer', class= "clickerItem", HTML(paste(
-        fileInput('stimImgShnFileSource','Choose stimul file'),
+        fileInput('stimImgShnFileSource','Select image'),
         textInput('stimNameShnInput','Enter name for this stimul',''),
         numericInput('stimWidthShnInput','You could change width parameter',0),
         numericInput('stimHeightShnInput','You could change Height parameter',0),
         
         fluidRow(actionButton('saveStim','Load',align='center'), 
                  actionButton('repStim','Replace',align='center'),
-                 actionButton('delStim','Delate',align='center'), align='center' 
+                 actionButton('delStim','Remove',align='center'), align='center' 
         ),
         
-        selectInput('stimNameList','Existing image names', choices = pictSelectorOptions()),
+        selectInput('stimNameList','Existing images', choices = pictSelectorOptions()),
         hiddenInput('imgMetaDataStorage'),
         sep='',collapse='') )
       ),
@@ -47,8 +47,9 @@ shinyUI(
       tags$div(id ='CreateAOIContainer', class= "clickerItem", HTML(paste( 
         
         radioButtons('aoigroup','', choices = list("rect","circle"), selected = NULL, inline = TRUE, width = NULL),
-        actionButton('AddAOI','NewAOI'),
-        actionButton('drawPolygon','Draw polygon'),
+        actionButton('RectAOI','Rect'),
+        actionButton('CircleAOI','Circle'),
+        actionButton('drawPolygon','Polygon'),
         tags$div(id ='snglAOIparams', HTML(paste( 
           textInput('AOINameInput','Enter name for this stimul'),
           actionButton('RenameAOI','Apply new name'),sep='', collapse=''))
@@ -62,7 +63,7 @@ shinyUI(
         # 
         textInput('AOISetNameInput','Name of selected set'), 
         fluidRow(actionButton('repSet','Apply changes',align='center'),
-                 actionButton('delSet','Delate set',align='center'),align='center'
+                 actionButton('delSet','Remove set',align='center'),align='center'
         ),
         
         selectInput('AOIsetList','Existing sets', choices = setSelectorOptions()),

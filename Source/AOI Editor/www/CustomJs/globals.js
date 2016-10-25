@@ -78,7 +78,7 @@ $(document).ready(function(){
 	AOIsetEditorPanel = $('#CreateSetContainerClicker');
 	AOIsetEditor = $('#CreateSetContainer');
 	
-	addAOIBTN = $('#AddAOI');
+
 	
 	stimulMetaData = $('#imgMetaDataStorage');
 	

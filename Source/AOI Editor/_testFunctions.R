@@ -86,11 +86,12 @@ getPrMatrix(AOISeqByTrajectory)
 AOISeqByTrajectory<-AOISeqByTrajectory[AOISeqByTrajectory!="_milk"] 
 getFrMatrix(AOISeqByTrajectory)
 getPrMatrix(AOISeqByTrajectory)
-
+AOISeqByTrajectory
 
 
 #merge equal neighbors names in string list
 mergedAOISeqence<-mergeNeighborAOI(AOISeqByTrajectory)
+mergedAOISeqence
 #set seq to serch
 targetSeqence<-c("Pol","Pol3","Ellip","Pol3")
 #get positi(on/ons)
