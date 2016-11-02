@@ -1,8 +1,10 @@
 setwd("F:/Институт/Проекты/EyeTrackingPackage/Git/EyeTrackingProject/Source")
+setwd("ETRAN-master/Source")
 source("initialisation.R", local = T)
 
 ################## DATA LOADING ################## 
-filePath = "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\Tower-mounted SMI\\Ephimov.txt"
+# filePath = "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\Tower-mounted SMI\\Ephimov.txt"
+filePath = "E:/RDir/SimpleVersion/Ephimov-eye_data.txt"
 etd <- readCSVData(filePath = filePath, 
                    encoding = "UTF-8",
                    columnsPositions = columnsPositions,
@@ -46,13 +48,11 @@ etd$settings$screenSize <- c(33.7, 27)
 
 
 # DATA FILTERING ----------------------------------------------------------
-etdFiltered <- dataFilter(ETD = etd, 
-                          filterMarkerNames = filterMarkerNames, 
-                          filterSettings = list(interpolateShort = T,
-                                                blinkDetection = T,
-                                                minGapDuration = 0.02,
-                                                smoothLen = 3))
-
+etdFiltered <- dataFilter(ETD = etd)
+sf <- standardFilter(t = etd$commonData$time, x = etd$leftEyeData$porx, y = etd$leftEyeData$pory)
+str(sf)
+sf$eye <- "left"
+getEventsPositions(sf)
 # DATA SMOOTHING ----------------------------------------------------------
 etdSmoothed <- dataSmoother(ETD = etdFiltered, 
                             smoother = smoothingFunctions$medianSmoother, 
@@ -66,13 +66,16 @@ etdSmoothed <- calculateVelAcc(ETD = etdSmoothed,
                                  list(velType = "analytical", fl = 15))
 
 # OCULOMOTOR EVENTS DETECTION ---------------------------------------------
-etdSmoothed <- oculomotorEventDetector(ETD = etdSmoothed, 
+etdDetected <- oculomotorEventDetector(ETD = etdSmoothed,
                                        detector = IVT,
-                                       filterMarkerNames = filterMarkerNames, 
-                                       detectorMarkerNames = detectorMarkerNames,
-                                       detectionSettings = settingsList$IVTSettings)
+                                       filterOkMarker = "Ok",
+                                       VT = 30)
 
+etdDetected <- oculomotorEventDetector(ETD = etdDetected,
+                                       detector = ANH,
+                                       filterOkMarker = "Ok")
 
+str(etdDetected$leftEvents)
 # EVENTS ANALYSIS ----------------------------------------------------------
 fixParams <- evaluateSubFunctions(ETD = etdSmoothed,
                                   eye = "left",
