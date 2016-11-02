@@ -191,13 +191,13 @@ dataFilter <- function(ETD, interpolateShort = T, blinkDetection = "zeros",
       ETD$leftEyeData$pory <- filtResLeft$y
     }
     filtResLeft$eye <- "left"
-    ETD$leftEvents$filter <- getEventsPositions(filtResLeft)
+    ETD$leftEvents$filter <- as.data.frame(getEventsPositions(filtResLeft))
   }
   if (mode == "right" | mode == "binocular")
   {
     filtResRight <- standardFilter(t = ETD$commonData$time, 
-                                   x = ETD$leftEyeData$porx, 
-                                   y = ETD$leftEyeData$pory, 
+                                   x = ETD$rightEyeData$porx, 
+                                   y = ETD$rightEyeData$pory, 
                                    interpolateShort = interpolateShort, 
                                    blinkDetection = blinkDetection, 
                                    minGapDuration = minGapDuration, 
@@ -209,7 +209,7 @@ dataFilter <- function(ETD, interpolateShort = T, blinkDetection = "zeros",
       ETD$rightEyeData$pory <- filtResRight$y
     }
     filtResRight$eye <- "right"
-    ETD$rightEvents$filter <- getEventsPositions(filtResRights)
+    ETD$rightEvents$filter <- as.data.frame(getEventsPositions(filtResRights))
   }
   return(ETD)
 }
