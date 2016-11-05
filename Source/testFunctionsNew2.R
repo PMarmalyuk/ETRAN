@@ -1,10 +1,10 @@
 setwd("F:/Институт/Проекты/EyeTrackingPackage/Git/EyeTrackingProject/Source")
-setwd("ETRAN-master/Source")
+setwd("~/ETRAN-master/Source")
 source("initialisation.R", local = T)
 
 ################## DATA LOADING ################## 
 # filePath = "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\Tower-mounted SMI\\Ephimov.txt"
-filePath = "E:/RDir/SimpleVersion/Ephimov-eye_data.txt"
+filePath = "Ephimov-eye_data.txt"
 etd <- readCSVData(filePath = filePath, 
                    encoding = "UTF-8",
                    columnsPositions = columnsPositions,
@@ -66,16 +66,16 @@ etdSmoothed <- calculateVelAcc(ETD = etdSmoothed,
                                  list(velType = "analytical", fl = 15))
 
 # OCULOMOTOR EVENTS DETECTION ---------------------------------------------
-etdDetected <- oculomotorEventDetector(ETD = etdSmoothed,
+etdSmoothed <- oculomotorEventDetector(ETD = etdSmoothed,
                                        detector = IVT,
                                        filterOkMarker = "Ok",
                                        VT = 30)
 
-etdDetected <- oculomotorEventDetector(ETD = etdDetected,
+etdSmoothed <- oculomotorEventDetector(ETD = etdSmoothed,
                                        detector = ANH,
                                        filterOkMarker = "Ok")
 
-str(etdDetected$leftEvents)
+str(etdSmoothed$leftEvents)
 # EVENTS ANALYSIS ----------------------------------------------------------
 fixParams <- evaluateSubFunctions(ETD = etdSmoothed,
                                   eye = "left",
@@ -90,64 +90,77 @@ fixParams <- evaluateSubFunctions(ETD = etdSmoothed,
 
 # VISUALISATIONS EXAMPLES --------------------------------------------------
 ###For channels
+#Time
 t <- etdSmoothed$commonData$time
-x <- data.frame(t = t, value = etdSmoothed$leftEyeData$porx, name = "X")
-y <- data.frame(t = t, value = etdSmoothed$leftEyeData$pory, name = "Y")
-pupil <- data.frame(t = t, value = etdSmoothed$leftEyeData$pupSizeX, name = "Раскрытие зрачка (пикс.)")
-angVel <- data.frame(t = t, value = etdSmoothed$leftEyeData$velAng, name = "Скорость (град./сек.)")
-angAccel <- data.frame(t = t, value = etdSmoothed$leftEyeData$accelAng, name = "Ускорение (град./сек.^2)")
 
-filterEvents <- getEventsForPlot(t = t, 
-                                 markers = etdSmoothed$leftEvents$filterMarkers$eventMarkers,
-                                 groups = etdSmoothed$leftEvents$filterMarkers$eventGroups)
-levels(filterEvents$event) <- c("Корректные данные", "Пропуск", "Выброс", "Моргание")
-plotChannel(channels = rbind(y), events = filterEvents, xlim = c(48,49.5),
+x.name <- "X" 
+x <- etdSmoothed$leftEyeData$porx
+
+y.name <- "Y"
+y <- etdSmoothed$leftEyeData$pory
+
+pupil.name <- "Раскрытие зрачка (пикс.)"
+pupil <- etdSmoothed$leftEyeData$pupSizeX
+
+angVel.name <- "Скорость (град./сек.)"
+angVel <- etdSmoothed$leftEyeData$velAng
+
+angAccel.name <- "Ускорение (град./сек.^2)"
+angAccel <- etdSmoothed$leftEyeData$accelAng
+
+
+filterEvents <- etdSmoothed$leftEvents$filter
+filterEvents$start <- t[filterEvents$start]
+filterEvents$end <- t[filterEvents$end]
+
+levels(filterEvents$event)
+levels(filterEvents$event) <- c("Моргание", "Корректные \nданные")
+
+plotChannel(t = t, value = y, value.name = "Y", events = filterEvents, xlim = c(48,49.5),
             title = NULL, xlab = "Время (сек)", ylab = "Y-координата взора (пикс.)",
             events.title = "События", 
             channels.title = "Каналы \nзаписи")
 
-IVTEvents <- getEventsForPlot(t = t, 
-                              markers = etdSmoothed$leftEvents$IVT$eventMarkers,
-                              groups = etdSmoothed$leftEvents$IVT$eventGroups)
+IVTEvents <- etdSmoothed$leftEvents$IVT
+IVTEvents$start <- t[IVTEvents$start]
+IVTEvents$end <- t[IVTEvents$end]
+levels(IVTEvents$event)
+levels(IVTEvents$event) <- c("Фиксация", "Саккада")
 
-levels(IVTEvents$event) <- c("Фиксация", "Саккада", "Пропуск")
-plotChannel(channels = angVel, events = IVTEvents, xlim = c(0.25,1),
+plotChannel(t = t, value = angVel, value.name = angVel.name, events = IVTEvents, xlim = c(0.25,1),
             title = NULL, xlab = "Время (сек)", 
             ylab = "Моментальная угловая скорость (град./сек.)",
             events.title = "События", 
             channels.title = NULL)
 
-plotChannel(channels = angAccel, events = IVTEvents, xlim = c(3.25,5),
+plotChannel(t = t, value = angAccel, value.name = angAccel.name, events = IVTEvents, xlim = c(3.25,5), ylim = c(-200, 200),
             title = NULL, xlab = "Время (сек)", 
             ylab = "Моментальное угловое ускорение (град./сек.)",
             events.title = "События", 
             channels.title = NULL)
 
-plotChannel(channels = angAccel, events = IVTEvents, xlim = c(3.25,5),
-            title = NULL, xlab = "Время (сек)", 
-            ylab = "Моментальное угловое ускорение (град./сек.)",
-            events.title = "События", 
-            channels.title = NULL)
-
-plotChannel(channels = rbind(x, y), events = IVTEvents, xlim = c(3,4),
+plotChannel(t = t, value = list(x, y), value.name = c(x.name, y.name), events = IVTEvents, xlim = c(3,4), ylim = c(0, 1000),
             title = NULL, xlab = "Время (сек)", 
             ylab = "Координата (пикс.)",
             events.title = "События", 
             channels.title = "Каналы \nзаписи")
 
-ev <- etdSmoothed$leftEvents$IVT$eventMarkers
-levels(ev) <- c("Фиксация", "Саккада", "Пропуск/выброс")
 ## XY-plot
 stim <- readJPEG("3.jpg")
+IVTE <- etdSmoothed$leftEvents$IVT
+ev <- unlist(apply(IVTE, 1, function(x) rep(x[4], as.numeric(x[3]) - as.numeric(x[2]))))
+fixParams2 <- fixParams
+fixParams <- fixParams2[complete.cases(fixParams2),]
+
 plotStimulus(stimulus = stim, 
              title = NULL,
              xlab = "X координата (пикс.)",
              ylab = "Y координата (пикс.)",
              legend.title = "События", 
-             x = x$value[3000:10000], 
-             y = y$value[3000:10000], 
+             x = x[3000:10000], 
+             y = y[3000:10000], 
              events = ev[3000:10000], 
-             xlim = c(0, 1280), 
+             xlim = c(0, 1280),
              ylim = c(50, 400),
              add.background.line = T,
              point.size = 2,
@@ -158,10 +171,9 @@ plotHeatmap(stimulus = stim,
             x = fixParams$centerX, 
             y = fixParams$centerY, 
             xlab = NULL, ylab = NULL, 
-            xlim = c(0, 1280), 
+            xlim = c(0, 1280),
             ylim = c(0, 1024),
-            legend.title = F)
-
+            legend.title = F, decimation.degree = 10)
 
 plotScanpath(x.center = fixParams$centerX, 
              y.center = fixParams$centerY, 
@@ -174,8 +186,7 @@ plotScanpath(x.center = fixParams$centerX,
              arrow.head = 20, 
              arrow.alpha = .4, 
              xlim = c(400, 1280), 
-             ylim = c(200, 400),
-             stimulus = stim)
+             ylim = c(200, 400))
 
 # SAMPLE ANALYSIS ----------------------------------------------------------
 filesFolder <- "F:\\Институт\\Проекты\\EyeTrackingPackage\\Data\\Tower-mounted SMI\\"
