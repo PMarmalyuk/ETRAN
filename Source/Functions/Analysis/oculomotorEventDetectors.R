@@ -1,8 +1,8 @@
-getEventsTable <- function(event, group) 
+getEventsTable <- function(nsample, event, group) 
 {
   if (length(event) == length(group) & 
       !is.null(event) & !is.null(group)) {
-    df <- data.frame(n = 1:length(event), event = event, group = group)
+    df <- data.frame(n = nsample, event = event, group = group)
     dfs <- split(df, df$group)
     locations <- lapply(dfs, FUN = function(x) {
       list(start = head(x$n, 1),
@@ -45,6 +45,7 @@ IVT <- function(data, VT, detectorName = "IVT")
 {
   #Считывание нужных столбцов фрейма данных
   vel <- data$vel
+  nsample <- data$nsample
   #Значения маркеров событий (фиксация и саккада)
   fixMarker <- "Fixation"; sacMarker <- "Saccade"
   #Векторизованная операция проверки на превышение порога скорости
@@ -52,7 +53,7 @@ IVT <- function(data, VT, detectorName = "IVT")
   #Вычисление номеров групп событий
   group <- markersGroups(event)
   #Создание таблицы событий
-  location <- list(getEventsTable(event, group))
+  location <- list(getEventsTable(nsample, event, group))
   names(location) <- detectorName
   return(location)
 }
@@ -62,6 +63,7 @@ ANH <- function(data, minSac = .01, minFix = .04, detectorName = "ANH")
   #Считывание нужных столбцов фрейма данных
   t <- data$t
   vel <- data$vel
+  nsample <- data$nsample
   #Значения маркеров событий
   fixMarker <- "Fixation"
   sacMarker <- "Saccade"
@@ -134,6 +136,8 @@ ANH <- function(data, minSac = .01, minFix = .04, detectorName = "ANH")
       i <- i + 1
     while((vel[i] <= vel[i + 1]) & (i < size))
       i <- i + 1 
+    while((vel[i] >= vel[i + 1]) & (i < size))
+      i <- i + 1
     gli.offsets <- c(gli.offsets, i)
   }
   #Определение событий
@@ -157,7 +161,7 @@ ANH <- function(data, minSac = .01, minFix = .04, detectorName = "ANH")
   #Вычисление номеров групп событий
   group <- markersGroups(event)
   #Создание таблицы событий
-  location <- list(getEventsTable(event, group))
+  location <- list(getEventsTable(nsample, event, group))
   names(location) <- detectorName
   return(location)
 }
@@ -168,6 +172,7 @@ IDT <- function(data, disp.Threshold, dur.Threshold, detectorName = "IDT")
   t <- data$t
   x <- data$x
   y <- data$y
+  nsample <- data$nsample
   #Значения маркеров событий (фиксация и саккада)
   fixMarker <- "Fixation"; sacMarker <- "Saccade"
   #Вспомогательные переменные
@@ -199,7 +204,7 @@ IDT <- function(data, disp.Threshold, dur.Threshold, detectorName = "IDT")
   #Вычисление номеров групп событий
   group <- markersGroups(event)
   #Создание таблицы событий
-  location <- list(getEventsTable(event, group))
+  location <- list(getEventsTable(nsample, event, group))
   names(location) <- detectorName
   return(location)
 }
@@ -261,7 +266,7 @@ oculomotorEventDetector <- function(ETD, detector, angular = T, filterOkMarker, 
     f <- ETD$leftEvents$filter
     f <- f[f$event == filterOkMarker, c("start", "end")]
     filterOkIndexes <- unlist(apply(f, 1, function(x) seq(x[1], x[2])))
-    data <- data.frame(t = ETD$commonData$time, x = x, y = y, vel = vel, accel = accel)
+    data <- data.frame(t = ETD$commonData$time, nsample = 1:length(x), x = x, y = y, vel = vel, accel = accel)
     data <- data[filterOkIndexes,]
     #Определение событий ГДА с помощью выбранного детектора
     detectorResLeft <- detector(data, ...)
@@ -310,7 +315,7 @@ oculomotorEventDetector <- function(ETD, detector, angular = T, filterOkMarker, 
     f <- ETD$rightEvents$filter
     f <- f[f$event == filterOkMarker, c("start", "end")]
     filterOkIndexes <- unlist(apply(f, 1, function(x) seq(x[1], x[2])))
-    data <- data.frame(t = ETD$commonData$time, x = x, y = y, vel = vel, accel = accel)
+    data <- data.frame(t = ETD$commonData$time, nsample = 1:length(x), x = x, y = y, vel = vel, accel = accel)
     data <- data[filterOkIndexes,]
     #Определение событий ГДА с помощью выбранного детектора
     detectorResRight <- detector(data, ...)

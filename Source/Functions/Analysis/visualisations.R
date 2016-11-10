@@ -199,7 +199,7 @@ plotHeatmap <- function(stimulus, x, y, w = NULL, decimation.degree = ceiling(le
   else df <- data.frame(x, y, w)
   df <- df[which(df$x >= xlim[1] & df$x <= xlim[2]),]
   df <- df[which(df$y >= ylim[1] & df$y <= ylim[2]),]
-  indexes <- seq(1, length(x), decimation.degree)
+  indexes <- seq(1, nrow(df), decimation.degree)
   df <- df[indexes,]
   p <- ggplot(df, aes(x = x, y = y))
   if (axes.hide) {
