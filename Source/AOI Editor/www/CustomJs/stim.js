@@ -17,6 +17,8 @@ resetIO = function(){
 		
 		stimulMetaData.val("");
 		stimulMetaData.attr("imgName","");
+		stimulMetaData.removeAttr("originalWidth");
+		stimulMetaData.removeAttr("originalHeight");
 		stimulMetaData.removeAttr("imgId");
 		stimulMetaData.prop("isnew",true);
 		
@@ -31,6 +33,7 @@ loadStimFile = function() {
 			var m={src:reader.result,name:stimFileSrc.val(),isnew:true};
 			imgReplaceMsgH(m);
 		}
+		
 };
 	
 sendInputData = function(){
@@ -43,18 +46,138 @@ sendInputData = function(){
 	
 	
 fillInputData = function(){
-	stimHeight.val(bufferCanvas.height());
-	stimWidth.val(bufferCanvas.width());
-	
+	$('#wiScale').val(0);
+	$('#hiScale').val(0);
 	stimulMetaData.val(bufferCanvas.attr("src"));
 	stimName.val(stimulMetaData.attr("imgName"));
-	};
+	
+	if (!stimulMetaData.prop("isnew")){	
+		stimHeight.val(stimulMetaData.attr("originalHeight"));
+		stimWidth.val(stimulMetaData.attr("originalWidth"));
+	} else {
+		stimHeight.val(bufferCanvas.height());
+		stimWidth.val(bufferCanvas.width());
+	}
+	
+};
 	
 imgUpdate = function(e){
-	OwnCanv.reloadBG(e.target);
 	fillInputData();
+	OwnCanv.stretchBG(e.target,parseInt(stimWidth.val(),10),
+								parseInt(stimHeight.val(),10)
+								);
 	$(e.target).hide();
 };
+
+imgReplaceMsgH =function(m){
+	
+	bufferCanvas.attr("src",m.src);
+	stimName.val(m.name);
+	stimulMetaData.attr("imgName",m.name);
+
+	if(m.isnew){
+		stimulMetaData.removeAttr("imgId");
+		stimulMetaData.prop("isnew",true).trigger("change"); 
+		console.log("Replace with new");
+	}
+	else{
+		stimulMetaData.attr("originalWidth",m.imgWidth);
+		stimulMetaData.attr("originalHeight",m.imgHeight);
+		stimulMetaData.attr("imgId",m.pictId);
+		stimulMetaData.prop("isnew", false).trigger('change');
+		console.log("Replace with old");		
+	}
+		
+		
+};
+
+
+zoomIt=function (xf,yf) {
+	OwnCanv.setHeight(Math.round(OwnCanv.getHeight() * yf));
+	OwnCanv.setWidth(Math.round(OwnCanv.getWidth() * xf));
+	if (OwnCanv.backgroundImage) {
+		var bi = OwnCanv.backgroundImage;
+		bi.width = Math.round(bi.width * xf); bi.height = Math.round(bi.height * yf);
+	}
+	var objects = OwnCanv.getObjects();
+	objects.forEach(function(o){
+		if (!o.hidden){
+			var scaleX = o.scaleX;
+			var scaleY = o.scaleY;
+			var left = o.left;
+			var top = o.top;
+
+			var tempScaleX = scaleX * xf;
+			var tempScaleY = scaleY * yf;
+			var tempLeft = left * xf;
+			var tempTop = top * yf;
+
+			o.scaleX = tempScaleX;
+			o.scaleY = tempScaleY;
+			o.left = tempLeft;
+			o.top = tempTop;
+			o.setCoords();
+			OwnCanv.trigger('object:modified', {target: o});
+		}
+		})
+	OwnCanv.renderAll();
+	OwnCanv.calcOffset();
+}
+
+
+function setSize(w,h){
+	
+	var xs=Math.abs(w)/OwnCanv.getWidth();
+	var ys=Math.abs(h)/OwnCanv.getHeight();
+	
+	zoomIt(xs,ys);
+	
+	stimHeight.val(OwnCanv.getHeight());
+	stimWidth.val(OwnCanv.getWidth());
+	
+	if (!stimulMetaData.prop("isnew")){	
+		
+		var fScaleData={
+					newScale:					"cNewScale"+stimWidth.val()+stimHeight.val(),
+					stimId:						parseInt(stimulMetaData.attr("imgId"),10),
+					stimWidthShnInput:			parseInt(stimWidth.val(),10),
+					stimHeightShnInput:			parseInt(stimHeight.val(),10)
+				};
+		console.log(fScaleData);			
+		shinySend(fScaleData);
+	};
+}
+
+function zoom(e){
+	var xs;
+	var ys;
+	if($('#ratioFixed').prop("checked")){
+		$('#wiScale').val(e.target.valueAsNumber);
+		$('#hiScale').val(e.target.valueAsNumber);
+	}
+	if($('#wiScale').val()>0){xs =parseInt(stimulMetaData.attr("originalWidth"),10)*scaleMarkers[$('#wiScale').val()];}
+	else {xs = parseInt(stimulMetaData.attr("originalWidth"),10)/scaleMarkers[$('#wiScale').val()*-1];}
+	if($('#hiScale').val()>0){ys = parseInt(stimulMetaData.attr("originalHeight"),10)*scaleMarkers[$('#hiScale').val()];}
+	else{ys = parseInt(stimulMetaData.attr("originalHeight"),10)/scaleMarkers[$('#hiScale').val()*-1];}
+	setSize(xs,ys);
+}
+
+function directResize(e){
+	var xs=stimWidth.val();
+	var ys=stimHeight.val();
+	if($('#ratioFixed').prop("checked")){
+		if(e.target.id=='stimWidthShnInput'){
+			ys = OwnCanv.getHeight()*(xs/OwnCanv.getWidth());
+		}
+		if(e.target.id=='stimHeightShnInput'){
+			xs =  OwnCanv.getWidth()*(ys/OwnCanv.getHeight());
+		}
+	}
+	setSize(xs,ys);
+}
+
+
+
 		
 addDrawing = function(fig){
 	var figToAdd = fig;
@@ -105,30 +228,19 @@ addFigure = function(e){
 defineModifyAct = 	function (){
 	if ($(this).prop("isnew")){
 		stimRepBTN.prop('disabled',true); stimDelBTN.prop('disabled',true);
+				$('#wiScale').prop('disabled',true);
+		$('#hiScale').prop('disabled',true);
 		stimSaveBTN.prop('disabled',false);
 	} 
 	else {
 		stimRepBTN.prop('disabled',false); stimDelBTN.prop('disabled',false);
+		$('#wiScale').prop('disabled',false);
+		$('#hiScale').prop('disabled',false);
 		stimSaveBTN.prop('disabled',true);
 	}	
 };	
 
-imgReplaceMsgH =function(m){
-	bufferCanvas.attr("src",m.src);
-	stimName.val(m.name);
-	stimulMetaData.attr("imgName",m.name);
 
-	if(m.isnew){
-		stimulMetaData.removeAttr("imgId");
-		stimulMetaData.prop("isnew",true).trigger("change"); 
-		console.log("Replace with new");
-	}
-	else{
-		stimulMetaData.attr("imgId",m.pictId);
-		stimulMetaData.prop("isnew", false).trigger('change');
-		console.log("Replace with old");		
-	} 
-};
 	
 clearIOMsgH = function(m){
 	 resetIO();
@@ -235,6 +347,12 @@ fabric.util.addListener(window, 'keyup', function (e) {
 	
 }
 
+
+
+
+
+
+
 	
 $(document).ready(function(){
 	OwnCanv = new fabric.Canvas('imgEditorCanvas', { isDrawingMode: false }  );
@@ -288,9 +406,22 @@ $(document).ready(function(){
 	
 	$('#drawPolygon').on('click',polygonByMouse)
 
+	$('#wiScale').on('change',zoom)
+	$('#hiScale').on('change',zoom)
+
+	stimHeight.on('change',directResize)
+	stimWidth.on('change',directResize)
+	
+	clearScene();
 
 
 	stimulEditor.show();
 	AOIEditor.hide();
 	AOIsetEditor.hide();
+	
+	
+	
+	
+	
+	
 });

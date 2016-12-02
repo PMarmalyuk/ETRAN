@@ -42,7 +42,7 @@ createSet=function(e) {
 						name:						AOI_SetName.val()};
 						
 	shinySend({newSet:fSetData});
-	
+
 	$('.clickerItem').slideUp('slow');
 	AOIsetEditor.slideDown('slow');
 	
@@ -54,15 +54,13 @@ createSet=function(e) {
 aoisetReplaceMsgH =function(m){
 	var setIds=m.ids;
 	var a=AOIListContent.find("#bootstrap-duallistbox-selected-list_duallistbox").children();
-	a.each(function(i,e){
-		$(e).prop("selected",true);
-		});
-	
+	a.each(function(i,e){$(e).prop("selected",true);});
 	$("button.remove").trigger("click");
+	
 	a=AOIListContent.find("#bootstrap-duallistbox-nonselected-list_duallistbox").children();
 	
 	//setIds.map(function(element){a[AOIcol.getIdByUID(element)]})
-	
+	console.log(setIds);
 	a.each(function(i,e){
 			var cV=setIds.indexOf(parseInt($(e).val())+1);
 			if (cV>=0){
@@ -81,15 +79,47 @@ aoisetReplaceMsgH =function(m){
 clearAOIMsgH = function(m){
 	 console.log(m);
 	}
+	
+clearScene=function(){
+	OwnCanv.getObjects().forEach(function(element){element.hide()})
+	OwnCanv.renderAll();
+	$("#AOIsetList").val(-1);
+	$("#AOIsetList").trigger('change');
+	
+	$("#AOIsetList > option").removeAttr("selected");
+
+	
+	var a=AOIListContent.find("#bootstrap-duallistbox-selected-list_duallistbox").children();
+	a.each(function(i,e){
+		$(e).prop("selected",true);
+		});
+	
+	$("button.remove").trigger("click");
+	
+	
+}
+
+function canvRefresh(e){
+	var a=e.target.children();
+	a.each(function(i,e){
+		if(!$(e).prop("selected")){
+			OwnCanv.getObjects()[i].hide();
+		};
+	});
+	OwnCanv.renderAll();
+}
 
 $(document).ready(function(){
 	
-saveSelectedAsSet.on('click', createSet);
-repSelectedSet.on('click', repSet);
-delSelectedSet.on('click', delSet);
+	saveSelectedAsSet.on('click', createSet);
+	repSelectedSet.on('click', repSet);
+	delSelectedSet.on('click', delSet);
 
-Shiny.addCustomMessageHandler("replaceAOI_setCallbackHandler",aoisetReplaceMsgH);
-Shiny.addCustomMessageHandler("resetInputsAOICallbackHandler",clearAOIMsgH);
+	//AOIListContent.find("#bootstrap-duallistbox-selected-list_duallistbox").on('change',canvRefresh);
+	
+	
+	Shiny.addCustomMessageHandler("replaceAOI_setCallbackHandler",aoisetReplaceMsgH);
+	Shiny.addCustomMessageHandler("resetInputsAOICallbackHandler",clearAOIMsgH);
 
 	OwnCanv.getObjects().forEach(function(element){element.hide()})
 	OwnCanv.renderAll();

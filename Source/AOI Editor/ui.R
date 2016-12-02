@@ -30,7 +30,18 @@ shinyUI(
         fileInput('stimImgShnFileSource','Select image'),
         textInput('stimNameShnInput','Enter name for this stimul',''),
         numericInput('stimWidthShnInput','You could change width parameter',0),
+        
+        tags$div(id = 'WidthScale', class= "sltrCont", HTML(paste(
+          '<input id = "wiScale" type="range" min="-7" max="7" value="0" step="1">',
+          sep='',collapse='' ))),
+          
         numericInput('stimHeightShnInput','You could change Height parameter',0),
+        
+        tags$div(id = 'HeightScale', class= "sltrCont2", HTML(paste(
+          '<input id = "hiScale" type="range" min="-7" max="7" value="0" step="1"><br>
+          <input id = "ratioFixed" type="checkbox" checked/><br>',
+          sep='',collapse='' ))),
+        
         
         fluidRow(actionButton('saveStim','Load',align='center'), 
                  actionButton('repStim','Replace',align='center'),

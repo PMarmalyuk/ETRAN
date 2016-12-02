@@ -33,6 +33,8 @@ $(document).ready(function(){
 	  console.log(m);
 	  $('#imgMetaDataStorage').attr("imgName",m.IName);
 	  $('#imgMetaDataStorage').attr("imgId",m.pictId);
+	  $('#imgMetaDataStorage').attr("originalHeight",m.imgHeight);
+	  $('#imgMetaDataStorage').attr("originalWidth",m.imgWidth);
 	  $('#imgMetaDataStorage').prop("isnew", false).trigger('change');
 	  $('#hiddenImgBuffer').attr("src",m.src);
   })
@@ -56,6 +58,7 @@ $(document).ready(function(){
 	$("#delStim").on('click', sendInputData);
 	
 	$('#hiddenImgBuffer').on('load',imgUpdate);
+	//$("#AOIsetList").on();
 	
 	
 	

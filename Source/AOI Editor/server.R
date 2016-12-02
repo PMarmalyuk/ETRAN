@@ -39,7 +39,7 @@ shinyServer(
       #if collection element succesfully loaded
       if(length(selectedElement)){
         #send msg with replacement data to client
-        msg<-list(src=selectedElement$imgDataURI, pictId=selected_id, name=selectedElement$name, imgWidth = 0, imgHeight = 0, isnew=FALSE)
+        msg<-list(src=selectedElement$imgDataURI, pictId=selected_id, name=selectedElement$name, imgWidth = selectedElement$imgWidth, imgHeight = selectedElement$imgHeight, isnew=FALSE)
         print("CALL replace data in stimul editor/loadOK")
         session$sendCustomMessage('replaceImgCallbackHandler', msg) }    
       #if couldn't find selected item in stimul collection print error, send resetIO msg
@@ -54,7 +54,7 @@ shinyServer(
       
       selected_id<-input$AOIsetList
       selectedElement<-als$ebu(clientEnvAOI_setListBuffer,selected_id)
-      
+      print(input$AOIsetList)
       if(length(selectedElement)){
         setData<-DataFromAOIset(selectedElement,clientEnvAOIListBuffer)
         #get uid's of AOI in selected set
@@ -102,6 +102,23 @@ shinyServer(
         updateSelectInput(session, 'stimNameList', choices = inputOptionsValue, 
                           selected = inputOptionsValue[getNumberByUID(clientEnvStimListBuffer,replaceAtThisID)])
       } else {print(paste("could not replace with id NULL, recived Id value=",replaceAtThisID))}  })
+    
+    observeEvent(input$newScale,{
+      replaceAtThisID<-input$stimId
+      print(replaceAtThisID)
+      if(inputValueRecived(replaceAtThisID)){
+        localImgSource<-als$ebu(clientEnvStimListBuffer,replaceAtThisID)
+        
+        localImgSource$imgWidth<-as.numeric(input$stimWidthShnInput)
+        localImgSource$imgHeight<-as.numeric(input$stimHeightShnInput)
+        
+        print("recive new scale data request")
+        clientEnvStimListBuffer<<-als$rcol(clientEnvStimListBuffer,localImgSource)
+        .GlobalEnv$stm<-clientEnvStimListBuffer 
+      } else {
+        print(paste("no valid scale data recived",replaceAtThisID))}  })
+    
+    
     
     observeEvent(input$delStim,{
       delateAtThisID<-input$stimId
@@ -206,4 +223,5 @@ shinyServer(
     })          
     
     
-  })
+  }
+  )

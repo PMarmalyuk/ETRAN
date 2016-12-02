@@ -39,6 +39,8 @@
 	labelMsg = function(label,Obj){console.log(label); console.log(Obj)};
 	
 	Array.prototype.last = function(){return this[this.length - 1]};
+	
+	var scaleMarkers = [1,1.2,1.5,1.8,2,4,6,8];
 
 
 $(document).ready(function(){
@@ -97,12 +99,14 @@ $(document).ready(function(){
 	
 	$("div.box2").find("div.btn-group.buttons").append('<button type="button" text="set" id="SaveSelection" style="width: 20%" class="btn btn-default">new set</button>');
 	$("div.box2").find("div.btn-group.buttons").append('<input type="text" id="newSetFromList" style="width: 100%" placeholder="new set name" />');
-	$("div.box1").find("div.btn-group.buttons").append('<input type="button" name="Hi" id="hideAll" style="width: 20%" class="btn btn-default"/>');
+	$("div.box1").find("div.btn-group.buttons").append('<button type="button"  name="Hi" id="hideAll" style="width: 20%" class="btn btn-default">hide all</button>');
 
 	saveSelectedAsSet= $('#SaveSelection')
 	newSetFromList=$('#newSetFromList')
 	repSelectedSet=$('#repSet');
 	delSelectedSet=$('#delSet');	
+	
+	$('#hideAll').on('click',clearScene);
 
 	
 })

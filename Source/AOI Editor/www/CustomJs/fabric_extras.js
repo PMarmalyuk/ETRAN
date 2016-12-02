@@ -57,6 +57,53 @@ fabric.Canvas.prototype.reloadBG = function(imgToSet){
 };
 	
 	
+fabric.Canvas.prototype.stretchBG = function(imgToSet,w,h){
+		this.setWidth(w);
+		this.setHeight(h);
+		
+		this.setBackgroundImage(imgToSet.src,this.renderAll.bind(this),{
+			width:w,
+			height:h
+		});
+		this.renderAll();
+		//this.calcOffset();
+	};
+	
+fabric.Canvas.prototype.zoomIt=function (xf,yf) {
+	this.setHeight(Math.round(this.getHeight() * yf));
+	this.setWidth(Math.round(this.getWidth() * xf));
+	if (this.backgroundImage) {
+		var bi = this.backgroundImage;
+		bi.width = Math.round(bi.width * xf); bi.height = Math.round(bi.height * yf);
+	}
+	var objects = this.getObjects();
+	objects.forEach(function(o){
+		//if (!o.hidden){
+			var scaleX = o.scaleX;
+			var scaleY = o.scaleY;
+			var left = o.left;
+			var top = o.top;
+
+			var tempScaleX = scaleX * xf;
+			var tempScaleY = scaleY * yf;
+			var tempLeft = left * xf;
+			var tempTop = top * yf;
+
+			o.scaleX = tempScaleX;
+			o.scaleY = tempScaleY;
+			o.left = tempLeft;
+			o.top = tempTop;
+			o.setCoords();
+			fabric.Canvas.trigger('object:modified', {target: o});
+		//}
+		})
+	this.renderAll();
+	//this.calcOffset();
+}
+
+	
+	
+	
 	
 fabric.Object.prototype.hide = function(){this.set({opacity:0,selectable:false,hidden:true,active:false})}
 fabric.Object.prototype.show = function(){this.set({opacity:0.5,selectable:true,hidden:false,active:true,focus:true})}
