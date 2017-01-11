@@ -1,5 +1,5 @@
 setwd("F:/Институт/Проекты/EyeTrackingPackage/Git/EyeTrackingProject/Source")
-setwd("~/ETRAN-master/Source")
+setwd("~/ETRAN-final/Source")
 source("initialisation.R", local = T)
 
 ################## DATA LOADING ################## 

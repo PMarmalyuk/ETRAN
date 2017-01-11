@@ -14,7 +14,7 @@ calcAngPos <- function(x, y, settings, refPoint = c(0,0))
 
 calculateAngPos <- function(ETD)
 {
-  mode <- etd$settings$mode
+  mode <- ETD$settings$mode
   if (mode == "left" | mode == "binocular")
   {
     angLeft <- calcAngPos(x = ETD$leftEyeData$porx, 

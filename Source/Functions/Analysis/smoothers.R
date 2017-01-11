@@ -10,7 +10,7 @@ savGolSmoother <- function(x, smoothingSettings)
 medianSmoother <- function(x, smoothingSettings)
 {
   k <- smoothingSettings$fl
-  runmed(x, k)
+  as.numeric(runmed(x, k))
 }
 
 # Moving average smoother
@@ -30,7 +30,7 @@ movAvgSmoother <- function(x, smoothingSettings)
 ## CORE SMOOTHER ##
 dataSmoother <- function(ETD, smoother, smoothingSettings)
 {
-  mode <- etd$settings$mode
+  mode <- ETD$settings$mode
   if (mode == "left" | mode == "binocular")
   {
     ETD$leftEyeData$porx <- smoother(ETD$leftEyeData$porx, 

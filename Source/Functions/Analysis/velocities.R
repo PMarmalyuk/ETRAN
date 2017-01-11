@@ -93,11 +93,11 @@ calcVel <- function(t, x, y, settings)
 calculateVelAcc <- function(ETD, velocitySettings)
 {
   
-  mode <- etd$settings$mode
+  mode <- ETD$settings$mode
   velocitySettings <- append(velocitySettings, 
-                             list(headDistance = etd$settings$headDistance,
-                                  screenResolution = etd$settings$screenResolution,
-                                  screenSize = etd$settings$screenSize))
+                             list(headDistance = ETD$settings$headDistance,
+                                  screenResolution = ETD$settings$screenResolution,
+                                  screenSize = ETD$settings$screenSize))
   if (mode == "left" | mode == "binocular")
   {
     velLeft <- calcVel(t = ETD$commonData$time, 
