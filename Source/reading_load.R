@@ -52,30 +52,34 @@ Reading_etd_smoothed_list <- lapply(Reading_etd_filtered_list, FUN = function(x)
   dataSmoother(ETD = x, 
                smoother = smoothingFunctions$medianSmoother, 
                smoothingSettings = list(fl = 15, 
-                                        forder = 2))
+                                        forder = 3))
 })
 
 ## Расчёт скоростей в угловых градусах
-Reading_etd_angvelacc_list <- lapply(Reading_etd_angpos_list, FUN = function(x) {
-  calculateVelAcc(ETD = x, 
+Reading_etd_velacc_list <- lapply(Reading_etd_smoothed_list, FUN = function(x) {
+  calculateVelAcc(ETD = x, angular = F,
                   velocitySettings = 
-                    list(velType = "finDiff", fl = 15, angular = F))  
+                    list(velType = "finDiff", fl = 15))  
 })
 
 ## Определение окуломоторных событий
-Reading_etd_detected_list <- lapply(Reading_etd_angvelacc_list, FUN = function(x) {
+Reading_etd_detected_list <- lapply(Reading_etd_velacc_list, FUN = function(x) {
   oculomotorEventDetector(ETD = x,
                           detector = IVT,
                           filterOkMarker = "Ok",
-                          VT = 30)
+                          VT = 350,
+                          angular = F)
 })
 
 ## График угловой скорости и событий
-test_etd <- Reading_etd_detected_list[[30]]
+test_etd <- Reading_etd_detected_list[[60]]
 t <- test_etd$commonData$time
 test_events <- test_etd$leftEvents$IVT %>%
   mutate(start = c(1, start[-1] - 1),
          start = t[start],
          end = t[end])
-plotChannel(t = t, value = test_etd$leftEyeData$velAng,
-            events = test_events, xlim = c(30, 32))
+val <- (test_etd$leftEyeData$vel)
+val <- ifelse(is.nan(val), 0, val)
+val <- ifelse(val > 300, 0, val)
+plotChannel(t = t, value = val)
+hist(val, xlim = c(0, 25000))
