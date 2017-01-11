@@ -30,7 +30,7 @@ calculateAngPos <- function(ETD)
     angRight <- calcAngPos(x = ETD$rightEyeData$porx, 
                            y = ETD$rightEyeData$pory,
                            settings = ETD$settings) 
-    ETD$leftEyeData <- modifyList(x = ETD$rightEyeData, 
+    ETD$rightEyeData <- modifyList(x = ETD$rightEyeData, 
                                   val = list(xAng = angRight$xAng,
                                              yAng = angRight$yAng))
   }

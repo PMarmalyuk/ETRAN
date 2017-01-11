@@ -223,7 +223,7 @@ oculomotorEventDetector <- function(ETD, detector, angular = T, filterOkMarker, 
     return(rbindlist(fm))
   }
   
-  mode <- etd$settings$mode
+  mode <- ETD$settings$mode
   if (mode == "left" | mode == "binocular")
   {
     if (angular)

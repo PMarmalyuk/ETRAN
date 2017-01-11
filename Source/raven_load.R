@@ -92,8 +92,25 @@ Raven_etd_angpos_list <- lapply(Raven_etd_smoothed_list, FUN = function(x) {
 Raven_etd_angvelacc_list <- lapply(Raven_etd_angpos_list, FUN = function(x) {
   calculateVelAcc(ETD = x, 
                   velocitySettings = 
-                    list(velType = "analytical", fl = 15))  
+                    list(velType = "finDiff", fl = 15))  
 })
 
-plotChannel(t = Raven_etd_angvelacc_list[[1]]$commonData$time, 
-            value = Raven_etd_angvelacc_list[[1]]$leftEyeData$velAng)
+## Определение окуломоторных событий
+Raven_etd_detected_list <- lapply(Raven_etd_angvelacc_list, FUN = function(x) {
+  oculomotorEventDetector(ETD = x,
+                          detector = IVT,
+                          filterOkMarker = "Ok",
+                          VT = 30)
+})
+
+## График угловой скорости и событий
+test_etd <- Raven_etd_detected_list[[30]]
+t <- test_etd$commonData$time
+test_events <- test_etd$leftEvents$IVT %>%
+  mutate(start = c(1, start[-1] - 1),
+         start = t[start],
+         end = t[end])
+plotChannel(t = t, value = test_etd$leftEyeData$velAng,
+            events = test_events, xlim = c(30, 32))
+
+
