@@ -70,27 +70,40 @@ getVelAccelSavGol <- function(t, x, y, fl)
                      vels = vel, accels = accel)))
 }
 
-calcVel <- function(t, x, y, settings)
+calcVel <- function(t, x, y, settings, angular)
 {
   velType <- settings$velType
   fl <- settings$fl
-  angPositions <- calcAngPos(x = x, y = y, settings)
+  
   if (velType == "finDiff")
   {
     pxVelAccel <- getVelAccelFinDiff(t, x, y) 
-    angVelAccel <- getVelAccelFinDiff(t, x = angPositions$xAng, 
-                                      y = angPositions$yAng) 
   }
   if (velType == "analytical")
   {
     pxVelAccel <- getVelAccelSavGol(t, x, y, fl) 
-    angVelAccel <- getVelAccelSavGol(t, x = angPositions$xAng, 
-                                     y = angPositions$yAng, fl) 
   }
-  return(list(pxVelAccel = pxVelAccel, angVelAccel = angVelAccel))
+  
+  if (angular) {
+    angPositions <- calcAngPos(x = x, y = y, settings)
+    if (velType == "finDiff")
+    {
+      angVelAccel <- getVelAccelFinDiff(t, x = angPositions$xAng, 
+                                        y = angPositions$yAng) 
+    }
+    if (velType == "analytical")
+    {
+      angVelAccel <- getVelAccelSavGol(t, x = angPositions$xAng, 
+                                       y = angPositions$yAng, fl) 
+    }
+    return(list(pxVelAccel = pxVelAccel, angVelAccel = angVelAccel))
+  }
+  else {
+    return(list(pxVelAccel = pxVelAccel))
+  }
 }
 
-calculateVelAcc <- function(ETD, velocitySettings)
+calculateVelAcc <- function(ETD, velocitySettings, angular = TRUE)
 {
   
   mode <- ETD$settings$mode
@@ -103,6 +116,7 @@ calculateVelAcc <- function(ETD, velocitySettings)
     velLeft <- calcVel(t = ETD$commonData$time, 
                        x = ETD$leftEyeData$porx, 
                        y = ETD$leftEyeData$pory,
+                       angular = angular,
                        settings = velocitySettings) 
     ETD$leftEyeData <- modifyList(x = ETD$leftEyeData, 
                                   val = list(vel = velLeft$pxVelAccel$vels, 

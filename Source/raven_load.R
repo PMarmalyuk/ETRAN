@@ -2,10 +2,8 @@ setwd("~/ETRAN-final/Source")
 source("initialisation.R", local = T)
 
 ## Подготовка вектора путей к файлам
-Raven_raw_paths <- c()
-for(i in list.dirs("../Data/Gaze Data/CSV/SMI RED - Raven's test/", recursive = F)) {
-  Raven_raw_paths <- c(Raven_raw_paths, list.files(i, full.names = T))
-}
+Raven_raw_paths <- list.files("../Data/Gaze Data/CSV/SMI RED - Raven's test/", 
+                              recursive = T, full.names = T)
 
 ################## DATA READING SETTINGS ################## 
 headerKeys <- list(subjectCode = list(type = "character", 
@@ -65,8 +63,10 @@ Raven_etd_prepared_list <- lapply(Raven_etd_list, FUN = function(x) {
   x$commonData$time <- x$commonData$time - min(x$commonData$time)
   x$settings$headDistance <- x$settings$headDistance * .1
   x$settings$screenSize <- c(33.7, 27)
-  x$settings$subjectCode <- as.numeric(sub(pattern = "S", replacement = "", x = x$settings$subjectCode))
-  x$settings$taskCode <- as.numeric(sub(pattern = ".jpg", replacement = "", x = x$settings$taskCode))
+  x$settings$subjectCode <- as.numeric(sub(pattern = "S", replacement = "", 
+                                           x = x$settings$subjectCode))
+  x$settings$taskCode <- as.numeric(sub(pattern = ".jpg", replacement = "", 
+                                        x = x$settings$taskCode))
   x
 })
 
@@ -112,5 +112,3 @@ test_events <- test_etd$leftEvents$IVT %>%
          end = t[end])
 plotChannel(t = t, value = test_etd$leftEyeData$velAng,
             events = test_events, xlim = c(30, 32))
-
-
