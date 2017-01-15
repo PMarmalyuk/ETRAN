@@ -136,3 +136,34 @@ shannon.entropy <- function(p)
   p.norm <- p[p>0]/sum(p)
   -sum(log2(p.norm)*p.norm)
 }
+
+#Вычисление SR-матрицы
+getSR <- function(size, classified, alpha=0.233, gamma=0.255, history=F)
+{
+  #Вектор полученных AOIs
+  if (is.data.frame(classified))
+    cv = classified$state #Classified_Vector
+  else if (is.vector(classified))
+    cv=classified;
+  #Длина вектора перемещений
+  len=length(cv);
+  #Генерируем единичную матрицу I нужного размера
+  I = diag(1,size);
+  #Инициализируем новую SR-матрицу
+  SR = matrix(0,size,size);
+  #Переменная, содержащая историю изменений SR-матрицы
+  SRHistory = matrix(0,len,size^2);
+  #Заполняем матрицу данными и записываем в историю предыдущее значение матрицы
+  for (i in 1:(len-1))
+  {
+    SRHistory[i,] = as.vector(SR);
+    SR[,cv[i]] = SR[,cv[i]] +alpha*(I[,cv[i+1]] + gamma*SR[,cv[i+1]]                       
+                                    - SR[,cv[i]]);
+  }
+  SRHistory[len,]=as.vector(SR);
+  if (history) 
+    #Выдаем полученную историю изменений матрицы
+    return(SRHistory)
+  else
+    return(as.vector(SR)/sum(SR))
+}
