@@ -91,6 +91,7 @@ Raven_etd_angpos_list <- lapply(Raven_etd_smoothed_list, FUN = function(x) {
 ## Расчёт скоростей в угловых градусах
 Raven_etd_angvelacc_list <- lapply(Raven_etd_angpos_list, FUN = function(x) {
   calculateVelAcc(ETD = x, 
+                  # angular = T,
                   velocitySettings = 
                     list(velType = "finDiff", fl = 15))  
 })
@@ -103,12 +104,33 @@ Raven_etd_detected_list <- lapply(Raven_etd_angvelacc_list, FUN = function(x) {
                           VT = 30)
 })
 
-## График угловой скорости и событий
-test_etd <- Raven_etd_detected_list[[30]]
-t <- test_etd$commonData$time
-test_events <- test_etd$leftEvents$IVT %>%
-  mutate(start = c(1, start[-1] - 1),
-         start = t[start],
-         end = t[end])
-plotChannel(t = t, value = test_etd$leftEyeData$velAng,
-            events = test_events, xlim = c(30, 32))
+## Вычисление матриц представления преемника и выделение
+## паттернов методом главных компонент
+all_SRs <- matrix(ncol = 100)
+colnames(all_SRs) <- paste0("SR", 1:100)
+
+for (i in 1:length(Raven_etd_detected_list)) {
+  test_etd <- Raven_etd_detected_list[[i]]
+  t <- test_etd$commonData$time
+  x <- test_etd$leftEyeData$porx
+  y <- test_etd$leftEyeData$pory
+  aoi_vector <- dAOI(t, x, y, aoi$data) %>% 
+    filter(event != "_milk") %>% 
+    dplyr::select(event) %>% 
+    unlist()
+  aoi_vector <- as.numeric(levels(aoi_vector))[aoi_vector]
+  SR <- getSR(size = 10, classified = aoi_vector)
+  names(SR) <- paste0("SR", 1:100)
+  all_SRs <- rbind(all_SRs, SR)
+}
+
+all_SRs <- all_SRs[-1,]
+
+loads <- princomp(all_SRs)
+
+loading <- 1
+m = matrix(data = loads$loadings[, loading], ncol = 10, byrow=T)
+palette <- colorRampPalette(colors = c("#0000FF","#FFFFFF","#FF0000"))
+levelplot(m, col.regions = palette(100), ylim=c(10.5,0.5), 
+          main = paste(loading," component loadings",sep=""), 
+          xlab = "", ylab = "", useRaster = T)
