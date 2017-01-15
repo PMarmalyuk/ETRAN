@@ -130,6 +130,7 @@ calculateVelAcc <- function(ETD, velocitySettings, angular = TRUE)
     velRight <- calcVel(t = ETD$commonData$time, 
                         x = ETD$rightEyeData$porx, 
                         y = ETD$rightEyeData$pory,
+                        angular = angular,
                         settings = velocitySettings) 
     ETD$rightEyeData <- modifyList(x = ETD$rightEyeData, 
                                    val = list(vel = velRight$pxVelAccel$vels, 
