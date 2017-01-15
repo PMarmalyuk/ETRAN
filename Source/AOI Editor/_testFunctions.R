@@ -79,15 +79,21 @@ tag_trajectory(DataFromAOIset(my_set,aoi),trajectory)
 
 #get frequencies/probability matrixes
 #obtain AOI seq by x/y data (with _milk)
-AOISeqByTrajectory<-AOI(trajectory$t,trajectory$x,trajectory$y,my_setting,DataFromAOIset(my_set,aoi))$AOI_NAME
+AOISeqByTrajectory<-raw_area_sequence(trajectory,my_set,aoi)
+showFrequencyChart(getFrMatrix(AOISeqByTrajectory))
+AOISeqByTrajectory<-merged_area_sequence(trajectory,my_set,aoi)
+showFrequencyChart(getFrMatrix(AOISeqByTrajectory))
+
 getFrMatrix(AOISeqByTrajectory)
 getPrMatrix(AOISeqByTrajectory)
+
 #obtain AOI seq by x/y data (without _milk)
 AOISeqByTrajectory<-AOISeqByTrajectory[AOISeqByTrajectory!="_milk"] 
 getFrMatrix(AOISeqByTrajectory)
 getPrMatrix(AOISeqByTrajectory)
 AOISeqByTrajectory
 
+showFrequencyChart(getFrMatrix(AOISeqByTrajectory))
 
 #merge equal neighbors names in string list
 mergedAOISeqence<-mergeNeighborAOI(AOISeqByTrajectory)

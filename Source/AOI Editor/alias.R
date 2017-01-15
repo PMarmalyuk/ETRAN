@@ -62,3 +62,9 @@ als$stmo<- stimulStructure
 
 #sets aliases
 als$aseto<- AOISetStructure
+
+showFrequencyChart<-function(m){
+  clientEnvfrMatrix<<-m
+  #options(browser = "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe")
+  runApp(appDir = "../AOI_res_viz", launch.browser = getOption("shiny.launch.browser", interactive()))
+}

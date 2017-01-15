@@ -82,6 +82,16 @@ AOI <-
     return(as.data.frame(cbind(df,AOI_NAME=tag_trajectory(AOIL=AOIRawData,df=df)), strigsAsFactors=FALSE))
   }
 
+raw_area_sequence <- 
+  function(trajectory,area_set,aoi_col){
+    r<-AOI(trajectory$t,trajectory$x,trajectory$y,NULL,DataFromAOIset(area_set,aoi_col))
+    return(r$AOI_NAME)
+  }
+
+merged_area_sequence <-
+  function(trajectory,area_set,aoi_col){
+    return(mergeNeighborAOI(raw_area_sequence(trajectory,area_set,aoi_col)))
+  }
 
 get_un_AOINames<-
   function(AOIL){

@@ -5,6 +5,7 @@ source("SharedData.R", chdir=T)
 shinyUI(
   
   fluidPage(
+    tags$head(tags$script(src='CustomJs/jquery.js')),
     tags$head(tags$script(src='CustomJs/fabric.js')),
     #GUI and server interaction JS
     tags$head(tags$script(src='CustomJs/globals.js')),
@@ -29,17 +30,18 @@ shinyUI(
       tags$div(id = 'LoadImgContainer', class= "clickerItem", HTML(paste(
         fileInput('stimImgShnFileSource','Select image'),
         textInput('stimNameShnInput','Enter name for this stimul',''),
-        numericInput('stimWidthShnInput','You could change width parameter',0),
+        numericInput('stimWidthShnInput','You could change image Width',0),
         
         tags$div(id = 'WidthScale', class= "sltrCont", HTML(paste(
           '<input id = "wiScale" type="range" min="-7" max="7" value="0" step="1">',
           sep='',collapse='' ))),
           
-        numericInput('stimHeightShnInput','You could change Height parameter',0),
+        numericInput('stimHeightShnInput','You could change image Height',0),
         
         tags$div(id = 'HeightScale', class= "sltrCont2", HTML(paste(
           '<input id = "hiScale" type="range" min="-7" max="7" value="0" step="1"><br>
-          <input id = "ratioFixed" type="checkbox" checked/><br>',
+          <input id = "ratioFixed" type="checkbox" checked/>
+          <label for="ratioFixed">Save dimentions ratio</label><br>',
           sep='',collapse='' ))),
         
         
